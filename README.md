@@ -5,11 +5,18 @@
 ## 根目录文件
 
 - `index.html`
-- `store-trend-data.js`
-- `product-trend-data.js`
+- `store-trend-data-stores.js`
+- `store-trend-data-main.js`
+- `store-trend-data-inner.js`
+- `store-trend-data-outer.js`
+- `store-trend-data-brand.js`
+- `product-trend-data-main.js`
+- `product-trend-data-inner.js`
+- `product-trend-data-outer.js`
+- `product-trend-data-brand.js`
 - `.nojekyll`
 
-这 4 个文件需要保持在同一层级，部署时不要拆开。
+这些文件需要保持在同一层级，部署时不要拆开。
 
 ## tools 目录
 

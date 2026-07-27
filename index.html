@@ -1195,11 +1195,18 @@
       ]
     }
   </script>
-  <script src="./store-trend-data.js"></script>
-  <script src="./product-trend-data.js"></script>
+  <script src="./store-trend-data-stores.js"></script>
+  <script src="./store-trend-data-main.js"></script>
+  <script src="./store-trend-data-inner.js"></script>
+  <script src="./store-trend-data-outer.js"></script>
+  <script src="./store-trend-data-brand.js"></script>
+  <script src="./product-trend-data-main.js"></script>
+  <script src="./product-trend-data-inner.js"></script>
+  <script src="./product-trend-data-outer.js"></script>
+  <script src="./product-trend-data-brand.js"></script>
   <script>
     const data = JSON.parse(document.getElementById('embeddedData').textContent);
-    const storeTrendData = window.storeTrendData || { main: [], inner: [], outer: [] };
+    const storeTrendData = window.storeTrendData || { stores: [], main: [], inner: [], outer: [], brand: [] };
     const productTrendData = window.productTrendData || { main: [], inner: [], outer: [], brand: [] };
     const metricNumber = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
     const moneyNumber = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
