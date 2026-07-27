@@ -3118,6 +3118,11 @@
       const root = document.getElementById('productAnalysisTable');
       if (!root) return;
 
+      const exportButton = root.querySelector('[data-export-product-analysis]');
+      if (exportButton) {
+        exportButton.addEventListener('click', exportProductAnalysisTable);
+      }
+
       root.querySelectorAll('[data-product-pill]').forEach(button => {
         button.addEventListener('click', () => {
           setSelectedProduct(button.dataset.productPill || '全部产品');
@@ -3149,6 +3154,7 @@
           <div class="category-summary-head">
             <strong>产品分析</strong>
             <span>点击产品可联动全局筛选，支持升序/降序排序与手动调整列宽</span>
+            <button class="table-export-button" type="button" data-export-product-analysis>导出</button>
           </div>
           <div class="table-wrap">
             <table class="category-table product-table">
@@ -3558,6 +3564,11 @@
       const root = document.getElementById('categoryAnalysisTable');
       if (!root) return;
 
+      const exportButton = root.querySelector('[data-export-category-analysis]');
+      if (exportButton) {
+        exportButton.addEventListener('click', exportCategoryAnalysisTable);
+      }
+
       root.querySelectorAll('[data-category-pill]').forEach(button => {
         button.addEventListener('click', () => {
           setSelectedCategory(button.dataset.categoryPill || '全部品类');
@@ -3850,6 +3861,104 @@
       return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
     }
 
+    function exportProductAnalysisTable() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentMap = Object.fromEntries(buildProductSummary(queryRange).map(item => [item.product, item]));
+      const compareMap = Object.fromEntries(buildProductSummary(compareRange).map(item => [item.product, item]));
+      const products = sortProducts(
+        [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])].filter(product => (Number(currentMap[product]?.gmv) || 0) > 0),
+        currentMap
+      );
+      if (!products.length) return;
+
+      const buildMetricPairCells = (current, compare, metrics) => metrics.map(metric => {
+        const value = current[metric.key] || 0;
+        const delta = formatCategoryDelta(formatDelta(current[metric.key] || 0, compare[metric.key] || 0));
+        return `
+          <td>${formatMetricValue({ ...metric, value })}</td>
+          <td>${delta.text}</td>
+        `;
+      }).join('');
+
+      downloadExcelHtml(
+        `产品分析_${getExportDatePart()}.xls`,
+        '产品分析',
+        `
+          <table>
+            <thead>
+              <tr>
+                <th>产品</th>
+                ${categoryMetricDefinitions.map(metric => `<th>${metric.label}</th><th>${metric.label}环比</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${products.map(product => {
+                const current = currentMap[product] || {};
+                const compare = compareMap[product] || {};
+                return `
+                  <tr>
+                    <td>${product}</td>
+                    ${buildMetricPairCells(current, compare, categoryMetricDefinitions)}
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `
+      );
+    }
+
+    function exportCategoryAnalysisTable() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentMap = Object.fromEntries(buildCategorySummary(queryRange).map(item => [item.category, item]));
+      const compareMap = Object.fromEntries(buildCategorySummary(compareRange).map(item => [item.category, item]));
+      const selectedCategories = getSelectedCategories();
+      const categories = sortCategories(
+        [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])]
+          .filter(category => !selectedCategories.length || selectedCategories.includes(category)),
+        currentMap
+      );
+      if (!categories.length) return;
+
+      const buildMetricPairCells = (current, compare, metrics) => metrics.map(metric => {
+        const value = current[metric.key] || 0;
+        const delta = formatCategoryDelta(formatDelta(current[metric.key] || 0, compare[metric.key] || 0));
+        return `
+          <td>${formatMetricValue({ ...metric, value })}</td>
+          <td>${delta.text}</td>
+        `;
+      }).join('');
+
+      downloadExcelHtml(
+        `品类分析_${getExportDatePart()}.xls`,
+        '品类分析',
+        `
+          <table>
+            <thead>
+              <tr>
+                <th>品类</th>
+                ${categoryMetricDefinitions.map(metric => `<th>${metric.label}</th><th>${metric.label}环比</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${categories.map(category => {
+                const current = currentMap[category] || {};
+                const compare = compareMap[category] || {};
+                return `
+                  <tr>
+                    <td>${category}</td>
+                    ${buildMetricPairCells(current, compare, categoryMetricDefinitions)}
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `
+      );
+    }
+
     function exportOuterStructureTable() {
       const queryRange = getRange('qStart', 'qEnd');
       const compareRange = getRange('cStart', 'cEnd');
@@ -4134,6 +4243,7 @@
           <div class="category-summary-head">
             <strong>品类分析</strong>
             <span>点击品类可联动整张看板，点击表头可切换升序 / 降序</span>
+            <button class="table-export-button" type="button" data-export-category-analysis>导出</button>
           </div>
           <div class="table-wrap">
             <table class="category-table">
