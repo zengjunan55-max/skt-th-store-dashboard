@@ -3188,7 +3188,7 @@
                       </td>
                       ${categoryMetricDefinitions.map(metric => {
                         const value = current[metric.key] || 0;
-                        const delta = formatCategoryDelta(formatDelta(current[metric.key] || 0, compare[metric.key] || 0));
+                        const delta = formatStoreAnalysisMetricDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
                         return `
                           <td class="num">
                             <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
@@ -3331,6 +3331,19 @@
 
     function formatSpTtDelta(metricKey, currentValue, compareValue) {
       if (metricKey === 'gap') return formatSpTtGapDelta(currentValue, compareValue);
+      return formatCategoryDelta(formatDelta(currentValue, compareValue));
+    }
+
+    function formatStoreAnalysisMetricDelta(metricKey, currentValue, compareValue) {
+      if (metricKey === 'conversion') {
+        return formatCategoryDelta(
+          formatOuterBreakdownValueDelta(
+            currentValue,
+            compareValue,
+            value => `${(Number(value || 0) * 100).toFixed(2)}%`
+          )
+        );
+      }
       return formatCategoryDelta(formatDelta(currentValue, compareValue));
     }
 
@@ -3874,7 +3887,7 @@
 
       const buildMetricPairCells = (current, compare, metrics) => metrics.map(metric => {
         const value = current[metric.key] || 0;
-        const delta = formatCategoryDelta(formatDelta(current[metric.key] || 0, compare[metric.key] || 0));
+        const delta = formatStoreAnalysisMetricDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
         return `
           <td>${formatMetricValue({ ...metric, value })}</td>
           <td>${delta.text}</td>
@@ -3924,7 +3937,7 @@
 
       const buildMetricPairCells = (current, compare, metrics) => metrics.map(metric => {
         const value = current[metric.key] || 0;
-        const delta = formatCategoryDelta(formatDelta(current[metric.key] || 0, compare[metric.key] || 0));
+        const delta = formatStoreAnalysisMetricDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
         return `
           <td>${formatMetricValue({ ...metric, value })}</td>
           <td>${delta.text}</td>
@@ -4277,7 +4290,7 @@
                       </td>
                       ${categoryMetricDefinitions.map(metric => {
                         const value = current[metric.key] || 0;
-                        const delta = formatCategoryDelta(formatDelta(current[metric.key] || 0, compare[metric.key] || 0));
+                        const delta = formatStoreAnalysisMetricDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
                         return `
                           <td class="num">
                             <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
