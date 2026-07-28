@@ -1351,8 +1351,9 @@
       visitors: 138,
       conversion: 138,
       innerSpend: 152,
-      outerSpend: 152,
-      brandSpend: 152
+      outerTotalSpend: 152,
+      harvestSpend: 152,
+      seedingSpend: 152
     };
     const outerStructureColumnDefaults = {
       category: 156,
@@ -1397,8 +1398,9 @@
       visitors: 138,
       conversion: 138,
       innerSpend: 152,
-      outerSpend: 152,
-      brandSpend: 152
+      outerTotalSpend: 152,
+      harvestSpend: 152,
+      seedingSpend: 152
     };
     const spTtCompareColumnDefaults = {
       category: 156,
@@ -2330,8 +2332,9 @@
       { key: 'visitors', label: '访客', type: 'count' },
       { key: 'conversion', label: '转化率', type: 'percent' },
       { key: 'innerSpend', label: '站内花费', type: 'money' },
-      { key: 'outerSpend', label: '站外花费', type: 'money' },
-      { key: 'brandSpend', label: '品牌花费', type: 'money' }
+      { key: 'outerTotalSpend', label: '站外总花费', type: 'money' },
+      { key: 'harvestSpend', label: '收割花费', type: 'money' },
+      { key: 'seedingSpend', label: '种草花费', type: 'money' }
     ];
     const categoryMetricDefinitionMap = Object.fromEntries(categoryMetricDefinitions.map(metric => [metric.key, metric]));
     const outerStructureMetricDefinitions = [
@@ -2695,7 +2698,9 @@
             buyers: 0,
             innerSpend: 0,
             outerSpendUsd: 0,
-            brandSpendUsd: 0
+            brandSpendUsd: 0,
+            harvestSpendUsd: 0,
+            seedingSpendUsd: 0
           });
         }
         return categoryMap.get(category);
@@ -2723,12 +2728,16 @@
         const entry = ensureCategory(row.category);
         if (!entry) return;
         entry.outerSpendUsd += Number(row.spend_usd) || 0;
+        if ((row.ad_form2 || '') === '收割广告') entry.harvestSpendUsd += Number(row.spend_usd) || 0;
+        if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
       });
 
       filterBrandRows(storeTrendData.brand || [], range).forEach(row => {
         const entry = ensureCategory(row.category);
         if (!entry) return;
         entry.brandSpendUsd += Number(row.spend_usd) || 0;
+        if ((row.ad_form2 || '') === '收割广告') entry.harvestSpendUsd += Number(row.spend_usd) || 0;
+        if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
       });
 
       return Array.from(categoryMap.values()).map(entry => ({
@@ -2737,8 +2746,9 @@
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
         innerSpend: entry.innerSpend,
-        outerSpend: entry.outerSpendUsd * 6.9,
-        brandSpend: entry.brandSpendUsd * 6.9
+        outerTotalSpend: (entry.outerSpendUsd + entry.brandSpendUsd) * 6.9,
+        harvestSpend: entry.harvestSpendUsd * 6.9,
+        seedingSpend: entry.seedingSpendUsd * 6.9
       }));
     }
 
@@ -2977,7 +2987,9 @@
             buyers: 0,
             innerSpend: 0,
             outerSpendUsd: 0,
-            brandSpendUsd: 0
+            brandSpendUsd: 0,
+            harvestSpendUsd: 0,
+            seedingSpendUsd: 0
           });
         }
         return productMap.get(product);
@@ -3010,6 +3022,8 @@
         const entry = ensureProduct(product);
         if (!entry) return;
         entry.outerSpendUsd += Number(row.spend_usd) || 0;
+        if ((row.ad_form2 || '') === '收割广告') entry.harvestSpendUsd += Number(row.spend_usd) || 0;
+        if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
       });
 
       filterRows(productTrendData.brand || [], range)
@@ -3019,6 +3033,8 @@
         const entry = ensureProduct(product);
         if (!entry) return;
         entry.brandSpendUsd += Number(row.spend_usd) || 0;
+        if ((row.ad_form2 || '') === '收割广告') entry.harvestSpendUsd += Number(row.spend_usd) || 0;
+        if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
       });
 
       return Array.from(productMap.values()).map(entry => ({
@@ -3027,8 +3043,9 @@
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
         innerSpend: entry.innerSpend,
-        outerSpend: entry.outerSpendUsd * 6.9,
-        brandSpend: entry.brandSpendUsd * 6.9
+        outerTotalSpend: (entry.outerSpendUsd + entry.brandSpendUsd) * 6.9,
+        harvestSpend: entry.harvestSpendUsd * 6.9,
+        seedingSpend: entry.seedingSpendUsd * 6.9
       }));
     }
 
