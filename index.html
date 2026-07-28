@@ -1151,6 +1151,9 @@
         <h2>SP-TT销量对比</h2>
         <p class="small">按品类汇总 TT 出货与 SP 出货，日期继续沿用顶部全局日期组件。</p>
         <div id="spTtCompareTable"></div>
+        <div id="spTtProductCompareSection" style="margin-top:18px;">
+          <div id="spTtProductCompareTable"></div>
+        </div>
       </section>
     </div>
   </main>
@@ -1344,6 +1347,12 @@
       columnWidths: {},
       resize: null
     };
+    const spTtProductCompareTableState = {
+      sortKey: 'totalSales',
+      sortDirection: 'desc',
+      columnWidths: {},
+      resize: null
+    };
     const trendRevealDuration = 420;
     const categoryColumnDefaults = {
       category: 156,
@@ -1404,6 +1413,14 @@
     };
     const spTtCompareColumnDefaults = {
       category: 156,
+      totalSales: 132,
+      spSales: 132,
+      ttSales: 132,
+      gap: 132,
+      ratio: 132
+    };
+    const spTtProductCompareColumnDefaults = {
+      productName: 188,
       totalSales: 132,
       spSales: 132,
       ttSales: 132,
@@ -2366,6 +2383,7 @@
       { key: 'gap', label: 'GAP', type: 'count' },
       { key: 'ratio', label: '倍差', type: 'multiple' }
     ];
+    const spTtProductCompareMetricDefinitions = [...spTtCompareMetricDefinitions];
     const outerBreakdownFormOrder = ['收割广告', '种草广告'];
     const outerBreakdownTypeOrder = ['图片广告', '视频广告', '混合目录', '合创广告', '官号广告'];
 
@@ -3255,6 +3273,35 @@
       });
     }
 
+    function buildSpTtProductCompareSummary(range) {
+      const productMap = new Map();
+      (spTtSalesData.rows || []).forEach(row => {
+        if (!row?.date || !row?.productName || !isInRange(row.date, range.start, range.end)) return;
+        if (!productMap.has(row.productName)) {
+          productMap.set(row.productName, {
+            productName: row.productName,
+            spSales: 0,
+            ttSales: 0
+          });
+        }
+        const entry = productMap.get(row.productName);
+        entry.spSales += Number(row.spSales) || 0;
+        entry.ttSales += Number(row.ttSales) || 0;
+      });
+      return Array.from(productMap.values()).map(entry => {
+        const totalSales = entry.spSales + entry.ttSales;
+        const gap = entry.spSales - entry.ttSales;
+        return {
+          productName: entry.productName,
+          totalSales,
+          spSales: entry.spSales,
+          ttSales: entry.ttSales,
+          gap,
+          ratio: entry.ttSales ? entry.spSales / entry.ttSales : 0
+        };
+      });
+    }
+
     function getSpTtCompareSortValue(category, currentMap, metricKey) {
       if (metricKey === 'category') return category;
       return Number(currentMap[category]?.[metricKey]) || 0;
@@ -3444,6 +3491,168 @@
       bindSpTtCompareEvents();
     }
 
+    function getSpTtProductCompareSortValue(productName, currentMap, metricKey) {
+      if (metricKey === 'productName') return productName;
+      return Number(currentMap[productName]?.[metricKey]) || 0;
+    }
+
+    function sortSpTtProductCompareProducts(products, currentMap) {
+      const { sortKey, sortDirection } = spTtProductCompareTableState;
+      const sortFactor = sortDirection === 'asc' ? 1 : -1;
+      return [...products].sort((left, right) => {
+        const leftValue = getSpTtProductCompareSortValue(left, currentMap, sortKey);
+        const rightValue = getSpTtProductCompareSortValue(right, currentMap, sortKey);
+        if (sortKey === 'productName') {
+          return leftValue.localeCompare(rightValue, 'zh-CN') * sortFactor;
+        }
+        if (rightValue === leftValue) return left.localeCompare(right, 'zh-CN');
+        return (leftValue - rightValue) * sortFactor;
+      });
+    }
+
+    function updateSpTtProductCompareSort(sortKey) {
+      if (spTtProductCompareTableState.sortKey === sortKey) {
+        spTtProductCompareTableState.sortDirection = spTtProductCompareTableState.sortDirection === 'desc' ? 'asc' : 'desc';
+      } else {
+        spTtProductCompareTableState.sortKey = sortKey;
+        spTtProductCompareTableState.sortDirection = sortKey === 'productName' ? 'asc' : 'desc';
+      }
+      renderSpTtProductCompareTable();
+    }
+
+    function getSpTtProductCompareColumnWidth(columnKey) {
+      return spTtProductCompareTableState.columnWidths[columnKey] || spTtProductCompareColumnDefaults[columnKey] || 148;
+    }
+
+    function setSpTtProductCompareColumnWidth(columnKey, width) {
+      const minWidth = columnKey === 'productName' ? 168 : 126;
+      spTtProductCompareTableState.columnWidths[columnKey] = Math.max(minWidth, Math.round(width));
+    }
+
+    function buildSpTtProductCompareColgroup(headers) {
+      return `
+        <colgroup>
+          ${headers.map(header => `
+            <col data-sp-tt-product-column="${header.key}" style="width:${getSpTtProductCompareColumnWidth(header.key)}px">
+          `).join('')}
+        </colgroup>
+      `;
+    }
+
+    function stopSpTtProductCompareColumnResize() {
+      const activeResize = spTtProductCompareTableState.resize;
+      if (!activeResize) return;
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
+      const table = document.querySelector('.sp-tt-product-compare-table');
+      if (table) table.classList.remove('is-resizing');
+      if (activeResize.handle) activeResize.handle.classList.remove('active', 'is-resizing');
+      spTtProductCompareTableState.resize = null;
+    }
+
+    function bindSpTtProductCompareColumnResize(root) {
+      root.querySelectorAll('.sp-tt-product-resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const columnKey = handle.dataset.columnKey;
+          const table = root.querySelector('.sp-tt-product-compare-table');
+          if (!table || !columnKey) return;
+          const startWidth = getSpTtProductCompareColumnWidth(columnKey);
+          spTtProductCompareTableState.resize = {
+            columnKey,
+            startX: event.clientX,
+            startWidth,
+            handle
+          };
+          table.classList.add('is-resizing');
+          handle.classList.add('active', 'is-resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+        });
+      });
+    }
+
+    function bindSpTtProductCompareEvents() {
+      const root = document.getElementById('spTtProductCompareTable');
+      if (!root) return;
+      root.querySelectorAll('[data-sp-tt-product-sort]').forEach(button => {
+        button.addEventListener('click', () => {
+          updateSpTtProductCompareSort(button.dataset.spTtProductSort);
+        });
+      });
+      bindSpTtProductCompareColumnResize(root);
+    }
+
+    function renderSpTtProductCompareTable() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentMap = Object.fromEntries(buildSpTtProductCompareSummary(queryRange).map(item => [item.productName, item]));
+      const compareMap = Object.fromEntries(buildSpTtProductCompareSummary(compareRange).map(item => [item.productName, item]));
+      const products = sortSpTtProductCompareProducts(
+        [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])].filter(productName =>
+          (Number(currentMap[productName]?.totalSales) || 0) > 0 || (Number(compareMap[productName]?.totalSales) || 0) > 0
+        ),
+        currentMap
+      );
+
+      const metricHeaders = [{ key: 'productName', label: '产品名称' }, ...spTtProductCompareMetricDefinitions];
+      const tableHtml = products.length ? `
+        <div class="category-summary-card">
+          <div class="category-summary-head">
+            <strong>SP-TT产品销量对比</strong>
+            <span>按产品名称汇总总销量、虾皮销量、TT销量、GAP 与倍差，并展示对应环比</span>
+          </div>
+          <div class="table-wrap">
+            <table class="category-table sp-tt-product-compare-table">
+              ${buildSpTtProductCompareColgroup(metricHeaders)}
+              <thead>
+                <tr>
+                  ${metricHeaders.map(header => {
+                    const isActive = spTtProductCompareTableState.sortKey === header.key;
+                    const arrow = isActive ? (spTtProductCompareTableState.sortDirection === 'desc' ? '↓' : '↑') : '↕';
+                    return `
+                      <th>
+                        <button class="category-sort-button ${isActive ? 'active' : ''}" type="button" data-sp-tt-product-sort="${header.key}">
+                          <span>${header.label}</span>
+                          <span class="sort-arrow">${arrow}</span>
+                        </button>
+                        <span class="category-resize-handle sp-tt-product-resize-handle" data-column-key="${header.key}" aria-hidden="true"></span>
+                      </th>
+                    `;
+                  }).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${products.map(productName => {
+                  const current = currentMap[productName] || {};
+                  const compare = compareMap[productName] || {};
+                  return `
+                    <tr>
+                      <td class="category-name">${productName}</td>
+                      ${spTtProductCompareMetricDefinitions.map(metric => {
+                        const value = current[metric.key] || 0;
+                        const delta = formatSpTtDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
+                        return `
+                          <td class="num">
+                            <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                            <span class="category-cell-delta ${delta.className || 'empty'}">${delta.text}</span>
+                          </td>
+                        `;
+                      }).join('')}
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : '<div class="note">当前日期范围下暂无 SP-TT 产品销量对比数据。</div>';
+
+      document.getElementById('spTtProductCompareTable').innerHTML = tableHtml;
+      bindSpTtProductCompareEvents();
+    }
+
     function formatCategoryDelta(delta) {
       if (!delta.className) return { text: delta.text, className: 'empty' };
       return { text: delta.text.replace('环比 ', ''), className: delta.className };
@@ -3579,6 +3788,14 @@
         const col = document.querySelector(`.sp-tt-compare-table col[data-resizable-column="${activeSpTtResize.columnKey}"]`);
         if (col) col.style.width = `${getSpTtCompareColumnWidth(activeSpTtResize.columnKey)}px`;
       }
+
+      const activeSpTtProductResize = spTtProductCompareTableState.resize;
+      if (activeSpTtProductResize) {
+        const nextWidth = activeSpTtProductResize.startWidth + (event.clientX - activeSpTtProductResize.startX);
+        setSpTtProductCompareColumnWidth(activeSpTtProductResize.columnKey, nextWidth);
+        const col = document.querySelector(`.sp-tt-product-compare-table col[data-sp-tt-product-column="${activeSpTtProductResize.columnKey}"]`);
+        if (col) col.style.width = `${getSpTtProductCompareColumnWidth(activeSpTtProductResize.columnKey)}px`;
+      }
     });
 
     document.addEventListener('mouseup', () => {
@@ -3588,6 +3805,7 @@
       if (outerBreakdownTableState.resize) stopOuterBreakdownColumnResize();
       if (outerProductStructureTableState.resize) stopOuterProductStructureColumnResize();
       if (spTtCompareTableState.resize) stopSpTtCompareColumnResize();
+      if (spTtProductCompareTableState.resize) stopSpTtProductCompareColumnResize();
     });
 
     function bindCategoryAnalysisEvents() {
@@ -4803,6 +5021,7 @@
       renderOuterStructureTable();
       renderOuterProductStructureTable();
       renderSpTtCompareTable();
+      renderSpTtProductCompareTable();
     }
 
     function updateTrendTooltip(clientX, clientY) {
