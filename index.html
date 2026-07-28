@@ -1147,6 +1147,46 @@
     </div>
 
     <div class="tab-panel" data-tab-panel="sp-tt" role="tabpanel" aria-labelledby="analysis-tab-sp-tt" hidden>
+      <div class="filter-panel-row" id="spTtFilterPanelRow">
+        <div class="controls-filter-panel">
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>品类筛选</span>
+            </div>
+            <div class="filter-multiselect" id="spTtCategoryFilterWrap">
+              <div id="spTtCategoryFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="spTtCategoryFilterInput" class="filter-trigger-input" type="text" value="全部品类" placeholder="搜索品类" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="spTtCategoryFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="category" data-filter-scope="sp-tt">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="category" data-filter-scope="sp-tt">清空</button>
+                </div>
+                <div id="spTtCategoryFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>产品筛选</span>
+            </div>
+            <div class="filter-multiselect" id="spTtProductFilterWrap">
+              <div id="spTtProductFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="spTtProductFilterInput" class="filter-trigger-input" type="text" value="全部产品" placeholder="搜索产品" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="spTtProductFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="product" data-filter-scope="sp-tt">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="product" data-filter-scope="sp-tt">清空</button>
+                </div>
+                <div id="spTtProductFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <section>
         <h2>SP-TT销量对比</h2>
         <p class="small">按品类汇总 TT 出货与 SP 出货，日期继续沿用顶部全局日期组件。</p>
@@ -1308,6 +1348,12 @@
       productSearch: ''
     };
     const outerFilterState = {
+      categories: [],
+      products: [],
+      categorySearch: '',
+      productSearch: ''
+    };
+    const spTtFilterState = {
       categories: [],
       products: [],
       categorySearch: '',
@@ -1539,9 +1585,57 @@
         .sort((left, right) => left.localeCompare(right, 'zh-CN'));
     }
 
+    function getSpTtSelectedCategories() {
+      return spTtFilterState.categories;
+    }
+
+    function getSpTtSelectedProducts() {
+      return spTtFilterState.products;
+    }
+
+    function isAllSpTtCategoriesSelected() {
+      return !spTtFilterState.categories.length;
+    }
+
+    function isAllSpTtProductsSelected() {
+      return !spTtFilterState.products.length;
+    }
+
+    function spTtMatchesSelectedCategory(row) {
+      const rowCategory = row?.category || '';
+      if (!rowCategory) return isAllSpTtCategoriesSelected();
+      return isAllSpTtCategoriesSelected() || getSpTtSelectedCategories().includes(rowCategory);
+    }
+
+    function spTtMatchesSelectedProduct(row) {
+      const rowProduct = row?.productName || '';
+      if (!rowProduct) return isAllSpTtProductsSelected();
+      return isAllSpTtProductsSelected() || getSpTtSelectedProducts().includes(rowProduct);
+    }
+
+    function getSpTtCategoryOptions() {
+      return [...new Set((spTtSalesData.rows || [])
+        .map(row => row.category)
+        .filter(isRecognizedFilterValue))]
+        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function getSpTtProductOptions() {
+      return [...new Set((spTtSalesData.rows || [])
+        .filter(row => spTtMatchesSelectedCategory(row))
+        .map(row => row.productName)
+        .filter(isRecognizedFilterValue))]
+        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
     function normalizeSelectedProducts() {
       const allowed = new Set(getProductOptions());
       filterState.products = filterState.products.filter(product => allowed.has(product));
+    }
+
+    function normalizeSpTtSelectedProducts() {
+      const allowed = new Set(getSpTtProductOptions());
+      spTtFilterState.products = spTtFilterState.products.filter(product => allowed.has(product));
     }
 
     function isAllStoresSelected() {
@@ -1604,6 +1698,20 @@
       input.value = isOpen ? searchValue : summary;
     }
 
+    function syncSpTtFilterTriggerInput(kind) {
+      const inputId = kind === 'category' ? 'spTtCategoryFilterInput' : 'spTtProductFilterInput';
+      const wrapperId = kind === 'category' ? 'spTtCategoryFilterWrap' : 'spTtProductFilterWrap';
+      const input = document.getElementById(inputId);
+      const wrapper = document.getElementById(wrapperId);
+      if (!input || !wrapper) return;
+      const isOpen = wrapper.classList.contains('open');
+      const searchValue = kind === 'category' ? spTtFilterState.categorySearch : spTtFilterState.productSearch;
+      const summary = kind === 'category'
+        ? buildFilterSummary(getSpTtSelectedCategories(), '全部品类')
+        : buildFilterSummary(getSpTtSelectedProducts(), '全部产品');
+      input.value = isOpen ? searchValue : summary;
+    }
+
     function normalizeFilterKeyword(value) {
 
       return `${value || ''}`.trim().toLowerCase();
@@ -1627,6 +1735,18 @@
       }
       if (kind === 'product') {
         return filterOptionList(getProductOptions(), filterState.productSearch, '全部产品')
+          .filter(option => option !== '全部产品');
+      }
+      return [];
+    }
+
+    function getVisibleSpTtFilterOptions(kind) {
+      if (kind === 'category') {
+        return filterOptionList(getSpTtCategoryOptions(), spTtFilterState.categorySearch, '全部品类')
+          .filter(option => option !== '全部品类');
+      }
+      if (kind === 'product') {
+        return filterOptionList(getSpTtProductOptions(), spTtFilterState.productSearch, '全部产品')
           .filter(option => option !== '全部产品');
       }
       return [];
@@ -1704,6 +1824,40 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
       syncOuterFilterTriggerInput('product');
+    }
+
+    function populateSpTtCategoryFilter() {
+      const container = document.getElementById('spTtCategoryFilterOptions');
+      if (!container) return;
+      const visibleOptions = filterOptionList(getSpTtCategoryOptions(), spTtFilterState.categorySearch, '全部品类');
+      const selectedCategories = getSpTtSelectedCategories();
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(category => {
+        const checked = category === '全部品类' ? !selectedCategories.length : selectedCategories.includes(category);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${category}" ${checked ? 'checked' : ''}>
+            <span>${category}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的品类</div>';
+      syncSpTtFilterTriggerInput('category');
+    }
+
+    function populateSpTtProductFilter() {
+      const container = document.getElementById('spTtProductFilterOptions');
+      if (!container) return;
+      const visibleOptions = filterOptionList(getSpTtProductOptions(), spTtFilterState.productSearch, '全部产品');
+      const selectedProducts = getSpTtSelectedProducts();
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(product => {
+        const checked = product === '全部产品' ? !selectedProducts.length : selectedProducts.includes(product);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${product}" ${checked ? 'checked' : ''}>
+            <span>${product}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
+      syncSpTtFilterTriggerInput('product');
     }
 
     function setSelectedCategory(category, shouldRender = true) {
@@ -1823,6 +1977,40 @@
       }
     }
 
+    function setSpTtSelectedCategory(category, shouldRender = true) {
+      const nextCategories = category === '全部品类'
+        ? []
+        : (() => {
+            const current = new Set(getSpTtSelectedCategories());
+            if (current.has(category)) current.delete(category);
+            else current.add(category);
+            return [...current];
+          })();
+      spTtFilterState.categories = nextCategories;
+      normalizeSpTtSelectedProducts();
+      populateSpTtCategoryFilter();
+      populateSpTtProductFilter();
+      if (shouldRender) {
+        renderSpTtProductCompareTable();
+      }
+    }
+
+    function setSpTtSelectedProduct(product, shouldRender = true) {
+      const nextProducts = product === '全部产品'
+        ? []
+        : (() => {
+            const current = new Set(getSpTtSelectedProducts());
+            if (current.has(product)) current.delete(product);
+            else current.add(product);
+            return [...current];
+          })();
+      spTtFilterState.products = nextProducts;
+      populateSpTtProductFilter();
+      if (shouldRender) {
+        renderSpTtProductCompareTable();
+      }
+    }
+
     function applyFilterBulk(kind, action) {
       if (kind === 'store') {
         filterState.stores = action === 'select-all'
@@ -1878,6 +2066,24 @@
       renderOuterProductStructureTable();
     }
 
+    function applySpTtFilterBulk(kind, action) {
+      if (kind === 'category') {
+        spTtFilterState.categories = action === 'select-all'
+          ? [...new Set([...(getSpTtSelectedCategories()), ...getVisibleSpTtFilterOptions('category')])]
+          : [];
+        normalizeSpTtSelectedProducts();
+        populateSpTtCategoryFilter();
+        populateSpTtProductFilter();
+      }
+      if (kind === 'product') {
+        spTtFilterState.products = action === 'select-all'
+          ? [...new Set([...(getSpTtSelectedProducts()), ...getVisibleSpTtFilterOptions('product')])]
+          : [];
+        populateSpTtProductFilter();
+      }
+      renderSpTtProductCompareTable();
+    }
+
     function closeFilterDropdowns() {
       document.querySelectorAll('.filter-multiselect.open').forEach(node => {
         node.classList.remove('open');
@@ -1894,6 +2100,10 @@
       outerFilterState.productSearch = '';
       populateOuterCategoryFilter();
       populateOuterProductFilter();
+      spTtFilterState.categorySearch = '';
+      spTtFilterState.productSearch = '';
+      populateSpTtCategoryFilter();
+      populateSpTtProductFilter();
     }
 
     function toggleFilterDropdown(wrapperId) {
@@ -1931,17 +2141,23 @@
       const productTrigger = document.getElementById('productFilterTrigger');
       const outerCategoryTrigger = document.getElementById('outerCategoryFilterTrigger');
       const outerProductTrigger = document.getElementById('outerProductFilterTrigger');
+      const spTtCategoryTrigger = document.getElementById('spTtCategoryFilterTrigger');
+      const spTtProductTrigger = document.getElementById('spTtProductFilterTrigger');
       const jumpButtons = document.querySelectorAll('.filter-jump-button');
       const storeOptions = document.getElementById('storeFilterOptions');
       const categoryOptions = document.getElementById('categoryFilterOptions');
       const productOptions = document.getElementById('productFilterOptions');
       const outerCategoryOptions = document.getElementById('outerCategoryFilterOptions');
       const outerProductOptions = document.getElementById('outerProductFilterOptions');
+      const spTtCategoryOptions = document.getElementById('spTtCategoryFilterOptions');
+      const spTtProductOptions = document.getElementById('spTtProductFilterOptions');
       const storeInput = document.getElementById('storeFilterInput');
       const categoryInput = document.getElementById('categoryFilterInput');
       const productInput = document.getElementById('productFilterInput');
       const outerCategoryInput = document.getElementById('outerCategoryFilterInput');
       const outerProductInput = document.getElementById('outerProductFilterInput');
+      const spTtCategoryInput = document.getElementById('spTtCategoryFilterInput');
+      const spTtProductInput = document.getElementById('spTtProductFilterInput');
 
       function scrollToFilterTarget(targetId) {
         const target = document.getElementById(targetId);
@@ -1986,6 +2202,18 @@
           toggleFilterDropdown('outerProductFilterWrap');
         });
       }
+      if (spTtCategoryTrigger) {
+        spTtCategoryTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('spTtCategoryFilterWrap');
+        });
+      }
+      if (spTtProductTrigger) {
+        spTtProductTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('spTtProductFilterWrap');
+        });
+      }
       if (storeOptions) {
         storeOptions.addEventListener('change', event => {
           const input = event.target;
@@ -2025,6 +2253,22 @@
           setOuterSelectedProduct(input.value);
         });
         outerProductOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (spTtCategoryOptions) {
+        spTtCategoryOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setSpTtSelectedCategory(input.value);
+        });
+        spTtCategoryOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (spTtProductOptions) {
+        spTtProductOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setSpTtSelectedProduct(input.value);
+        });
+        spTtProductOptions.addEventListener('click', event => event.stopPropagation());
       }
       if (storeInput) {
         storeInput.addEventListener('click', event => {
@@ -2091,6 +2335,32 @@
           populateOuterProductFilter();
         });
       }
+      if (spTtCategoryInput) {
+        spTtCategoryInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        spTtCategoryInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('spTtCategoryFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('spTtCategoryFilterWrap');
+        });
+        spTtCategoryInput.addEventListener('input', event => {
+          spTtFilterState.categorySearch = event.target.value;
+          populateSpTtCategoryFilter();
+        });
+      }
+      if (spTtProductInput) {
+        spTtProductInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        spTtProductInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('spTtProductFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('spTtProductFilterWrap');
+        });
+        spTtProductInput.addEventListener('input', event => {
+          spTtFilterState.productSearch = event.target.value;
+          populateSpTtProductFilter();
+        });
+      }
       document.querySelectorAll('[data-filter-action]').forEach(button => {
         button.addEventListener('click', event => {
           event.stopPropagation();
@@ -2099,6 +2369,7 @@
           const scope = button.getAttribute('data-filter-scope') || 'store';
           if (!action || !kind) return;
           if (scope === 'outer') applyOuterFilterBulk(kind, action);
+          else if (scope === 'sp-tt') applySpTtFilterBulk(kind, action);
           else applyFilterBulk(kind, action);
         });
       });
@@ -3277,6 +3548,7 @@
       const productMap = new Map();
       (spTtSalesData.rows || []).forEach(row => {
         if (!row?.date || !row?.productName || !isInRange(row.date, range.start, range.end)) return;
+        if (!spTtMatchesSelectedCategory(row) || !spTtMatchesSelectedProduct(row)) return;
         if (!productMap.has(row.productName)) {
           productMap.set(row.productName, {
             productName: row.productName,
@@ -5196,6 +5468,7 @@
 
     function setActiveTab(tabKey) {
       const filterRow = document.getElementById('storeFilterPanelRow');
+      const spTtFilterRow = document.getElementById('spTtFilterPanelRow');
       document.querySelectorAll('#analysisTabs .tab-button').forEach(button => {
         const isActive = button.dataset.tabTarget === tabKey;
         button.classList.toggle('active', isActive);
@@ -5208,6 +5481,9 @@
       });
       if (filterRow) {
         filterRow.classList.toggle('is-hidden', tabKey !== 'store');
+      }
+      if (spTtFilterRow) {
+        spTtFilterRow.classList.toggle('is-hidden', tabKey !== 'sp-tt');
       }
     }
 
@@ -5228,6 +5504,8 @@
     populateProductFilter();
     populateOuterCategoryFilter();
     populateOuterProductFilter();
+    populateSpTtCategoryFilter();
+    populateSpTtProductFilter();
     bindMultiSelectFilterEvents();
     bindAnalysisTabs();
     renderAnalysisSections();
