@@ -1190,6 +1190,13 @@
       <section>
         <h2>SP-TT销量对比</h2>
         <p class="small">按品类汇总 TT 出货与 SP 出货，日期继续沿用顶部全局日期组件。</p>
+        <div id="spTtTrendSection">
+          <div id="spTtCompareCards"></div>
+          <div class="trend-canvas-wrap">
+            <canvas id="spTtTrendChart" width="1280" height="420"></canvas>
+            <div id="spTtTrendTooltip" class="trend-tooltip"></div>
+          </div>
+        </div>
         <div id="spTtCompareTable"></div>
         <div id="spTtProductCompareSection" style="margin-top:18px;">
           <div id="spTtProductCompareTable"></div>
@@ -1328,9 +1335,27 @@
       { key: 'outerSpend', label: '站外花费', type: 'money', axisGroup: 'right', chartType: 'line', currentColor: '#8e44ad', compareColor: '#cfb0e0' },
       { key: 'brandSpend', label: '品牌广告', type: 'money', axisGroup: 'right', chartType: 'line', currentColor: '#c2410c', compareColor: '#fdba74' }
     ];
+    const spTtTrendMetricDefinitions = [
+      { key: 'totalSales', label: '总销售', type: 'count', axisGroup: 'left', chartType: 'bar', currentColor: '#1e6f8c', compareColor: '#8fc4d2' },
+      { key: 'spSales', label: '虾皮销量', type: 'count', axisGroup: 'left', chartType: 'line', currentColor: '#2f6fdd', compareColor: '#a8c4f4' },
+      { key: 'ttSales', label: 'TT销量', type: 'count', axisGroup: 'left', chartType: 'line', currentColor: '#3f8f56', compareColor: '#a9d6b4' },
+      { key: 'gap', label: 'GAP', type: 'count', axisGroup: 'gap', chartType: 'line', currentColor: '#b9770e', compareColor: '#e7c27d' },
+      { key: 'ratio', label: '倍差', type: 'multiple', axisGroup: 'ratio', chartType: 'line', currentColor: '#d95f43', compareColor: '#f0b3a5' }
+    ];
     const metricDefinitionMap = Object.fromEntries(metricDefinitions.map(metric => [metric.key, metric]));
+    const spTtTrendMetricDefinitionMap = Object.fromEntries(spTtTrendMetricDefinitions.map(metric => [metric.key, metric]));
     const storeTrendState = {
       selectedMetricKeys: ['gmv'],
+      hiddenSeriesKeys: [],
+      activeRows: [],
+      hoverIndex: null,
+      geometry: null,
+      legendItems: [],
+      revealAnimations: {},
+      animationFrameId: null
+    };
+    const spTtTrendState = {
+      selectedMetricKeys: ['totalSales'],
       hiddenSeriesKeys: [],
       activeRows: [],
       hoverIndex: null,
@@ -1991,6 +2016,7 @@
       populateSpTtCategoryFilter();
       populateSpTtProductFilter();
       if (shouldRender) {
+        renderSpTtTrendSection();
         renderSpTtCompareTable();
         renderSpTtProductCompareTable();
       }
@@ -2008,6 +2034,7 @@
       spTtFilterState.products = nextProducts;
       populateSpTtProductFilter();
       if (shouldRender) {
+        renderSpTtTrendSection();
         renderSpTtCompareTable();
         renderSpTtProductCompareTable();
       }
@@ -2083,6 +2110,7 @@
           : [];
         populateSpTtProductFilter();
       }
+      renderSpTtTrendSection();
       renderSpTtCompareTable();
       renderSpTtProductCompareTable();
     }
@@ -3576,6 +3604,531 @@
           ratio: entry.ttSales ? entry.spSales / entry.ttSales : 0
         };
       });
+    }
+
+    function computeSpTtMetrics(range) {
+      const rows = (spTtSalesData.rows || []).filter(row =>
+        row?.date &&
+        isInRange(row.date, range.start, range.end) &&
+        spTtMatchesSelectedCategory(row) &&
+        spTtMatchesSelectedProduct(row)
+      );
+      const spSales = rows.reduce((sum, row) => sum + (Number(row.spSales) || 0), 0);
+      const ttSales = rows.reduce((sum, row) => sum + (Number(row.ttSales) || 0), 0);
+      return {
+        totalSales: spSales + ttSales,
+        spSales,
+        ttSales,
+        gap: spSales - ttSales,
+        ratio: ttSales ? spSales / ttSales : 0
+      };
+    }
+
+    function aggregateSpTtRowsByDate(rows) {
+      const map = {};
+      rows.forEach(row => {
+        if (!row?.date) return;
+        if (!map[row.date]) {
+          map[row.date] = { date: row.date, spSales: 0, ttSales: 0 };
+        }
+        map[row.date].spSales += Number(row.spSales) || 0;
+        map[row.date].ttSales += Number(row.ttSales) || 0;
+      });
+      return map;
+    }
+
+    function getSpTtMetricSeriesValue(metricKey, row) {
+      if (!row) return null;
+      const spSales = Number(row.spSales) || 0;
+      const ttSales = Number(row.ttSales) || 0;
+      if (metricKey === 'totalSales') return spSales + ttSales;
+      if (metricKey === 'spSales') return spSales;
+      if (metricKey === 'ttSales') return ttSales;
+      if (metricKey === 'gap') return spSales - ttSales;
+      if (metricKey === 'ratio') return ttSales ? spSales / ttSales : 0;
+      return null;
+    }
+
+    function buildSpTtMetricMaps(range) {
+      return aggregateSpTtRowsByDate((spTtSalesData.rows || []).filter(row =>
+        row?.date &&
+        isInRange(row.date, range.start, range.end) &&
+        spTtMatchesSelectedCategory(row) &&
+        spTtMatchesSelectedProduct(row)
+      ));
+    }
+
+    function buildSpTtTrendRows() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentDates = buildDateList(queryRange);
+      const compareDates = buildDateList(compareRange);
+      const rowCount = Math.max(currentDates.length, compareDates.length);
+      const currentMap = buildSpTtMetricMaps(queryRange);
+      const compareMap = buildSpTtMetricMaps(compareRange);
+
+      return Array.from({ length: rowCount }, (_, index) => {
+        const currentDate = currentDates[index] || '';
+        const compareDate = compareDates[index] || '';
+        const currentValues = {};
+        const compareValues = {};
+
+        spTtTrendMetricDefinitions.forEach(metric => {
+          currentValues[metric.key] = getSpTtMetricSeriesValue(metric.key, currentMap[currentDate]);
+          compareValues[metric.key] = getSpTtMetricSeriesValue(metric.key, compareMap[compareDate]);
+        });
+
+        return {
+          label: currentDate ? currentDate.slice(5) : compareDate.slice(5),
+          currentDate,
+          compareDate,
+          currentValues,
+          compareValues
+        };
+      });
+    }
+
+    function isSpTtSeriesVisible(metricKey, valuesKey) {
+      return !spTtTrendState.hiddenSeriesKeys.includes(getSeriesKey(metricKey, valuesKey));
+    }
+
+    function toggleSpTtSeriesVisibility(metricKey, valuesKey) {
+      const seriesKey = getSeriesKey(metricKey, valuesKey);
+      if (spTtTrendState.hiddenSeriesKeys.includes(seriesKey)) {
+        spTtTrendState.hiddenSeriesKeys = spTtTrendState.hiddenSeriesKeys.filter(key => key !== seriesKey);
+      } else {
+        spTtTrendState.hiddenSeriesKeys = [...spTtTrendState.hiddenSeriesKeys, seriesKey];
+      }
+    }
+
+    function startSpTtSeriesReveal(metricKey, valuesKey) {
+      spTtTrendState.revealAnimations[getSeriesKey(metricKey, valuesKey)] = null;
+    }
+
+    function startSpTtMetricReveal(metricKey) {
+      startSpTtSeriesReveal(metricKey, 'currentValues');
+      startSpTtSeriesReveal(metricKey, 'compareValues');
+    }
+
+    function getSpTtSeriesRevealProgress(metricKey, valuesKey, now) {
+      const seriesKey = getSeriesKey(metricKey, valuesKey);
+      if (!(seriesKey in spTtTrendState.revealAnimations)) return 1;
+      const startTime = spTtTrendState.revealAnimations[seriesKey];
+      if (startTime === null) {
+        spTtTrendState.revealAnimations[seriesKey] = now;
+        return 0;
+      }
+      const progress = Math.min(1, (now - startTime) / trendRevealDuration);
+      if (progress >= 1) {
+        delete spTtTrendState.revealAnimations[seriesKey];
+        return 1;
+      }
+      return progress;
+    }
+
+    function scheduleSpTtTrendAnimationFrame() {
+      if (spTtTrendState.animationFrameId !== null) return;
+      spTtTrendState.animationFrameId = requestAnimationFrame(() => {
+        spTtTrendState.animationFrameId = null;
+        renderSpTtTrend();
+      });
+    }
+
+    function prepareSpTtTrendCanvas() {
+      const canvas = document.getElementById('spTtTrendChart');
+      const rect = canvas.getBoundingClientRect();
+      const cssWidth = Math.max(320, Math.round(rect.width || canvas.clientWidth || 1280));
+      const cssHeight = Math.max(420, Math.round(rect.height || canvas.clientHeight || 420));
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const targetWidth = Math.round(cssWidth * dpr);
+      const targetHeight = Math.round(cssHeight * dpr);
+
+      if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { canvas, ctx, width: cssWidth, height: cssHeight };
+    }
+
+    function renderSpTtCompareCards() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentMetrics = computeSpTtMetrics(queryRange);
+      const compareMetrics = computeSpTtMetrics(compareRange);
+
+      document.getElementById('spTtCompareCards').innerHTML = `
+        <div class="cmp-cards">
+          ${spTtTrendMetricDefinitions.map(metric => {
+            const delta = formatDelta(currentMetrics[metric.key], compareMetrics[metric.key]);
+            const isActive = spTtTrendState.selectedMetricKeys.includes(metric.key);
+            return `
+              <div class="cmp-card ${isActive ? 'active' : ''}" data-sp-tt-metric-key="${metric.key}">
+                <span>${metric.label}</span>
+                <b>${formatMetricValue({ ...metric, value: currentMetrics[metric.key] })}</b>
+                <small class="${delta.className}">${delta.text}</small>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      document.querySelectorAll('#spTtCompareCards .cmp-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const metricKey = card.dataset.spTtMetricKey;
+          if (spTtTrendState.selectedMetricKeys.includes(metricKey)) {
+            if (spTtTrendState.selectedMetricKeys.length > 1) {
+              spTtTrendState.selectedMetricKeys = spTtTrendState.selectedMetricKeys.filter(key => key !== metricKey);
+            }
+          } else {
+            spTtTrendState.selectedMetricKeys = [...spTtTrendState.selectedMetricKeys, metricKey];
+            startSpTtMetricReveal(metricKey);
+          }
+          spTtTrendState.hoverIndex = null;
+          renderSpTtTrendSection();
+        });
+      });
+    }
+
+    function renderSpTtTrend() {
+      const now = performance.now();
+      const selectedMetrics = spTtTrendMetricDefinitions.filter(metric => spTtTrendState.selectedMetricKeys.includes(metric.key));
+      const trendRows = buildSpTtTrendRows();
+      spTtTrendState.activeRows = trendRows;
+
+      const { ctx, width, height } = prepareSpTtTrendCanvas();
+      const tooltip = document.getElementById('spTtTrendTooltip');
+      const legendStartX = 88;
+      const legendStartY = 24;
+      const legendMaxWidth = Math.max(180, width - 176);
+      const legendItemsSource = selectedMetrics.flatMap(metric => ([
+        { metric, valuesKey: 'currentValues', label: `${metric.label} 本期`, color: metric.currentColor, dashed: false },
+        { metric, valuesKey: 'compareValues', label: `${metric.label} 环比`, color: metric.compareColor, dashed: true }
+      ]));
+
+      const renderLegend = () => {
+        const markerSize = 18;
+        const labelGap = 18;
+        const itemGap = 34;
+        const rowGap = 14;
+        const rowHeight = 22;
+        let cursorX = legendStartX;
+        let cursorY = legendStartY;
+        const legendItems = [];
+
+        ctx.save();
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        legendItemsSource.forEach(item => {
+          const textWidth = ctx.measureText(item.label).width;
+          const itemWidth = markerSize + labelGap + textWidth;
+          if (cursorX > legendStartX && cursorX + itemWidth > legendStartX + legendMaxWidth) {
+            cursorX = legendStartX;
+            cursorY += rowHeight + rowGap;
+          }
+
+          const isVisible = isSpTtSeriesVisible(item.metric.key, item.valuesKey);
+          ctx.save();
+          ctx.globalAlpha = isVisible ? 1 : 0.35;
+          ctx.fillStyle = item.color;
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = 2.5;
+
+          if (item.metric.chartType === 'bar') {
+            ctx.fillRect(cursorX + 2, cursorY - 5, 10, 10);
+          } else {
+            if (item.dashed) ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.moveTo(cursorX, cursorY);
+            ctx.lineTo(cursorX + markerSize - 2, cursorY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.arc(cursorX + (markerSize - 2) / 2, cursorY, item.metric.axisGroup === 'ratio' ? 2.6 : 3.2, 0, Math.PI * 2);
+            if (item.dashed) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fill();
+              ctx.stroke();
+            } else {
+              ctx.fill();
+            }
+          }
+
+          const textX = cursorX + markerSize + labelGap;
+          ctx.fillStyle = '#334155';
+          ctx.fillText(item.label, textX, cursorY);
+          if (!isVisible) {
+            ctx.strokeStyle = '#7c8aa0';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(textX, cursorY);
+            ctx.lineTo(textX + textWidth, cursorY);
+            ctx.stroke();
+          }
+          ctx.restore();
+
+          legendItems.push({
+            ...item,
+            x: cursorX,
+            y: cursorY - rowHeight / 2,
+            width: itemWidth,
+            height: rowHeight
+          });
+
+          cursorX += itemWidth + itemGap;
+        });
+
+        ctx.restore();
+        return { items: legendItems, height: legendItems.length ? (cursorY - legendStartY) + rowHeight : 0 };
+      };
+
+      const initialLegendLayout = renderLegend();
+      const padding = { top: Math.max(70, legendStartY + initialLegendLayout.height + 16), right: 88, bottom: 42, left: 88 };
+      const plotW = width - padding.left - padding.right;
+      const plotH = height - padding.top - padding.bottom;
+      const step = plotW / Math.max(1, trendRows.length - 1);
+      const leftMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'left').map(metric => metric.key);
+      const gapMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'gap').map(metric => metric.key);
+      const ratioMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'ratio').map(metric => metric.key);
+      const leftRange = getAxisRange(trendRows, leftMetricKeys, { zeroBased: true });
+      const gapRange = getAxisRange(trendRows, gapMetricKeys, { zeroBased: false, minPaddingRatio: 0.18 });
+      const ratioRange = getAxisRange(trendRows, ratioMetricKeys, { zeroBased: false, minPaddingRatio: 0.22 });
+      const getX = index => padding.left + step * index;
+      const getY = (value, axisGroup) => {
+        const range = axisGroup === 'gap' ? gapRange : axisGroup === 'ratio' ? ratioRange : leftRange;
+        const safeValue = value || 0;
+        const denominator = Math.max(0.000001, range.max - range.min);
+        return padding.top + plotH - ((safeValue - range.min) / denominator) * plotH;
+      };
+
+      spTtTrendState.geometry = { padding, plotW, plotH, step, getX };
+      spTtTrendState.legendItems = initialLegendLayout.items;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = '#d8dee8';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 4; i += 1) {
+        const y = padding.top + (plotH / 3) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+      }
+
+      if (leftMetricKeys.length) drawAxisLabels(ctx, leftRange.max, 'left', padding, plotW, plotH, value => metricNumber.format(value));
+      if (gapMetricKeys.length) {
+        const gapLabelMax = Math.max(Math.abs(gapRange.min), Math.abs(gapRange.max)) || 1;
+        drawAxisLabels(ctx, gapLabelMax, 'right', padding, plotW, plotH, value => metricNumber.format(value));
+      }
+
+      function beginRevealClip(progress) {
+        if (progress >= 1) return;
+        const revealWidth = Math.max(0, Math.min(plotW, plotW * progress));
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(padding.left, padding.top, revealWidth, plotH);
+        ctx.clip();
+      }
+
+      function endRevealClip(progress) {
+        if (progress >= 1) return;
+        ctx.restore();
+      }
+
+      function drawLineMetric(metric) {
+        function drawSeries(valuesKey, color, dashed) {
+          if (!isSpTtSeriesVisible(metric.key, valuesKey)) return;
+          const revealProgress = getSpTtSeriesRevealProgress(metric.key, valuesKey, now);
+          ctx.save();
+          beginRevealClip(revealProgress);
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.lineWidth = metric.axisGroup === 'ratio' ? 2 : 3;
+          if (dashed) ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          let started = false;
+          trendRows.forEach((row, index) => {
+            const value = row[valuesKey][metric.key];
+            if (value === null || value === undefined) return;
+            const x = getX(index);
+            const y = getY(value, metric.axisGroup);
+            if (!started) {
+              ctx.moveTo(x, y);
+              started = true;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          trendRows.forEach((row, index) => {
+            const value = row[valuesKey][metric.key];
+            if (value === null || value === undefined) return;
+            const radius = metric.axisGroup === 'ratio' ? 3 : 4;
+            ctx.beginPath();
+            ctx.arc(getX(index), getY(value, metric.axisGroup), radius, 0, Math.PI * 2);
+            if (dashed) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fill();
+              ctx.strokeStyle = color;
+              ctx.lineWidth = metric.axisGroup === 'ratio' ? 1.5 : 2;
+              ctx.stroke();
+              ctx.fillStyle = color;
+            } else {
+              ctx.fill();
+            }
+          });
+          endRevealClip(revealProgress);
+          ctx.restore();
+        }
+
+        drawSeries('compareValues', metric.compareColor, true);
+        drawSeries('currentValues', metric.currentColor, false);
+      }
+
+      function drawBarMetric(metric) {
+        const baseY = padding.top + plotH;
+        const groupWidth = Math.max(18, Math.min(36, step * 0.54));
+        const gap = Math.max(2, Math.min(4, step * 0.06));
+        const barWidth = Math.max(8, (groupWidth - gap) / 2);
+        trendRows.forEach((row, index) => {
+          const centerX = getX(index);
+          const currentValue = row.currentValues[metric.key];
+          const compareValue = row.compareValues[metric.key];
+          if (isSpTtSeriesVisible(metric.key, 'currentValues') && currentValue !== null && currentValue !== undefined) {
+            const revealProgress = getSpTtSeriesRevealProgress(metric.key, 'currentValues', now);
+            const currentX = centerX - groupWidth / 2;
+            const currentY = getY(currentValue, metric.axisGroup);
+            ctx.fillStyle = metric.currentColor;
+            beginRevealClip(revealProgress);
+            ctx.fillRect(currentX, currentY, barWidth, baseY - currentY);
+            endRevealClip(revealProgress);
+          }
+          if (isSpTtSeriesVisible(metric.key, 'compareValues') && compareValue !== null && compareValue !== undefined) {
+            const revealProgress = getSpTtSeriesRevealProgress(metric.key, 'compareValues', now);
+            const compareX = centerX - groupWidth / 2 + barWidth + gap;
+            const compareY = getY(compareValue, metric.axisGroup);
+            ctx.fillStyle = metric.compareColor;
+            beginRevealClip(revealProgress);
+            ctx.fillRect(compareX, compareY, barWidth, baseY - compareY);
+            endRevealClip(revealProgress);
+          }
+        });
+      }
+
+      selectedMetrics.filter(metric => metric.chartType === 'bar').forEach(drawBarMetric);
+      selectedMetrics.filter(metric => metric.chartType === 'line').forEach(drawLineMetric);
+
+      if (spTtTrendState.hoverIndex !== null && trendRows[spTtTrendState.hoverIndex]) {
+        const hoverX = getX(spTtTrendState.hoverIndex);
+        ctx.strokeStyle = 'rgba(23, 107, 135, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(hoverX, padding.top);
+        ctx.lineTo(hoverX, padding.top + plotH);
+        ctx.stroke();
+      } else {
+        tooltip.style.display = 'none';
+      }
+
+      ctx.fillStyle = '#65758b';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      trendRows.forEach((row, index) => {
+        ctx.fillText(row.label, getX(index), height - 12);
+      });
+
+      const finalLegendLayout = renderLegend();
+      spTtTrendState.legendItems = finalLegendLayout.items;
+
+      if (Object.keys(spTtTrendState.revealAnimations).length) scheduleSpTtTrendAnimationFrame();
+    }
+
+    function renderSpTtTrendSection() {
+      renderSpTtCompareCards();
+      renderSpTtTrend();
+    }
+
+    function updateSpTtTrendTooltip(clientX, clientY) {
+      const canvas = document.getElementById('spTtTrendChart');
+      const tooltip = document.getElementById('spTtTrendTooltip');
+      const geometry = spTtTrendState.geometry;
+      if (!geometry || !spTtTrendState.activeRows.length) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const rows = spTtTrendState.activeRows;
+      const plotLeft = geometry.padding.left;
+      const plotRight = geometry.padding.left + geometry.plotW;
+      const plotTop = geometry.padding.top;
+      const plotBottom = geometry.padding.top + geometry.plotH;
+
+      if (x < plotLeft || x > plotRight || y < plotTop || y > plotBottom) {
+        spTtTrendState.hoverIndex = null;
+        tooltip.style.display = 'none';
+        renderSpTtTrend();
+        return;
+      }
+
+      const index = Math.max(0, Math.min(rows.length - 1, Math.round((x - plotLeft) / Math.max(1, geometry.step))));
+      spTtTrendState.hoverIndex = index;
+      const row = rows[index];
+      const selectedMetrics = spTtTrendMetricDefinitions.filter(metric => spTtTrendState.selectedMetricKeys.includes(metric.key));
+      tooltip.innerHTML = `
+        <strong>本期 ${row.currentDate || '-'}</strong>
+        <span>环比 ${row.compareDate || '-'}</span>
+        ${selectedMetrics.map(metric => {
+          const currentValue = row.currentValues[metric.key];
+          const compareValue = row.compareValues[metric.key];
+          const currentText = currentValue === null || currentValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: currentValue });
+          const compareText = compareValue === null || compareValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: compareValue });
+          const parts = [];
+          if (isSpTtSeriesVisible(metric.key, 'currentValues')) parts.push(`<span style="color:${metric.currentColor}">${metric.label} 本期: ${currentText}</span>`);
+          if (isSpTtSeriesVisible(metric.key, 'compareValues')) parts.push(`<span style="color:${metric.compareColor}">${metric.label} 环比: ${compareText}</span>`);
+          return parts.join('');
+        }).join('')}
+      `;
+
+      const wrapRect = canvas.parentElement.getBoundingClientRect();
+      tooltip.style.display = 'block';
+      const left = Math.min(Math.max(clientX - wrapRect.left + 18, 8), wrapRect.width - tooltip.offsetWidth - 8);
+      const top = Math.min(Math.max(clientY - wrapRect.top - tooltip.offsetHeight - 18, 8), wrapRect.height - tooltip.offsetHeight - 8);
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+      renderSpTtTrend();
+    }
+
+    function hideSpTtTrendTooltip() {
+      spTtTrendState.hoverIndex = null;
+      document.getElementById('spTtTrendTooltip').style.display = 'none';
+      renderSpTtTrend();
+    }
+
+    function handleSpTtTrendCanvasClick(clientX, clientY) {
+      const canvas = document.getElementById('spTtTrendChart');
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const hitLegendItem = spTtTrendState.legendItems.find(item =>
+        x >= item.x && x <= item.x + item.width && y >= item.y && y <= item.y + item.height
+      );
+      if (!hitLegendItem) return;
+
+      const willShowSeries = spTtTrendState.hiddenSeriesKeys.includes(getSeriesKey(hitLegendItem.metric.key, hitLegendItem.valuesKey));
+      toggleSpTtSeriesVisibility(hitLegendItem.metric.key, hitLegendItem.valuesKey);
+      if (willShowSeries) startSpTtSeriesReveal(hitLegendItem.metric.key, hitLegendItem.valuesKey);
+      spTtTrendState.hoverIndex = null;
+      document.getElementById('spTtTrendTooltip').style.display = 'none';
+      renderSpTtTrend();
     }
 
     function getSpTtCompareSortValue(category, currentMap, metricKey) {
@@ -5293,6 +5846,7 @@
 
     function renderAnalysisSections() {
       renderStoreTrendSection();
+      renderSpTtTrendSection();
       renderOuterBreakdownTable();
       renderOuterStructureTable();
       renderOuterProductStructureTable();
@@ -5489,6 +6043,8 @@
       if (spTtFilterRow) {
         spTtFilterRow.classList.toggle('is-hidden', tabKey !== 'sp-tt');
       }
+      if (tabKey === 'store') renderStoreTrendSection();
+      if (tabKey === 'sp-tt') renderSpTtTrendSection();
     }
 
     function bindAnalysisTabs() {
@@ -5520,7 +6076,12 @@
     trendCanvas.addEventListener('mousemove', event => updateTrendTooltip(event.clientX, event.clientY));
     trendCanvas.addEventListener('mouseleave', hideTrendTooltip);
     trendCanvas.addEventListener('click', event => handleTrendCanvasClick(event.clientX, event.clientY));
+    const spTtTrendCanvas = document.getElementById('spTtTrendChart');
+    spTtTrendCanvas.addEventListener('mousemove', event => updateSpTtTrendTooltip(event.clientX, event.clientY));
+    spTtTrendCanvas.addEventListener('mouseleave', hideSpTtTrendTooltip);
+    spTtTrendCanvas.addEventListener('click', event => handleSpTtTrendCanvasClick(event.clientX, event.clientY));
     window.addEventListener('resize', renderStoreTrendSection);
+    window.addEventListener('resize', renderSpTtTrendSection);
 
     document.querySelectorAll('.controls label').forEach(label => {
       const input = label.querySelector('input[type="date"]');
@@ -5543,6 +6104,7 @@
       input.addEventListener('change', renderOuterBreakdownTable);
       input.addEventListener('change', renderOuterStructureTable);
       input.addEventListener('change', renderOuterProductStructureTable);
+      input.addEventListener('change', renderSpTtTrendSection);
       input.addEventListener('change', renderSpTtCompareTable);
     });
 
