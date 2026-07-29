@@ -56,6 +56,13 @@ def build_sheet(ws, builder):
     return data
 
 
+def get_cell(row, idx, header, default=""):
+    position = idx.get(header)
+    if position is None or position >= len(row):
+        return default
+    return row[position]
+
+
 def write_assignment(path, prelude, target, payload):
     with path.open("w", encoding="utf-8") as handle:
         if prelude:
@@ -91,65 +98,65 @@ def build_store_and_product_payloads(wb):
             category_store_map[(store_name, product_name)] = category_name
 
     def build_store_main(row, idx):
-        category = norm(row[idx.get("品类")])
-        product = norm(row[idx.get("商品名称")])
-        store = norm(row[idx.get("店铺")])
+        category = norm(get_cell(row, idx, "品类"))
+        product = norm(get_cell(row, idx, "商品名称"))
+        store = norm(get_cell(row, idx, "店铺"))
         register_category(product, category, store)
         if recognized(product) and recognized(store):
             product_store_map[(store, product)] = product
         return {
-            "date": norm(row[idx.get("date")]),
+            "date": norm(get_cell(row, idx, "date")),
             "store": store,
             "category": category,
-            "sales_thb": num(row[idx.get("Sales (Confirmed Order) (THB)")]),
-            "visitors": num(row[idx.get("Product Visitors (Visit)")]),
-            "buyers": num(row[idx.get("Buyers (Confirmed Order)")]),
-            "units": num(row[idx.get("Units (Confirmed Order)")]),
+            "sales_thb": num(get_cell(row, idx, "Sales (Confirmed Order) (THB)")),
+            "visitors": num(get_cell(row, idx, "Product Visitors (Visit)")),
+            "buyers": num(get_cell(row, idx, "Buyers (Confirmed Order)")),
+            "units": num(get_cell(row, idx, "Units (Confirmed Order)")),
         }
 
     def build_product_main(row, idx):
-        product = norm(row[idx.get("商品名称")])
+        product = norm(get_cell(row, idx, "商品名称"))
         if not recognized(product):
             return None
-        category = norm(row[idx.get("品类")])
-        store = norm(row[idx.get("店铺")])
+        category = norm(get_cell(row, idx, "品类"))
+        store = norm(get_cell(row, idx, "店铺"))
         register_category(product, category, store)
         if recognized(store):
             product_store_map[(store, product)] = product
         return {
-            "date": norm(row[idx.get("date")]),
+            "date": norm(get_cell(row, idx, "date")),
             "store": store,
             "category": category,
             "product": product,
-            "sales_thb": num(row[idx.get("Sales (Confirmed Order) (THB)")]),
-            "visitors": num(row[idx.get("Product Visitors (Visit)")]),
-            "buyers": num(row[idx.get("Buyers (Confirmed Order)")]),
-            "units": num(row[idx.get("Units (Confirmed Order)")]),
+            "sales_thb": num(get_cell(row, idx, "Sales (Confirmed Order) (THB)")),
+            "visitors": num(get_cell(row, idx, "Product Visitors (Visit)")),
+            "buyers": num(get_cell(row, idx, "Buyers (Confirmed Order)")),
+            "units": num(get_cell(row, idx, "Units (Confirmed Order)")),
         }
 
     def build_store_inner(row, idx):
         return {
-            "date": norm(row[idx.get("date")]),
-            "store": norm(row[idx.get("店铺")]),
-            "category": norm(row[idx.get("类目")]),
-            "spend_rmb": num(row[idx.get("Spend-人民币")]),
+            "date": norm(get_cell(row, idx, "date")),
+            "store": norm(get_cell(row, idx, "店铺")),
+            "category": norm(get_cell(row, idx, "类目")),
+            "spend_rmb": num(get_cell(row, idx, "Spend-人民币")),
         }
 
     def build_product_inner(row, idx):
-        product = norm(row[idx.get("站内产品命名")])
+        product = norm(get_cell(row, idx, "站内产品命名"))
         if not recognized(product):
             return None
-        category = norm(row[idx.get("类目")])
-        store = norm(row[idx.get("店铺")])
+        category = norm(get_cell(row, idx, "类目"))
+        store = norm(get_cell(row, idx, "店铺"))
         register_category(product, category, store)
         if recognized(store):
             product_store_map[(store, product)] = product
         return {
-            "date": norm(row[idx.get("date")]),
+            "date": norm(get_cell(row, idx, "date")),
             "store": store,
             "category": category,
             "product": product,
-            "spend_rmb": num(row[idx.get("Spend-人民币")]),
+            "spend_rmb": num(get_cell(row, idx, "Spend-人民币")),
         }
 
     store_main_rows = build_sheet(store_ws, build_store_main)
@@ -167,24 +174,24 @@ def build_store_and_product_payloads(wb):
     product_brand_rows = []
 
     for row in rows:
-        date_value = norm(row[idx.get("日期")])
-        category_value = norm(row[idx.get("品类")]) if idx.get("品类") is not None else ""
-        product = norm(row[idx.get("产品")]) if idx.get("产品") is not None else ""
+        date_value = norm(get_cell(row, idx, "日期"))
+        category_value = norm(get_cell(row, idx, "品类"))
+        product = norm(get_cell(row, idx, "产品"))
         if not recognized(product):
-            product = norm(row[idx.get("Product")]) if idx.get("Product") is not None else ""
+            product = norm(get_cell(row, idx, "Product"))
         if not recognized(product):
             continue
 
-        store = norm(row[idx.get("店铺")]) if idx.get("店铺") is not None else ""
+        store = norm(get_cell(row, idx, "店铺"))
         category = category_value or category_store_map.get((store, product), "") or category_by_product.get(product, "")
-        spend_usd = num(row[idx.get("花费金额（USD）")])
-        impressions = num(row[idx.get("展示次数")])
-        clicks = num(row[idx.get("点击量")])
-        conversion_value = num(row[idx.get("购物转化价值")])
-        orders = num(row[idx.get("订单数")])
-        pitcher = norm(row[idx.get("投手")])
-        ad_type = norm(row[idx.get("广告类型")])
-        ad_form2 = norm(row[idx.get("广告形式2")])
+        spend_usd = num(get_cell(row, idx, "花费金额（USD）"))
+        impressions = num(get_cell(row, idx, "展示次数"))
+        clicks = num(get_cell(row, idx, "点击量"))
+        conversion_value = num(get_cell(row, idx, "购物转化价值"))
+        orders = num(get_cell(row, idx, "订单数"))
+        pitcher = norm(get_cell(row, idx, "投手"))
+        ad_type = norm(get_cell(row, idx, "广告类型"))
+        ad_form2 = norm(get_cell(row, idx, "广告形式2"))
 
         store_item = {
             "date": date_value,
@@ -243,15 +250,15 @@ def build_sp_tt_payload(wb):
         headers = next(rows)
         idx = {header: i for i, header in enumerate(headers) if header is not None}
         for row in rows:
-            dt = norm(row[idx.get("日期")])
-            category = norm(row[idx.get("品类")])
-            product_name = norm(row[idx.get("产品名称")])
+            dt = norm(get_cell(row, idx, "日期"))
+            category = norm(get_cell(row, idx, "品类"))
+            product_name = norm(get_cell(row, idx, "产品名称"))
             if not recognized(product_name):
-                product_name = norm(row[idx.get("中文产品名")])
+                product_name = norm(get_cell(row, idx, "中文产品名"))
             if not recognized(dt) or not recognized(category) or not recognized(product_name):
                 continue
             key = (dt, category, product_name)
-            sales[key][sales_key] += num(row[idx.get(qty_header)])
+            sales[key][sales_key] += num(get_cell(row, idx, qty_header))
 
     read_sheet(tt_ws, "ttSales", "TT销量")
     read_sheet(sp_ws, "spSales", "虾皮销量")
