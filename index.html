@@ -5468,7 +5468,7 @@
       const spread = Math.max(rawMax - rawMin, Math.abs(rawMax) * 0.08, minPaddingRatio);
       const padding = spread * minPaddingRatio;
       return {
-        min: Math.max(0, rawMin - padding),
+        min: rawMin - padding,
         max: rawMax + padding
       };
     }
