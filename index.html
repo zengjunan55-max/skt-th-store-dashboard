@@ -1339,7 +1339,7 @@
       { key: 'totalSales', label: '总销售', type: 'count', axisGroup: 'left', chartType: 'bar', currentColor: '#1e6f8c', compareColor: '#8fc4d2' },
       { key: 'spSales', label: '虾皮销量', type: 'count', axisGroup: 'left', chartType: 'line', currentColor: '#2f6fdd', compareColor: '#a8c4f4' },
       { key: 'ttSales', label: 'TT销量', type: 'count', axisGroup: 'left', chartType: 'line', currentColor: '#3f8f56', compareColor: '#a9d6b4' },
-      { key: 'gap', label: 'GAP', type: 'count', axisGroup: 'gap', chartType: 'line', currentColor: '#b9770e', compareColor: '#e7c27d' },
+      { key: 'gap', label: 'GAP', type: 'count', axisGroup: 'right', chartType: 'line', currentColor: '#b9770e', compareColor: '#e7c27d' },
       { key: 'ratio', label: '倍差', type: 'multiple', axisGroup: 'ratio', chartType: 'line', currentColor: '#d95f43', compareColor: '#f0b3a5' }
     ];
     const metricDefinitionMap = Object.fromEntries(metricDefinitions.map(metric => [metric.key, metric]));
@@ -3892,14 +3892,14 @@
       const plotH = height - padding.top - padding.bottom;
       const step = plotW / Math.max(1, trendRows.length - 1);
       const leftMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'left').map(metric => metric.key);
-      const gapMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'gap').map(metric => metric.key);
+      const rightMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'right').map(metric => metric.key);
       const ratioMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'ratio').map(metric => metric.key);
       const leftRange = getAxisRange(trendRows, leftMetricKeys, { zeroBased: true });
-      const gapRange = getAxisRange(trendRows, gapMetricKeys, { zeroBased: false, minPaddingRatio: 0.18 });
+      const rightRange = getAxisRange(trendRows, rightMetricKeys, { zeroBased: false, minPaddingRatio: 0.18 });
       const ratioRange = getAxisRange(trendRows, ratioMetricKeys, { zeroBased: false, minPaddingRatio: 0.22 });
       const getX = index => padding.left + step * index;
       const getY = (value, axisGroup) => {
-        const range = axisGroup === 'gap' ? gapRange : axisGroup === 'ratio' ? ratioRange : leftRange;
+        const range = axisGroup === 'right' ? rightRange : axisGroup === 'ratio' ? ratioRange : leftRange;
         const safeValue = value || 0;
         const denominator = Math.max(0.000001, range.max - range.min);
         return padding.top + plotH - ((safeValue - range.min) / denominator) * plotH;
@@ -3923,10 +3923,7 @@
       }
 
       if (leftMetricKeys.length) drawAxisLabels(ctx, leftRange.max, 'left', padding, plotW, plotH, value => metricNumber.format(value));
-      if (gapMetricKeys.length) {
-        const gapLabelMax = Math.max(Math.abs(gapRange.min), Math.abs(gapRange.max)) || 1;
-        drawAxisLabels(ctx, gapLabelMax, 'right', padding, plotW, plotH, value => metricNumber.format(value));
-      }
+      if (rightMetricKeys.length) drawAxisLabelsForRange(ctx, rightRange, 'right', padding, plotW, plotH, value => metricNumber.format(value));
 
       function beginRevealClip(progress) {
         if (progress >= 1) return;
@@ -5483,6 +5480,22 @@
       for (let index = 0; index < 4; index += 1) {
         const ratio = 1 - index / 3;
         const value = maxValue * ratio;
+        const x = side === 'left' ? padding.left - 8 : padding.left + plotW + 8;
+        const y = padding.top + (plotH / 3) * index + 4;
+        ctx.fillText(formatter(value), x, y);
+      }
+    }
+
+    function drawAxisLabelsForRange(ctx, range, side, padding, plotW, plotH, formatter) {
+      ctx.fillStyle = '#65758b';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = side === 'left' ? 'right' : 'left';
+      const minValue = Number(range?.min) || 0;
+      const maxValue = Number(range?.max) || 0;
+      const span = Math.max(0.000001, maxValue - minValue);
+      for (let index = 0; index < 4; index += 1) {
+        const ratio = 1 - index / 3;
+        const value = minValue + span * ratio;
         const x = side === 'left' ? padding.left - 8 : padding.left + plotW + 8;
         const y = padding.top + (plotH / 3) * index + 4;
         ctx.fillText(formatter(value), x, y);
