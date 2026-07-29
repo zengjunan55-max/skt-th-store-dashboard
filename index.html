@@ -3519,6 +3519,7 @@
       const categoryMap = new Map();
       (spTtSalesData.rows || []).forEach(row => {
         if (!row?.date || !row?.category || !isInRange(row.date, range.start, range.end)) return;
+        if (!spTtMatchesSelectedCategory(row) || !spTtMatchesSelectedProduct(row)) return;
         if (!categoryMap.has(row.category)) {
           categoryMap.set(row.category, {
             category: row.category,
