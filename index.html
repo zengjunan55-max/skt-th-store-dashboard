@@ -1991,6 +1991,7 @@
       populateSpTtCategoryFilter();
       populateSpTtProductFilter();
       if (shouldRender) {
+        renderSpTtCompareTable();
         renderSpTtProductCompareTable();
       }
     }
@@ -2007,6 +2008,7 @@
       spTtFilterState.products = nextProducts;
       populateSpTtProductFilter();
       if (shouldRender) {
+        renderSpTtCompareTable();
         renderSpTtProductCompareTable();
       }
     }
@@ -2081,6 +2083,7 @@
           : [];
         populateSpTtProductFilter();
       }
+      renderSpTtCompareTable();
       renderSpTtProductCompareTable();
     }
 
