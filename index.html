@@ -6009,15 +6009,38 @@
     }
 
     async function refreshDashboardView() {
+      const button = document.getElementById('refreshView');
       setRefreshStatus('loading', '刷新中');
+      button.disabled = true;
       try {
         setDefaultRefreshDateRange();
+        const response = await fetch('/api/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            source: 'dashboard-button',
+            requestedAt: new Date().toISOString()
+          })
+        });
+        const payload = await response.json().catch(() => ({}));
         const updatedAt = formatStatusDate(new Date());
-        saveRefreshState('success', '刷新成功', updatedAt);
-        window.location.reload();
+        if (!response.ok) {
+          const message = payload && payload.message ? payload.message : '数据异常';
+          const status = response.status === 409 ? 'loading' : 'error';
+          setRefreshStatus(status, message);
+          document.getElementById('refreshUpdatedAt').textContent = `最近操作：${updatedAt}`;
+          return;
+        }
+        setRefreshStatus('success', payload.message || '已触发刷新');
+        document.getElementById('refreshUpdatedAt').textContent = `最近操作：${updatedAt}`;
+        saveRefreshState('success', payload.message || '已触发刷新', updatedAt);
       } catch (error) {
         console.error(error);
-        setRefreshStatus('error', '数据异常');
+        setRefreshStatus('error', '触发失败');
+      } finally {
+        button.disabled = false;
       }
     }
 

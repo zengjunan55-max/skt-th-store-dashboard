@@ -11,8 +11,12 @@ SHEET_EXPORT_URL = (
     "https://docs.google.com/spreadsheets/d/"
     "142eo8ASRHj0utna0cHxiWRnMY8s7r0ZFKAc-7s_jdgs/export?format=xlsx"
 )
-REPO_ROOT = Path(r"C:\Users\Administrator\Desktop\AI-shopee\github-pages-store-dashboard")
-SOURCE_XLSX = Path(r"C:\Users\Administrator\Desktop\AI-shopee\sheet-latest.xlsx")
+DEFAULT_REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SOURCE_XLSX = DEFAULT_REPO_ROOT / ".cache" / "sheet-latest.xlsx"
+LOCAL_WINDOWS_REPO_ROOT = Path(r"C:\Users\Administrator\Desktop\AI-shopee\github-pages-store-dashboard")
+LOCAL_WINDOWS_SOURCE_XLSX = Path(r"C:\Users\Administrator\Desktop\AI-shopee\sheet-latest.xlsx")
+REPO_ROOT = LOCAL_WINDOWS_REPO_ROOT if LOCAL_WINDOWS_REPO_ROOT.exists() else DEFAULT_REPO_ROOT
+SOURCE_XLSX = LOCAL_WINDOWS_SOURCE_XLSX if LOCAL_WINDOWS_REPO_ROOT.exists() else DEFAULT_SOURCE_XLSX
 
 
 def norm(value):
