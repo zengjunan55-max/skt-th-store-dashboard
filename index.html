@@ -1206,12 +1206,145 @@
     </div>
 
     <div class="tab-panel" data-tab-panel="material" role="tabpanel" aria-labelledby="analysis-tab-material" hidden>
-      <section id="materialMonitorSection">
-        <h2>素材监控</h2>
-        <div class="tab-placeholder">
-          <strong>素材监控模块已预留</strong>
-          <p>这一页用于后续接入素材监控相关指标、趋势图和明细汇总表，当前不会影响现有店铺分析、站外分析和SP-TT销量对比。</p>
+      <div class="filter-panel-row" id="materialFilterPanelRow">
+        <div class="controls-filter-panel">
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>广告类型</span>
+            </div>
+            <div class="filter-multiselect" id="materialAdTypeFilterWrap">
+              <div id="materialAdTypeFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="materialAdTypeFilterInput" class="filter-trigger-input" type="text" value="全部广告类型" placeholder="搜索广告类型" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="materialAdTypeFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="adType" data-filter-scope="material">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="adType" data-filter-scope="material">清空</button>
+                </div>
+                <div id="materialAdTypeFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>品类</span>
+            </div>
+            <div class="filter-multiselect" id="materialCategoryFilterWrap">
+              <div id="materialCategoryFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="materialCategoryFilterInput" class="filter-trigger-input" type="text" value="全部品类" placeholder="搜索品类" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="materialCategoryFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="category" data-filter-scope="material">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="category" data-filter-scope="material">清空</button>
+                </div>
+                <div id="materialCategoryFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>产品</span>
+            </div>
+            <div class="filter-multiselect" id="materialProductFilterWrap">
+              <div id="materialProductFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="materialProductFilterInput" class="filter-trigger-input" type="text" value="全部产品" placeholder="搜索产品" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="materialProductFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="product" data-filter-scope="material">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="product" data-filter-scope="material">清空</button>
+                </div>
+                <div id="materialProductFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>广告形式</span>
+            </div>
+            <div class="filter-multiselect" id="materialAdFormFilterWrap">
+              <div id="materialAdFormFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="materialAdFormFilterInput" class="filter-trigger-input" type="text" value="全部广告形式" placeholder="搜索广告形式" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="materialAdFormFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="adForm" data-filter-scope="material">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="adForm" data-filter-scope="material">清空</button>
+                </div>
+                <div id="materialAdFormFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>再营销/拉新</span>
+            </div>
+            <div class="filter-multiselect" id="materialAcquisitionFilterWrap">
+              <div id="materialAcquisitionFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="materialAcquisitionFilterInput" class="filter-trigger-input" type="text" value="全部类型" placeholder="搜索再营销/拉新" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="materialAcquisitionFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="acquisition" data-filter-scope="material">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="acquisition" data-filter-scope="material">清空</button>
+                </div>
+                <div id="materialAcquisitionFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>人群</span>
+            </div>
+            <div class="filter-multiselect" id="materialAudienceFilterWrap">
+              <div id="materialAudienceFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="materialAudienceFilterInput" class="filter-trigger-input" type="text" value="全部人群" placeholder="搜索人群" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="materialAudienceFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="audience" data-filter-scope="material">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="audience" data-filter-scope="material">清空</button>
+                </div>
+                <div id="materialAudienceFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>投放页面</span>
+            </div>
+            <div class="filter-multiselect" id="materialLandingPageFilterWrap">
+              <div id="materialLandingPageFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="materialLandingPageFilterInput" class="filter-trigger-input" type="text" value="全部页面" placeholder="搜索投放页面" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="materialLandingPageFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="landingPage" data-filter-scope="material">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="landingPage" data-filter-scope="material">清空</button>
+                </div>
+                <div id="materialLandingPageFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+      <section id="materialCategorySection">
+        <h2>素材监控</h2>
+        <p class="small">默认汇总图文广告与视频广告，按当前日期范围统计素材投放表现。</p>
+        <div id="materialCategoryTable"></div>
+      </section>
+      <section id="materialProductSection">
+        <h2>产品素材分析</h2>
+        <p class="small">按产品汇总素材投放表现，筛选器与上方品类表联动。</p>
+        <div id="materialProductTable"></div>
       </section>
     </div>
   </main>
@@ -1269,6 +1402,7 @@
     const storeTrendData = window.storeTrendData || { stores: [], main: [], inner: [], outer: [], brand: [] };
     const productTrendData = window.productTrendData || { main: [], inner: [], outer: [], brand: [] };
     const spTtSalesData = window.spTtSalesData || { rows: [] };
+    const materialMonitorAllowedAdTypes = ['图片广告', '视频广告'];
     const metricNumber = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
     const moneyNumber = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
     function parseDateString(value) {
@@ -1333,6 +1467,7 @@
       if (metric.type === 'percent') return `${(metric.value * 100).toFixed(2)}%`;
       if (metric.type === 'roi') return `${Number(metric.value || 0).toFixed(2)}`;
       if (metric.type === 'multiple') return `${Number(metric.value || 0).toFixed(2)}`;
+      if (metric.type === 'money2') return `${Number(metric.value || 0).toFixed(2)}`;
       if (metric.type === 'money') return moneyNumber.format(metric.value);
       return metricNumber.format(metric.value);
     }
@@ -1395,6 +1530,22 @@
       categorySearch: '',
       productSearch: ''
     };
+    const materialFilterState = {
+      adTypes: [],
+      categories: [],
+      products: [],
+      adForms: [],
+      acquisitions: [],
+      audiences: [],
+      landingPages: [],
+      adTypeSearch: '',
+      categorySearch: '',
+      productSearch: '',
+      adFormSearch: '',
+      acquisitionSearch: '',
+      audienceSearch: '',
+      landingPageSearch: ''
+    };
     const categoryTableState = {
       sortKey: 'gmv',
       sortDirection: 'desc',
@@ -1431,6 +1582,18 @@
     };
     const spTtProductCompareTableState = {
       sortKey: 'totalSales',
+      sortDirection: 'desc',
+      columnWidths: {},
+      resize: null
+    };
+    const materialCategoryTableState = {
+      sortKey: 'spend',
+      sortDirection: 'desc',
+      columnWidths: {},
+      resize: null
+    };
+    const materialProductTableState = {
+      sortKey: 'spend',
       sortDirection: 'desc',
       columnWidths: {},
       resize: null
@@ -1508,6 +1671,20 @@
       ttSales: 132,
       gap: 132,
       ratio: 132
+    };
+    const materialTableColumnDefaults = {
+      name: 168,
+      materialCount: 126,
+      spend: 126,
+      spendShare: 126,
+      gmv: 126,
+      roi: 112,
+      orders: 112,
+      cvr: 112,
+      clicks: 112,
+      ctr: 112,
+      impressions: 126,
+      cpm: 112
     };
 
     function isRecognizedFilterValue(value) {
@@ -1662,6 +1839,154 @@
         .map(row => row.productName)
         .filter(isRecognizedFilterValue))]
         .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    const materialFilterConfigs = [
+      { key: 'adType', stateKey: 'adTypes', searchKey: 'adTypeSearch', allLabel: '全部广告类型', wrapperId: 'materialAdTypeFilterWrap', triggerId: 'materialAdTypeFilterTrigger', inputId: 'materialAdTypeFilterInput', optionsId: 'materialAdTypeFilterOptions', rowValue: row => row?.ad_type || '' },
+      { key: 'category', stateKey: 'categories', searchKey: 'categorySearch', allLabel: '全部品类', wrapperId: 'materialCategoryFilterWrap', triggerId: 'materialCategoryFilterTrigger', inputId: 'materialCategoryFilterInput', optionsId: 'materialCategoryFilterOptions', rowValue: row => row?.category || '' },
+      { key: 'product', stateKey: 'products', searchKey: 'productSearch', allLabel: '全部产品', wrapperId: 'materialProductFilterWrap', triggerId: 'materialProductFilterTrigger', inputId: 'materialProductFilterInput', optionsId: 'materialProductFilterOptions', rowValue: row => getRowProductLabel(row) },
+      { key: 'adForm', stateKey: 'adForms', searchKey: 'adFormSearch', allLabel: '全部广告形式', wrapperId: 'materialAdFormFilterWrap', triggerId: 'materialAdFormFilterTrigger', inputId: 'materialAdFormFilterInput', optionsId: 'materialAdFormFilterOptions', rowValue: row => row?.ad_form || '' },
+      { key: 'acquisition', stateKey: 'acquisitions', searchKey: 'acquisitionSearch', allLabel: '全部类型', wrapperId: 'materialAcquisitionFilterWrap', triggerId: 'materialAcquisitionFilterTrigger', inputId: 'materialAcquisitionFilterInput', optionsId: 'materialAcquisitionFilterOptions', rowValue: row => row?.acquisition_type || '' },
+      { key: 'audience', stateKey: 'audiences', searchKey: 'audienceSearch', allLabel: '全部人群', wrapperId: 'materialAudienceFilterWrap', triggerId: 'materialAudienceFilterTrigger', inputId: 'materialAudienceFilterInput', optionsId: 'materialAudienceFilterOptions', rowValue: row => row?.audience || '' },
+      { key: 'landingPage', stateKey: 'landingPages', searchKey: 'landingPageSearch', allLabel: '全部页面', wrapperId: 'materialLandingPageFilterWrap', triggerId: 'materialLandingPageFilterTrigger', inputId: 'materialLandingPageFilterInput', optionsId: 'materialLandingPageFilterOptions', rowValue: row => row?.landing_page || '' }
+    ];
+    const materialFilterConfigMap = Object.fromEntries(materialFilterConfigs.map(config => [config.key, config]));
+
+    function getMaterialMonitorSourceRows() {
+      return [
+        ...(productTrendData.outer || []),
+        ...(productTrendData.brand || [])
+      ].filter(row => materialMonitorAllowedAdTypes.includes(row?.ad_type || ''));
+    }
+
+    function getMaterialFilterConfig(kind) {
+      return materialFilterConfigMap[kind] || null;
+    }
+
+    function getSelectedMaterialFilterValues(kind) {
+      const config = getMaterialFilterConfig(kind);
+      return config ? materialFilterState[config.stateKey] : [];
+    }
+
+    function isAllMaterialFilterSelected(kind) {
+      return !getSelectedMaterialFilterValues(kind).length;
+    }
+
+    function materialRowMatchesFilter(row, kind, ignoreKind = '') {
+      const config = getMaterialFilterConfig(kind);
+      if (!config || kind === ignoreKind) return true;
+      const selectedValues = materialFilterState[config.stateKey];
+      if (!selectedValues.length) return true;
+      const value = config.rowValue(row);
+      return selectedValues.includes(value);
+    }
+
+    function getMaterialFilterRows(ignoreKind = '') {
+      return getMaterialMonitorSourceRows().filter(row =>
+        materialFilterConfigs.every(config => materialRowMatchesFilter(row, config.key, ignoreKind))
+      );
+    }
+
+    function getMaterialFilterOptions(kind) {
+      const config = getMaterialFilterConfig(kind);
+      if (!config) return [];
+      return [...new Set(getMaterialFilterRows(kind)
+        .map(config.rowValue)
+        .filter(isRecognizedFilterValue))]
+        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function getVisibleMaterialFilterOptions(kind) {
+      const config = getMaterialFilterConfig(kind);
+      if (!config) return [];
+      return filterOptionList(
+        getMaterialFilterOptions(kind),
+        materialFilterState[config.searchKey],
+        config.allLabel
+      ).filter(option => option !== config.allLabel);
+    }
+
+    function syncMaterialFilterTriggerInput(kind) {
+      const config = getMaterialFilterConfig(kind);
+      if (!config) return;
+      const input = document.getElementById(config.inputId);
+      const wrapper = document.getElementById(config.wrapperId);
+      if (!input || !wrapper) return;
+      const isOpen = wrapper.classList.contains('open');
+      const searchValue = materialFilterState[config.searchKey];
+      const summary = buildFilterSummary(getSelectedMaterialFilterValues(kind), config.allLabel);
+      input.value = isOpen ? searchValue : summary;
+    }
+
+    function populateMaterialFilter(kind) {
+      const config = getMaterialFilterConfig(kind);
+      if (!config) return;
+      const container = document.getElementById(config.optionsId);
+      if (!container) return;
+      const selectedValues = getSelectedMaterialFilterValues(kind);
+      const visibleOptions = filterOptionList(getMaterialFilterOptions(kind), materialFilterState[config.searchKey], config.allLabel);
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(option => {
+        const checked = option === config.allLabel ? !selectedValues.length : selectedValues.includes(option);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${option}" ${checked ? 'checked' : ''}>
+            <span>${option}</span>
+          </label>
+        `;
+      }).join('') : `<div class="filter-empty">没有匹配的${config.allLabel.replace('全部', '')}</div>`;
+      syncMaterialFilterTriggerInput(kind);
+    }
+
+    function populateMaterialFilters() {
+      materialFilterConfigs.forEach(config => populateMaterialFilter(config.key));
+    }
+
+    function normalizeSelectedMaterialFilters() {
+      materialFilterConfigs.forEach(config => {
+        const allowed = new Set(getMaterialFilterOptions(config.key));
+        materialFilterState[config.stateKey] = materialFilterState[config.stateKey].filter(value => allowed.has(value));
+      });
+    }
+
+    function setSelectedMaterialFilter(kind, value, shouldRender = true) {
+      const config = getMaterialFilterConfig(kind);
+      if (!config) return;
+      const nextValues = value === config.allLabel
+        ? []
+        : (() => {
+            const current = new Set(getSelectedMaterialFilterValues(kind));
+            if (current.has(value)) current.delete(value);
+            else current.add(value);
+            return [...current];
+          })();
+      materialFilterState[config.stateKey] = nextValues;
+      normalizeSelectedMaterialFilters();
+      populateMaterialFilters();
+      if (shouldRender) renderMaterialMonitorSections();
+    }
+
+    function applyMaterialFilterBulk(kind, action) {
+      const config = getMaterialFilterConfig(kind);
+      if (!config) return;
+      materialFilterState[config.stateKey] = action === 'select-all'
+        ? [...new Set([...(getSelectedMaterialFilterValues(kind)), ...getVisibleMaterialFilterOptions(kind)])]
+        : [];
+      normalizeSelectedMaterialFilters();
+      populateMaterialFilters();
+      renderMaterialMonitorSections();
+    }
+
+    function normalizeMaterialFilterSearches() {
+      materialFilterConfigs.forEach(config => {
+        materialFilterState[config.searchKey] = '';
+      });
+      populateMaterialFilters();
+    }
+
+    function getMaterialMonitorRows(range) {
+      return filterRows(getMaterialMonitorSourceRows(), range).filter(row =>
+        materialFilterConfigs.every(config => materialRowMatchesFilter(row, config.key))
+      );
     }
 
     function normalizeSelectedProducts() {
@@ -2146,6 +2471,7 @@
       spTtFilterState.productSearch = '';
       populateSpTtCategoryFilter();
       populateSpTtProductFilter();
+      normalizeMaterialFilterSearches();
     }
 
     function toggleFilterDropdown(wrapperId) {
@@ -2193,6 +2519,12 @@
       const outerProductOptions = document.getElementById('outerProductFilterOptions');
       const spTtCategoryOptions = document.getElementById('spTtCategoryFilterOptions');
       const spTtProductOptions = document.getElementById('spTtProductFilterOptions');
+      const materialFilterEntries = materialFilterConfigs.map(config => ({
+        ...config,
+        trigger: document.getElementById(config.triggerId),
+        options: document.getElementById(config.optionsId),
+        input: document.getElementById(config.inputId)
+      }));
       const storeInput = document.getElementById('storeFilterInput');
       const categoryInput = document.getElementById('categoryFilterInput');
       const productInput = document.getElementById('productFilterInput');
@@ -2256,6 +2588,14 @@
           toggleFilterDropdown('spTtProductFilterWrap');
         });
       }
+      materialFilterEntries.forEach(entry => {
+        if (entry.trigger) {
+          entry.trigger.addEventListener('click', event => {
+            event.stopPropagation();
+            toggleFilterDropdown(entry.wrapperId);
+          });
+        }
+      });
       if (storeOptions) {
         storeOptions.addEventListener('change', event => {
           const input = event.target;
@@ -2312,6 +2652,15 @@
         });
         spTtProductOptions.addEventListener('click', event => event.stopPropagation());
       }
+      materialFilterEntries.forEach(entry => {
+        if (!entry.options) return;
+        entry.options.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setSelectedMaterialFilter(entry.key, input.value);
+        });
+        entry.options.addEventListener('click', event => event.stopPropagation());
+      });
       if (storeInput) {
         storeInput.addEventListener('click', event => {
           event.stopPropagation();
@@ -2403,6 +2752,20 @@
           populateSpTtProductFilter();
         });
       }
+      materialFilterEntries.forEach(entry => {
+        if (!entry.input) return;
+        entry.input.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        entry.input.addEventListener('focus', () => {
+          const wrapper = document.getElementById(entry.wrapperId);
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown(entry.wrapperId);
+        });
+        entry.input.addEventListener('input', event => {
+          materialFilterState[entry.searchKey] = event.target.value;
+          populateMaterialFilter(entry.key);
+        });
+      });
       document.querySelectorAll('[data-filter-action]').forEach(button => {
         button.addEventListener('click', event => {
           event.stopPropagation();
@@ -2412,6 +2775,7 @@
           if (!action || !kind) return;
           if (scope === 'outer') applyOuterFilterBulk(kind, action);
           else if (scope === 'sp-tt') applySpTtFilterBulk(kind, action);
+          else if (scope === 'material') applyMaterialFilterBulk(kind, action);
           else applyFilterBulk(kind, action);
         });
       });
@@ -2697,8 +3061,128 @@
       { key: 'ratio', label: '倍差', type: 'multiple' }
     ];
     const spTtProductCompareMetricDefinitions = [...spTtCompareMetricDefinitions];
+    const materialMonitorMetricDefinitions = [
+      { key: 'materialCount', label: '已投放素材数', type: 'count' },
+      { key: 'spend', label: '花费', type: 'money2' },
+      { key: 'spendShare', label: '花费占比', type: 'percent' },
+      { key: 'gmv', label: 'GMV', type: 'money2' },
+      { key: 'roi', label: 'ROI', type: 'roi' },
+      { key: 'orders', label: '订单数', type: 'count' },
+      { key: 'cvr', label: 'CVR', type: 'percent' },
+      { key: 'clicks', label: '点击', type: 'count' },
+      { key: 'ctr', label: 'CTR', type: 'percent' },
+      { key: 'impressions', label: '展示', type: 'count' },
+      { key: 'cpm', label: 'CPM', type: 'money2' }
+    ];
+    const materialMonitorDimensionLabels = {
+      category: '品类',
+      product: '产品'
+    };
     const outerBreakdownFormOrder = ['收割广告', '种草广告'];
     const outerBreakdownTypeOrder = ['图片广告', '视频广告', '混合目录', '合创广告', '官号广告'];
+
+    function buildMaterialMonitorSummary(range, dimensionKey) {
+      const rows = getMaterialMonitorRows(range);
+      const summaryMap = new Map();
+      const totalSpend = rows.reduce((sum, row) => sum + (Number(row.spend_usd) || 0), 0);
+      const getDimensionValue = row => dimensionKey === 'product' ? getRowProductLabel(row) : (row?.category || '');
+
+      rows.forEach(row => {
+        const dimensionValue = getDimensionValue(row);
+        if (!isRecognizedFilterValue(dimensionValue)) return;
+        if (!summaryMap.has(dimensionValue)) {
+          summaryMap.set(dimensionValue, {
+            name: dimensionValue,
+            materialCodes: new Set(),
+            spend: 0,
+            gmv: 0,
+            orders: 0,
+            clicks: 0,
+            impressions: 0
+          });
+        }
+        const entry = summaryMap.get(dimensionValue);
+        if (isRecognizedFilterValue(row?.material_code)) entry.materialCodes.add(row.material_code);
+        entry.spend += Number(row.spend_usd) || 0;
+        entry.gmv += Number(row.conversion_value) || 0;
+        entry.orders += Number(row.orders) || 0;
+        entry.clicks += Number(row.clicks) || 0;
+        entry.impressions += Number(row.impressions) || 0;
+      });
+
+      return Array.from(summaryMap.values()).map(entry => {
+        const cvr = entry.orders ? entry.clicks / entry.orders : 0;
+        return {
+          name: entry.name,
+          materialCount: entry.materialCodes.size,
+          spend: entry.spend,
+          spendShare: totalSpend ? entry.spend / totalSpend : 0,
+          gmv: entry.gmv,
+          roi: entry.spend ? entry.gmv / entry.spend : 0,
+          orders: entry.orders,
+          cvr,
+          clicks: entry.clicks,
+          ctr: entry.impressions ? entry.clicks / entry.impressions : 0,
+          impressions: entry.impressions,
+          cpm: entry.impressions ? (entry.spend / entry.impressions) * 1000 : 0
+        };
+      });
+    }
+
+    function getMaterialSortValue(item, sortKey) {
+      if (sortKey === 'name') return item.name || '';
+      return Number(item?.[sortKey]) || 0;
+    }
+
+    function sortMaterialSummaryItems(items, tableState) {
+      const { sortKey, sortDirection } = tableState;
+      const sortFactor = sortDirection === 'asc' ? 1 : -1;
+      return [...items].sort((left, right) => {
+        const leftValue = getMaterialSortValue(left, sortKey);
+        const rightValue = getMaterialSortValue(right, sortKey);
+        if (sortKey === 'name') {
+          return leftValue.localeCompare(rightValue, 'zh-CN') * sortFactor;
+        }
+        if (rightValue === leftValue) return (left.name || '').localeCompare(right.name || '', 'zh-CN');
+        return (leftValue - rightValue) * sortFactor;
+      });
+    }
+
+    function updateMaterialTableSort(dimensionKey, sortKey) {
+      const tableState = dimensionKey === 'product' ? materialProductTableState : materialCategoryTableState;
+      if (tableState.sortKey === sortKey) {
+        tableState.sortDirection = tableState.sortDirection === 'desc' ? 'asc' : 'desc';
+      } else {
+        tableState.sortKey = sortKey;
+        tableState.sortDirection = sortKey === 'name' ? 'asc' : 'desc';
+      }
+      renderMaterialMonitorSections();
+    }
+
+    function getMaterialTableState(dimensionKey) {
+      return dimensionKey === 'product' ? materialProductTableState : materialCategoryTableState;
+    }
+
+    function getMaterialColumnWidth(dimensionKey, columnKey) {
+      const tableState = getMaterialTableState(dimensionKey);
+      return tableState.columnWidths[columnKey] || materialTableColumnDefaults[columnKey] || 128;
+    }
+
+    function setMaterialColumnWidth(dimensionKey, columnKey, width) {
+      const tableState = getMaterialTableState(dimensionKey);
+      const minWidth = columnKey === 'name' ? 148 : 108;
+      tableState.columnWidths[columnKey] = Math.max(minWidth, Math.round(width));
+    }
+
+    function buildMaterialColgroup(headers, dimensionKey) {
+      return `
+        <colgroup>
+          ${headers.map(header => `
+            <col data-material-column="${header.key}" style="width:${getMaterialColumnWidth(dimensionKey, header.key)}px">
+          `).join('')}
+        </colgroup>
+      `;
+    }
 
     function getOuterBreakdownRows(range) {
       return [
@@ -3555,6 +4039,162 @@
 
       document.getElementById('productAnalysisTable').innerHTML = tableHtml;
       bindProductAnalysisEvents();
+    }
+
+    function stopMaterialColumnResize(dimensionKey) {
+      const tableState = getMaterialTableState(dimensionKey);
+      const activeResize = tableState.resize;
+      if (!activeResize) return;
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
+      const selector = dimensionKey === 'product' ? '.material-product-table' : '.material-category-table';
+      const table = document.querySelector(selector);
+      if (table) table.classList.remove('is-resizing');
+      if (activeResize.handle) activeResize.handle.classList.remove('active', 'is-resizing');
+      tableState.resize = null;
+    }
+
+    function bindMaterialColumnResize(root, dimensionKey) {
+      root.querySelectorAll('.material-resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const columnKey = handle.dataset.columnKey;
+          const table = root.querySelector(dimensionKey === 'product' ? '.material-product-table' : '.material-category-table');
+          if (!table || !columnKey) return;
+          const tableState = getMaterialTableState(dimensionKey);
+          tableState.resize = {
+            dimensionKey,
+            columnKey,
+            startX: event.clientX,
+            startWidth: getMaterialColumnWidth(dimensionKey, columnKey),
+            handle
+          };
+          table.classList.add('is-resizing');
+          handle.classList.add('active', 'is-resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+        });
+      });
+    }
+
+    function buildMaterialMonitorTable(dimensionKey) {
+      const queryRange = getRange('qStart', 'qEnd');
+      const tableState = getMaterialTableState(dimensionKey);
+      const items = sortMaterialSummaryItems(buildMaterialMonitorSummary(queryRange, dimensionKey), tableState);
+      const metricHeaders = [{ key: 'name', label: materialMonitorDimensionLabels[dimensionKey] || '维度' }, ...materialMonitorMetricDefinitions];
+
+      if (!items.length) {
+        return '<div class="note">当前筛选条件下暂无素材监控数据。</div>';
+      }
+
+      const tableClassName = dimensionKey === 'product' ? 'material-product-table' : 'material-category-table';
+      const dataPrefix = dimensionKey === 'product' ? 'material-product' : 'material-category';
+      const title = dimensionKey === 'product' ? '产品素材分析' : '品类素材分析';
+      const description = dimensionKey === 'product'
+        ? '按产品汇总当前日期范围内的素材投放表现，点击产品可联动当前页签筛选。'
+        : '按品类汇总当前日期范围内的素材投放表现，点击品类可联动当前页签筛选。';
+
+      return `
+        <div class="category-summary-card">
+          <div class="category-summary-head">
+            <strong>${title}</strong>
+            <span>${description}</span>
+          </div>
+          <div class="table-wrap">
+            <table class="category-table ${tableClassName}">
+              ${buildMaterialColgroup(metricHeaders, dimensionKey)}
+              <thead>
+                <tr>
+                  ${metricHeaders.map(header => {
+                    const isActive = tableState.sortKey === header.key;
+                    const arrow = isActive ? (tableState.sortDirection === 'desc' ? '↓' : '↑') : '↕';
+                    return `
+                      <th>
+                        <button class="category-sort-button ${isActive ? 'active' : ''}" type="button" data-material-sort="${header.key}" data-material-dimension="${dimensionKey}">
+                          <span>${header.label}</span>
+                          <span class="sort-arrow">${arrow}</span>
+                        </button>
+                        <span class="category-resize-handle material-resize-handle" data-column-key="${header.key}" data-material-dimension="${dimensionKey}" aria-hidden="true"></span>
+                      </th>
+                    `;
+                  }).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map(item => {
+                  const isActive = dimensionKey === 'product'
+                    ? getSelectedMaterialFilterValues('product').includes(item.name)
+                    : getSelectedMaterialFilterValues('category').includes(item.name);
+                  return `
+                    <tr class="${isActive ? 'active' : ''}">
+                      <td class="category-name">
+                        <button class="category-pill ${isActive ? 'active' : ''}" type="button" data-${dataPrefix}-pill="${item.name}">${item.name}</button>
+                      </td>
+                      ${materialMonitorMetricDefinitions.map(metric => `
+                        <td class="num">
+                          <span class="category-cell-main">${formatMetricValue({ ...metric, value: item[metric.key] || 0 })}</span>
+                        </td>
+                      `).join('')}
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function bindMaterialCategoryTableEvents() {
+      const root = document.getElementById('materialCategoryTable');
+      if (!root) return;
+      root.querySelectorAll('[data-material-category-pill]').forEach(button => {
+        button.addEventListener('click', () => {
+          setSelectedMaterialFilter('category', button.dataset.materialCategoryPill || '全部品类');
+        });
+      });
+      root.querySelectorAll('[data-material-sort]').forEach(button => {
+        button.addEventListener('click', () => {
+          updateMaterialTableSort(button.dataset.materialDimension || 'category', button.dataset.materialSort);
+        });
+      });
+      bindMaterialColumnResize(root, 'category');
+    }
+
+    function bindMaterialProductTableEvents() {
+      const root = document.getElementById('materialProductTable');
+      if (!root) return;
+      root.querySelectorAll('[data-material-product-pill]').forEach(button => {
+        button.addEventListener('click', () => {
+          setSelectedMaterialFilter('product', button.dataset.materialProductPill || '全部产品');
+        });
+      });
+      root.querySelectorAll('[data-material-sort]').forEach(button => {
+        button.addEventListener('click', () => {
+          updateMaterialTableSort(button.dataset.materialDimension || 'product', button.dataset.materialSort);
+        });
+      });
+      bindMaterialColumnResize(root, 'product');
+    }
+
+    function renderMaterialCategoryTable() {
+      const container = document.getElementById('materialCategoryTable');
+      if (!container) return;
+      container.innerHTML = buildMaterialMonitorTable('category');
+      bindMaterialCategoryTableEvents();
+    }
+
+    function renderMaterialProductTable() {
+      const container = document.getElementById('materialProductTable');
+      if (!container) return;
+      container.innerHTML = buildMaterialMonitorTable('product');
+      bindMaterialProductTableEvents();
+    }
+
+    function renderMaterialMonitorSections() {
+      renderMaterialCategoryTable();
+      renderMaterialProductTable();
     }
 
     function buildSpTtCompareSummary(range) {
@@ -4633,6 +5273,22 @@
         const col = document.querySelector(`.sp-tt-product-compare-table col[data-sp-tt-product-column="${activeSpTtProductResize.columnKey}"]`);
         if (col) col.style.width = `${getSpTtProductCompareColumnWidth(activeSpTtProductResize.columnKey)}px`;
       }
+
+      const activeMaterialCategoryResize = materialCategoryTableState.resize;
+      if (activeMaterialCategoryResize) {
+        const nextWidth = activeMaterialCategoryResize.startWidth + (event.clientX - activeMaterialCategoryResize.startX);
+        setMaterialColumnWidth('category', activeMaterialCategoryResize.columnKey, nextWidth);
+        const col = document.querySelector(`.material-category-table col[data-material-column="${activeMaterialCategoryResize.columnKey}"]`);
+        if (col) col.style.width = `${getMaterialColumnWidth('category', activeMaterialCategoryResize.columnKey)}px`;
+      }
+
+      const activeMaterialProductResize = materialProductTableState.resize;
+      if (activeMaterialProductResize) {
+        const nextWidth = activeMaterialProductResize.startWidth + (event.clientX - activeMaterialProductResize.startX);
+        setMaterialColumnWidth('product', activeMaterialProductResize.columnKey, nextWidth);
+        const col = document.querySelector(`.material-product-table col[data-material-column="${activeMaterialProductResize.columnKey}"]`);
+        if (col) col.style.width = `${getMaterialColumnWidth('product', activeMaterialProductResize.columnKey)}px`;
+      }
     });
 
     document.addEventListener('mouseup', () => {
@@ -4643,6 +5299,8 @@
       if (outerProductStructureTableState.resize) stopOuterProductStructureColumnResize();
       if (spTtCompareTableState.resize) stopSpTtCompareColumnResize();
       if (spTtProductCompareTableState.resize) stopSpTtProductCompareColumnResize();
+      if (materialCategoryTableState.resize) stopMaterialColumnResize('category');
+      if (materialProductTableState.resize) stopMaterialColumnResize('product');
     });
 
     function bindCategoryAnalysisEvents() {
@@ -5876,6 +6534,7 @@
       renderOuterProductStructureTable();
       renderSpTtCompareTable();
       renderSpTtProductCompareTable();
+      renderMaterialMonitorSections();
     }
 
     function updateTrendTooltip(clientX, clientY) {
@@ -6074,6 +6733,7 @@
     function setActiveTab(tabKey) {
       const filterRow = document.getElementById('storeFilterPanelRow');
       const spTtFilterRow = document.getElementById('spTtFilterPanelRow');
+      const materialFilterRow = document.getElementById('materialFilterPanelRow');
       document.querySelectorAll('#analysisTabs .tab-button').forEach(button => {
         const isActive = button.dataset.tabTarget === tabKey;
         button.classList.toggle('active', isActive);
@@ -6090,8 +6750,12 @@
       if (spTtFilterRow) {
         spTtFilterRow.classList.toggle('is-hidden', tabKey !== 'sp-tt');
       }
+      if (materialFilterRow) {
+        materialFilterRow.classList.toggle('is-hidden', tabKey !== 'material');
+      }
       if (tabKey === 'store') renderStoreTrendSection();
       if (tabKey === 'sp-tt') renderSpTtTrendSection();
+      if (tabKey === 'material') renderMaterialMonitorSections();
     }
 
     function bindAnalysisTabs() {
@@ -6113,6 +6777,7 @@
     populateOuterProductFilter();
     populateSpTtCategoryFilter();
     populateSpTtProductFilter();
+    populateMaterialFilters();
     bindMultiSelectFilterEvents();
     bindAnalysisTabs();
     renderAnalysisSections();

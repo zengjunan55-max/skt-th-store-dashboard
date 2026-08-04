@@ -1,8 +1,10 @@
 import json
+import time
 from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 from urllib.request import urlopen
+from http.client import IncompleteRead
 
 import openpyxl
 
@@ -43,8 +45,19 @@ def recognized(value):
 
 def download_latest_workbook():
     SOURCE_XLSX.parent.mkdir(parents=True, exist_ok=True)
-    with urlopen(SHEET_EXPORT_URL, timeout=120) as response:
-        SOURCE_XLSX.write_bytes(response.read())
+    last_error = None
+    for attempt in range(3):
+        try:
+            with urlopen(SHEET_EXPORT_URL, timeout=120) as response:
+                SOURCE_XLSX.write_bytes(response.read())
+            return SOURCE_XLSX
+        except IncompleteRead as exc:
+            last_error = exc
+            if attempt == 2:
+                raise
+            time.sleep(2)
+    if last_error:
+        raise last_error
     return SOURCE_XLSX
 
 
@@ -194,7 +207,12 @@ def build_store_and_product_payloads(wb):
         conversion_value = num(get_cell(row, idx, "购物转化价值"))
         orders = num(get_cell(row, idx, "订单数"))
         pitcher = norm(get_cell(row, idx, "投手"))
+        ad_form = norm(get_cell(row, idx, "广告形式"))
+        audience = norm(get_cell(row, idx, "广告人群"))
         ad_type = norm(get_cell(row, idx, "广告类型"))
+        material_code = norm(get_cell(row, idx, "素材编号"))
+        acquisition_type = norm(get_cell(row, idx, "拉新/再营销"))
+        landing_page = norm(get_cell(row, idx, "投放页面"))
         ad_form2 = norm(get_cell(row, idx, "广告形式2"))
 
         store_item = {
@@ -206,7 +224,12 @@ def build_store_and_product_payloads(wb):
             "clicks": clicks,
             "conversion_value": conversion_value,
             "orders": orders,
+            "ad_form": ad_form,
+            "audience": audience,
             "ad_type": ad_type,
+            "material_code": material_code,
+            "acquisition_type": acquisition_type,
+            "landing_page": landing_page,
             "ad_form2": ad_form2,
         }
         product_item = {
@@ -219,7 +242,12 @@ def build_store_and_product_payloads(wb):
             "clicks": clicks,
             "conversion_value": conversion_value,
             "orders": orders,
+            "ad_form": ad_form,
+            "audience": audience,
             "ad_type": ad_type,
+            "material_code": material_code,
+            "acquisition_type": acquisition_type,
+            "landing_page": landing_page,
             "ad_form2": ad_form2,
         }
 
