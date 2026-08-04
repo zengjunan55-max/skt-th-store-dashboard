@@ -6769,29 +6769,39 @@
       setActiveTab('store');
     }
 
-    setDefaultRefreshDateRange();
-    populateStoreFilter();
-    populateCategoryFilter();
-    populateProductFilter();
-    populateOuterCategoryFilter();
-    populateOuterProductFilter();
-    populateSpTtCategoryFilter();
-    populateSpTtProductFilter();
-    populateMaterialFilters();
-    bindMultiSelectFilterEvents();
-    bindAnalysisTabs();
-    renderAnalysisSections();
-    renderProducts();
-    renderAudit();
+    async function bootstrapDashboard() {
+      try {
+        await Promise.all(window.__dashboardDataLoads || []);
+      } catch (error) {
+        console.error('Dashboard data loading failed:', error);
+      }
 
-    const trendCanvas = document.getElementById('compareTrendChart');
-    trendCanvas.addEventListener('mousemove', event => updateTrendTooltip(event.clientX, event.clientY));
-    trendCanvas.addEventListener('mouseleave', hideTrendTooltip);
-    trendCanvas.addEventListener('click', event => handleTrendCanvasClick(event.clientX, event.clientY));
-    const spTtTrendCanvas = document.getElementById('spTtTrendChart');
-    spTtTrendCanvas.addEventListener('mousemove', event => updateSpTtTrendTooltip(event.clientX, event.clientY));
-    spTtTrendCanvas.addEventListener('mouseleave', hideSpTtTrendTooltip);
-    spTtTrendCanvas.addEventListener('click', event => handleSpTtTrendCanvasClick(event.clientX, event.clientY));
+      setDefaultRefreshDateRange();
+      populateStoreFilter();
+      populateCategoryFilter();
+      populateProductFilter();
+      populateOuterCategoryFilter();
+      populateOuterProductFilter();
+      populateSpTtCategoryFilter();
+      populateSpTtProductFilter();
+      populateMaterialFilters();
+      bindMultiSelectFilterEvents();
+      bindAnalysisTabs();
+      renderAnalysisSections();
+      renderProducts();
+      renderAudit();
+
+      const trendCanvas = document.getElementById('compareTrendChart');
+      trendCanvas.addEventListener('mousemove', event => updateTrendTooltip(event.clientX, event.clientY));
+      trendCanvas.addEventListener('mouseleave', hideTrendTooltip);
+      trendCanvas.addEventListener('click', event => handleTrendCanvasClick(event.clientX, event.clientY));
+      const spTtTrendCanvas = document.getElementById('spTtTrendChart');
+      spTtTrendCanvas.addEventListener('mousemove', event => updateSpTtTrendTooltip(event.clientX, event.clientY));
+      spTtTrendCanvas.addEventListener('mouseleave', hideSpTtTrendTooltip);
+      spTtTrendCanvas.addEventListener('click', event => handleSpTtTrendCanvasClick(event.clientX, event.clientY));
+    }
+
+    bootstrapDashboard();
     window.addEventListener('resize', renderStoreTrendSection);
     window.addEventListener('resize', renderSpTtTrendSection);
 

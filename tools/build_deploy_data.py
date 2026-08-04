@@ -91,6 +91,73 @@ def write_assignment(path, prelude, target, payload):
         handle.write(";\n")
 
 
+def split_rows_by_size(rows, prelude, target, max_bytes):
+    chunks = []
+    current_rows = []
+    base_prefix = ""
+    if prelude:
+        base_prefix = prelude if prelude.endswith("\n") else f"{prelude}\n"
+    base_prefix += f"{target} = {target} || [];\n{target}.push(..."
+    base_suffix = ");\n"
+    base_size = len((base_prefix + "[]" + base_suffix).encode("utf-8"))
+    current_size = base_size
+
+    for row in rows:
+        row_json = json.dumps(row, ensure_ascii=False, separators=(",", ":"))
+        row_size = len(row_json.encode("utf-8")) + (1 if current_rows else 0)
+        if current_rows and current_size + row_size > max_bytes:
+            chunks.append(current_rows)
+            current_rows = [row]
+            current_size = base_size + len(row_json.encode("utf-8"))
+        else:
+            current_rows.append(row)
+            current_size += row_size
+
+    if current_rows:
+        chunks.append(current_rows)
+    return chunks
+
+
+def write_chunked_loader(path, prelude, target, rows, max_bytes=24 * 1024 * 1024):
+    part_pattern = f"{path.stem}.part*.js"
+    for old_part in path.parent.glob(part_pattern):
+        old_part.unlink()
+
+    chunks = split_rows_by_size(rows, prelude, target, max_bytes)
+    part_files = []
+    for index, chunk_rows in enumerate(chunks, start=1):
+        part_path = path.with_name(f"{path.stem}.part{index}.js")
+        part_files.append(f"./{part_path.name}")
+        with part_path.open("w", encoding="utf-8") as handle:
+            if prelude:
+                handle.write(prelude)
+                if not prelude.endswith("\n"):
+                    handle.write("\n")
+            handle.write(f"{target} = {target} || [];\n")
+            handle.write(f"{target}.push(...")
+            json.dump(chunk_rows, handle, ensure_ascii=False, separators=(",", ":"))
+            handle.write(");\n")
+
+    with path.open("w", encoding="utf-8") as handle:
+        if prelude:
+            handle.write(prelude)
+            if not prelude.endswith("\n"):
+                handle.write("\n")
+        handle.write(f"{target} = {target} || [];\n")
+        handle.write("window.__dashboardDataLoads = window.__dashboardDataLoads || [];\n")
+        handle.write("window.__dashboardDataLoads.push((async () => {\n")
+        handle.write("  const loadScript = src => new Promise((resolve, reject) => {\n")
+        handle.write("    const script = document.createElement('script');\n")
+        handle.write("    script.src = src;\n")
+        handle.write("    script.onload = resolve;\n")
+        handle.write("    script.onerror = () => reject(new Error(`Failed to load ${src}`));\n")
+        handle.write("    document.head.appendChild(script);\n")
+        handle.write("  });\n")
+        for part_file in part_files:
+            handle.write(f"  await loadScript('{part_file}');\n")
+        handle.write("})());\n")
+
+
 def load_workbook(path):
     return openpyxl.load_workbook(path, read_only=True, data_only=True)
 
@@ -323,12 +390,12 @@ def main():
     write_assignment(REPO_ROOT / "store-trend-data-stores.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.stores", store_payload["stores"])
     write_assignment(REPO_ROOT / "store-trend-data-main.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.main", store_payload["main"])
     write_assignment(REPO_ROOT / "store-trend-data-inner.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.inner", store_payload["inner"])
-    write_assignment(REPO_ROOT / "store-trend-data-outer.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.outer", store_payload["outer"])
+    write_chunked_loader(REPO_ROOT / "store-trend-data-outer.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.outer", store_payload["outer"])
     write_assignment(REPO_ROOT / "store-trend-data-brand.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.brand", store_payload["brand"])
 
     write_assignment(REPO_ROOT / "product-trend-data-main.js", "window.productTrendData = window.productTrendData || {};", "window.productTrendData.main", product_payload["main"])
     write_assignment(REPO_ROOT / "product-trend-data-inner.js", "window.productTrendData = window.productTrendData || {};", "window.productTrendData.inner", product_payload["inner"])
-    write_assignment(REPO_ROOT / "product-trend-data-outer.js", "window.productTrendData = window.productTrendData || {};", "window.productTrendData.outer", product_payload["outer"])
+    write_chunked_loader(REPO_ROOT / "product-trend-data-outer.js", "window.productTrendData = window.productTrendData || {};", "window.productTrendData.outer", product_payload["outer"])
     write_assignment(REPO_ROOT / "product-trend-data-brand.js", "window.productTrendData = window.productTrendData || {};", "window.productTrendData.brand", product_payload["brand"])
 
     write_assignment(REPO_ROOT / "sp-tt-sales-data.js", "", "window.spTtSalesData", sp_tt_payload)
