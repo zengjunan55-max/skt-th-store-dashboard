@@ -4988,11 +4988,7 @@
       if (!activeResize) return;
       document.body.style.removeProperty('cursor');
       document.body.style.removeProperty('user-select');
-      const selector = dimensionKey === 'product'
-        ? '.material-product-table'
-        : dimensionKey === 'adType'
-          ? '.material-adtype-table'
-          : '.material-category-table';
+      const selector = `.${getMaterialTableClassName(dimensionKey)}`;
       const table = document.querySelector(selector);
       if (table) table.classList.remove('is-resizing');
       if (activeResize.handle) activeResize.handle.classList.remove('active', 'is-resizing');
@@ -5088,68 +5084,61 @@
       }
 
       const tableClassName = getMaterialTableClassName(dimensionKey);
-      const { title, description } = getMaterialTableMeta(dimensionKey);
 
       return `
-        <div class="category-summary-card">
-          <div class="category-summary-head">
-            <strong>${title}</strong>
-            <span>${description}</span>
-          </div>
-          <div class="table-wrap">
-            <table class="category-table ${tableClassName}">
-              ${buildMaterialColgroup(metricHeaders, dimensionKey)}
-              <thead>
-                <tr>
-                  ${metricHeaders.map(header => {
-                    if (dimensionKey === 'adType') {
-                      return `
-                        <th>
-                          <span class="category-sort-button" style="pointer-events:none;">
-                            <span>${header.label}</span>
-                          </span>
-                          <span class="category-resize-handle material-resize-handle" data-column-key="${header.key}" data-material-dimension="${dimensionKey}" aria-hidden="true"></span>
-                        </th>
-                      `;
-                    }
-                    const isActive = tableState.sortKey === header.key;
-                    const arrow = isActive ? (tableState.sortDirection === 'desc' ? '↓' : '↑') : '↕';
+        <div class="table-wrap">
+          <table class="category-table ${tableClassName}">
+            ${buildMaterialColgroup(metricHeaders, dimensionKey)}
+            <thead>
+              <tr>
+                ${metricHeaders.map(header => {
+                  if (dimensionKey === 'adType') {
                     return `
                       <th>
-                        <button class="category-sort-button ${isActive ? 'active' : ''}" type="button" data-material-sort="${header.key}" data-material-dimension="${dimensionKey}">
+                        <span class="category-sort-button" style="pointer-events:none;">
                           <span>${header.label}</span>
-                          <span class="sort-arrow">${arrow}</span>
-                        </button>
+                        </span>
                         <span class="category-resize-handle material-resize-handle" data-column-key="${header.key}" data-material-dimension="${dimensionKey}" aria-hidden="true"></span>
                       </th>
                     `;
-                  }).join('')}
-                </tr>
-              </thead>
-              <tbody>
-                ${items.map(item => {
-                  const compare = compareMap[item.name] || {};
+                  }
+                  const isActive = tableState.sortKey === header.key;
+                  const arrow = isActive ? (tableState.sortDirection === 'desc' ? '↓' : '↑') : '↕';
                   return `
-                    <tr class="${item.name === '总计' ? ' total-row' : ''}">
-                      <td class="category-name">
-                        <span class="material-static-label">${item.name}</span>
-                      </td>
-                      ${materialMonitorMetricDefinitions.map(metric => {
-                        const value = item[metric.key] || 0;
-                        const delta = formatMaterialMetricDelta(metric.key, item[metric.key], compare[metric.key]);
-                        return `
-                          <td class="num">
-                            <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
-                            <span class="category-cell-delta ${delta.className || 'empty'}">${delta.text}</span>
-                          </td>
-                        `;
-                      }).join('')}
-                    </tr>
+                    <th>
+                      <button class="category-sort-button ${isActive ? 'active' : ''}" type="button" data-material-sort="${header.key}" data-material-dimension="${dimensionKey}">
+                        <span>${header.label}</span>
+                        <span class="sort-arrow">${arrow}</span>
+                      </button>
+                      <span class="category-resize-handle material-resize-handle" data-column-key="${header.key}" data-material-dimension="${dimensionKey}" aria-hidden="true"></span>
+                    </th>
                   `;
                 }).join('')}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(item => {
+                const compare = compareMap[item.name] || {};
+                return `
+                  <tr class="${item.name === '总计' ? ' total-row' : ''}">
+                    <td class="category-name">
+                      <span class="material-static-label">${item.name}</span>
+                    </td>
+                    ${materialMonitorMetricDefinitions.map(metric => {
+                      const value = item[metric.key] || 0;
+                      const delta = formatMaterialMetricDelta(metric.key, item[metric.key], compare[metric.key]);
+                      return `
+                        <td class="num">
+                          <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                          <span class="category-cell-delta ${delta.className || 'empty'}">${delta.text}</span>
+                        </td>
+                      `;
+                    }).join('')}
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
         </div>
       `;
     }
