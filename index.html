@@ -1339,6 +1339,7 @@
       <section id="materialCategorySection">
         <h2>素材监控</h2>
         <p class="small">默认汇总图文广告与视频广告，按当前日期范围统计素材投放表现。</p>
+        <div id="materialAdTypeTable"></div>
         <div id="materialCategoryTable"></div>
       </section>
       <section id="materialProductSection">
@@ -1589,6 +1590,12 @@
     const materialCategoryTableState = {
       sortKey: 'spend',
       sortDirection: 'desc',
+      columnWidths: {},
+      resize: null
+    };
+    const materialAdTypeTableState = {
+      sortKey: 'name',
+      sortDirection: 'asc',
       columnWidths: {},
       resize: null
     };
@@ -3075,9 +3082,11 @@
       { key: 'cpm', label: 'CPM', type: 'money2' }
     ];
     const materialMonitorDimensionLabels = {
+      adType: '广告类型',
       category: '品类',
       product: '产品'
     };
+    const materialAdTypeDisplayOrder = ['图片广告', '视频广告'];
     const outerBreakdownFormOrder = ['收割广告', '种草广告'];
     const outerBreakdownTypeOrder = ['图片广告', '视频广告', '混合目录', '合创广告', '官号广告'];
 
@@ -3111,7 +3120,7 @@
       });
 
       return Array.from(summaryMap.values()).map(entry => {
-        const cvr = entry.orders ? entry.clicks / entry.orders : 0;
+        const cvr = entry.clicks ? entry.orders / entry.clicks : 0;
         return {
           name: entry.name,
           materialCount: entry.materialCodes.size,
@@ -3127,6 +3136,87 @@
           cpm: entry.impressions ? (entry.spend / entry.impressions) * 1000 : 0
         };
       });
+    }
+
+    function buildMaterialAdTypeSummary(range) {
+      const rows = getMaterialMonitorRows(range);
+      const adTypeMap = new Map();
+      const totalSpend = rows.reduce((sum, row) => sum + (Number(row.spend_usd) || 0), 0);
+
+      const ensureAdType = adType => {
+        if (!adTypeMap.has(adType)) {
+          adTypeMap.set(adType, {
+            name: adType,
+            materialCodes: new Set(),
+            spend: 0,
+            gmv: 0,
+            orders: 0,
+            clicks: 0,
+            impressions: 0
+          });
+        }
+        return adTypeMap.get(adType);
+      };
+
+      rows.forEach(row => {
+        const adType = row?.ad_type || '';
+        if (!materialAdTypeDisplayOrder.includes(adType)) return;
+        const entry = ensureAdType(adType);
+        if (isRecognizedFilterValue(row?.material_code)) entry.materialCodes.add(row.material_code);
+        entry.spend += Number(row.spend_usd) || 0;
+        entry.gmv += Number(row.conversion_value) || 0;
+        entry.orders += Number(row.orders) || 0;
+        entry.clicks += Number(row.clicks) || 0;
+        entry.impressions += Number(row.impressions) || 0;
+      });
+
+      const items = materialAdTypeDisplayOrder
+        .filter(adType => adTypeMap.has(adType))
+        .map(adType => {
+          const entry = adTypeMap.get(adType);
+          return {
+            name: entry.name,
+            materialCount: entry.materialCodes.size,
+            spend: entry.spend,
+            spendShare: totalSpend ? entry.spend / totalSpend : 0,
+            gmv: entry.gmv,
+            roi: entry.spend ? entry.gmv / entry.spend : 0,
+            orders: entry.orders,
+            cvr: entry.clicks ? entry.orders / entry.clicks : 0,
+            clicks: entry.clicks,
+            ctr: entry.impressions ? entry.clicks / entry.impressions : 0,
+            impressions: entry.impressions,
+            cpm: entry.impressions ? (entry.spend / entry.impressions) * 1000 : 0
+          };
+        });
+
+      if (!items.length) return [];
+
+      const totalItem = items.reduce((acc, item) => {
+        acc.materialCount += item.materialCount;
+        acc.spend += item.spend;
+        acc.gmv += item.gmv;
+        acc.orders += item.orders;
+        acc.clicks += item.clicks;
+        acc.impressions += item.impressions;
+        return acc;
+      }, {
+        name: '总计',
+        materialCount: 0,
+        spend: 0,
+        gmv: 0,
+        orders: 0,
+        clicks: 0,
+        impressions: 0
+      });
+
+      totalItem.spendShare = totalSpend ? totalItem.spend / totalSpend : 0;
+      totalItem.roi = totalItem.spend ? totalItem.gmv / totalItem.spend : 0;
+      totalItem.cvr = totalItem.clicks ? totalItem.orders / totalItem.clicks : 0;
+      totalItem.ctr = totalItem.impressions ? totalItem.clicks / totalItem.impressions : 0;
+      totalItem.cpm = totalItem.impressions ? (totalItem.spend / totalItem.impressions) * 1000 : 0;
+
+      return [...items, totalItem];
     }
 
     function getMaterialSortValue(item, sortKey) {
@@ -3149,7 +3239,7 @@
     }
 
     function updateMaterialTableSort(dimensionKey, sortKey) {
-      const tableState = dimensionKey === 'product' ? materialProductTableState : materialCategoryTableState;
+      const tableState = getMaterialTableState(dimensionKey);
       if (tableState.sortKey === sortKey) {
         tableState.sortDirection = tableState.sortDirection === 'desc' ? 'asc' : 'desc';
       } else {
@@ -3160,6 +3250,7 @@
     }
 
     function getMaterialTableState(dimensionKey) {
+      if (dimensionKey === 'adType') return materialAdTypeTableState;
       return dimensionKey === 'product' ? materialProductTableState : materialCategoryTableState;
     }
 
@@ -4047,7 +4138,11 @@
       if (!activeResize) return;
       document.body.style.removeProperty('cursor');
       document.body.style.removeProperty('user-select');
-      const selector = dimensionKey === 'product' ? '.material-product-table' : '.material-category-table';
+      const selector = dimensionKey === 'product'
+        ? '.material-product-table'
+        : dimensionKey === 'adType'
+          ? '.material-adtype-table'
+          : '.material-category-table';
       const table = document.querySelector(selector);
       if (table) table.classList.remove('is-resizing');
       if (activeResize.handle) activeResize.handle.classList.remove('active', 'is-resizing');
@@ -4060,7 +4155,13 @@
           event.preventDefault();
           event.stopPropagation();
           const columnKey = handle.dataset.columnKey;
-          const table = root.querySelector(dimensionKey === 'product' ? '.material-product-table' : '.material-category-table');
+          const table = root.querySelector(
+            dimensionKey === 'product'
+              ? '.material-product-table'
+              : dimensionKey === 'adType'
+                ? '.material-adtype-table'
+                : '.material-category-table'
+          );
           if (!table || !columnKey) return;
           const tableState = getMaterialTableState(dimensionKey);
           tableState.resize = {
@@ -4081,19 +4182,31 @@
     function buildMaterialMonitorTable(dimensionKey) {
       const queryRange = getRange('qStart', 'qEnd');
       const tableState = getMaterialTableState(dimensionKey);
-      const items = sortMaterialSummaryItems(buildMaterialMonitorSummary(queryRange, dimensionKey), tableState);
+      const items = dimensionKey === 'adType'
+        ? buildMaterialAdTypeSummary(queryRange)
+        : sortMaterialSummaryItems(buildMaterialMonitorSummary(queryRange, dimensionKey), tableState);
       const metricHeaders = [{ key: 'name', label: materialMonitorDimensionLabels[dimensionKey] || '维度' }, ...materialMonitorMetricDefinitions];
 
       if (!items.length) {
         return '<div class="note">当前筛选条件下暂无素材监控数据。</div>';
       }
 
-      const tableClassName = dimensionKey === 'product' ? 'material-product-table' : 'material-category-table';
+      const tableClassName = dimensionKey === 'product'
+        ? 'material-product-table'
+        : dimensionKey === 'adType'
+          ? 'material-adtype-table'
+          : 'material-category-table';
       const dataPrefix = dimensionKey === 'product' ? 'material-product' : 'material-category';
-      const title = dimensionKey === 'product' ? '产品素材分析' : '品类素材分析';
+      const title = dimensionKey === 'product'
+        ? '产品素材分析'
+        : dimensionKey === 'adType'
+          ? '广告类型汇总'
+          : '品类素材分析';
       const description = dimensionKey === 'product'
         ? '按产品汇总当前日期范围内的素材投放表现，点击产品可联动当前页签筛选。'
-        : '按品类汇总当前日期范围内的素材投放表现，点击品类可联动当前页签筛选。';
+        : dimensionKey === 'adType'
+          ? '按广告类型汇总图文广告与视频广告的素材投放表现，并在底部展示当前筛选下总计。'
+          : '按品类汇总当前日期范围内的素材投放表现，点击品类可联动当前页签筛选。';
 
       return `
         <div class="category-summary-card">
@@ -4107,6 +4220,16 @@
               <thead>
                 <tr>
                   ${metricHeaders.map(header => {
+                    if (dimensionKey === 'adType') {
+                      return `
+                        <th>
+                          <span class="category-sort-button" style="pointer-events:none;">
+                            <span>${header.label}</span>
+                          </span>
+                          <span class="category-resize-handle material-resize-handle" data-column-key="${header.key}" data-material-dimension="${dimensionKey}" aria-hidden="true"></span>
+                        </th>
+                      `;
+                    }
                     const isActive = tableState.sortKey === header.key;
                     const arrow = isActive ? (tableState.sortDirection === 'desc' ? '↓' : '↑') : '↕';
                     return `
@@ -4125,11 +4248,15 @@
                 ${items.map(item => {
                   const isActive = dimensionKey === 'product'
                     ? getSelectedMaterialFilterValues('product').includes(item.name)
-                    : getSelectedMaterialFilterValues('category').includes(item.name);
+                    : dimensionKey === 'category'
+                      ? getSelectedMaterialFilterValues('category').includes(item.name)
+                      : false;
                   return `
-                    <tr class="${isActive ? 'active' : ''}">
+                    <tr class="${isActive ? 'active' : ''}${item.name === '总计' ? ' total-row' : ''}">
                       <td class="category-name">
-                        <button class="category-pill ${isActive ? 'active' : ''}" type="button" data-${dataPrefix}-pill="${item.name}">${item.name}</button>
+                        ${dimensionKey === 'adType' || item.name === '总计'
+                          ? `<span class="category-pill ${item.name === '总计' ? 'active' : ''}" style="pointer-events:none;">${item.name}</span>`
+                          : `<button class="category-pill ${isActive ? 'active' : ''}" type="button" data-${dataPrefix}-pill="${item.name}">${item.name}</button>`}
                       </td>
                       ${materialMonitorMetricDefinitions.map(metric => `
                         <td class="num">
@@ -4144,6 +4271,19 @@
           </div>
         </div>
       `;
+    }
+
+    function bindMaterialAdTypeTableEvents() {
+      const root = document.getElementById('materialAdTypeTable');
+      if (!root) return;
+      bindMaterialColumnResize(root, 'adType');
+    }
+
+    function renderMaterialAdTypeTable() {
+      const container = document.getElementById('materialAdTypeTable');
+      if (!container) return;
+      container.innerHTML = buildMaterialMonitorTable('adType');
+      bindMaterialAdTypeTableEvents();
     }
 
     function bindMaterialCategoryTableEvents() {
@@ -4193,6 +4333,7 @@
     }
 
     function renderMaterialMonitorSections() {
+      renderMaterialAdTypeTable();
       renderMaterialCategoryTable();
       renderMaterialProductTable();
     }
@@ -5282,6 +5423,14 @@
         if (col) col.style.width = `${getMaterialColumnWidth('category', activeMaterialCategoryResize.columnKey)}px`;
       }
 
+      const activeMaterialAdTypeResize = materialAdTypeTableState.resize;
+      if (activeMaterialAdTypeResize) {
+        const nextWidth = activeMaterialAdTypeResize.startWidth + (event.clientX - activeMaterialAdTypeResize.startX);
+        setMaterialColumnWidth('adType', activeMaterialAdTypeResize.columnKey, nextWidth);
+        const col = document.querySelector(`.material-adtype-table col[data-material-column="${activeMaterialAdTypeResize.columnKey}"]`);
+        if (col) col.style.width = `${getMaterialColumnWidth('adType', activeMaterialAdTypeResize.columnKey)}px`;
+      }
+
       const activeMaterialProductResize = materialProductTableState.resize;
       if (activeMaterialProductResize) {
         const nextWidth = activeMaterialProductResize.startWidth + (event.clientX - activeMaterialProductResize.startX);
@@ -5300,6 +5449,7 @@
       if (spTtCompareTableState.resize) stopSpTtCompareColumnResize();
       if (spTtProductCompareTableState.resize) stopSpTtProductCompareColumnResize();
       if (materialCategoryTableState.resize) stopMaterialColumnResize('category');
+      if (materialAdTypeTableState.resize) stopMaterialColumnResize('adType');
       if (materialProductTableState.resize) stopMaterialColumnResize('product');
     });
 
