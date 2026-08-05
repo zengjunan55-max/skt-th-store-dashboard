@@ -3802,12 +3802,18 @@
         ctx.restore();
       }
 
+      function getRevealAlpha(progress) {
+        const safeProgress = Math.max(0, Math.min(1, progress));
+        return 0.15 + (1 - Math.pow(1 - safeProgress, 3)) * 0.85;
+      }
+
       function drawLineMetric(metric) {
         function drawSeries(valuesKey, color, dashed) {
           if (!isMaterialTrendSeriesVisible(metric.key, valuesKey)) return;
           const revealProgress = getMaterialTrendSeriesRevealProgress(metric.key, valuesKey, now);
           ctx.save();
           beginRevealClip(revealProgress);
+          ctx.globalAlpha = getRevealAlpha(revealProgress);
           ctx.strokeStyle = color;
           ctx.fillStyle = color;
           ctx.lineWidth = metric.key === 'ctr' || metric.key === 'cvr' ? 2 : 3;
