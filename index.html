@@ -544,6 +544,42 @@
       background: #ffffff;
       box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
     }
+    .material-board-group {
+      margin-top: 18px;
+      padding: 20px 20px 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+    }
+    .material-board-group:first-of-type {
+      margin-top: 0;
+    }
+    .material-board-head {
+      margin-bottom: 14px;
+    }
+    .material-board-head strong {
+      display: block;
+      color: #203449;
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .material-board-head .small {
+      display: block;
+    }
+    .material-board-stack {
+      display: grid;
+      gap: 18px;
+    }
+    .material-board-subsection h3 {
+      margin: 0 0 6px;
+      color: #203449;
+      font-size: 16px;
+    }
+    .material-board-subsection .small {
+      display: block;
+      margin-bottom: 12px;
+    }
     .trend-head {
       display: flex;
       align-items: flex-start;
@@ -1330,7 +1366,7 @@
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
               <span>广告类型</span>
-              <button class="filter-jump-button" type="button" data-scroll-target="materialCategorySection">跳转</button>
+              <button class="filter-jump-button" type="button" data-scroll-target="materialAdTypeSection">跳转</button>
             </div>
             <div class="filter-multiselect" id="materialAdTypeFilterWrap">
               <div id="materialAdTypeFilterTrigger" class="filter-trigger" aria-expanded="false">
@@ -1462,51 +1498,71 @@
           </div>
         </div>
       </div>
-      <section id="materialCategorySection">
-        <h2>素材监控</h2>
-        <p class="small">默认汇总图文广告与视频广告，按当前日期范围统计素材投放表现。</p>
+      <section class="material-board-group">
+        <div class="material-board-head">
+          <strong>素材趋势</strong>
+          <span class="small">默认汇总图文广告与视频广告，按当前日期范围统计素材投放表现。</span>
+        </div>
         <div class="compare-grid">
           <div id="materialCompareCards"></div>
           <div class="trend-card">
-            <div class="trend-head">
-              <div>
-                <strong>素材趋势</strong>
-                <span class="small">点击上方卡片后，可在同一张趋势图中对比素材核心指标的本期与环比走势。</span>
-              </div>
-            </div>
             <div class="trend-wrap">
               <canvas id="materialTrendChart"></canvas>
               <div id="materialTrendTooltip" class="trend-tooltip"></div>
             </div>
           </div>
         </div>
-        <div id="materialAdTypeTable"></div>
-        <div id="materialCategoryTable"></div>
       </section>
-      <section id="materialProductSection">
-        <h2>产品素材分析</h2>
-        <p class="small">按产品汇总素材投放表现，筛选器与上方品类表联动。</p>
-        <div id="materialProductTable"></div>
+      <section class="material-board-group">
+        <div class="material-board-head">
+          <strong>品类/产品分析</strong>
+          <span class="small">用于查看品类与产品两个层级的素材投放表现，筛选器与下方汇总表同步联动。</span>
+        </div>
+        <div class="material-board-stack">
+          <section id="materialCategorySection" class="material-board-subsection">
+            <h3>品类素材分析</h3>
+            <span class="small">按品类汇总当前日期范围内的素材投放表现。</span>
+            <div id="materialCategoryTable"></div>
+          </section>
+          <section id="materialProductSection" class="material-board-subsection">
+            <h3>产品素材分析</h3>
+            <span class="small">按产品汇总素材投放表现，筛选器与上方品类表联动。</span>
+            <div id="materialProductTable"></div>
+          </section>
+        </div>
       </section>
-      <section id="materialAdFormSection">
-        <h2>广告形式素材分析</h2>
-        <p class="small">按广告形式汇总素材投放表现，方便查看不同投放结构的效果差异。</p>
-        <div id="materialAdFormTable"></div>
-      </section>
-      <section id="materialAcquisitionSection">
-        <h2>再营销/拉新素材分析</h2>
-        <p class="small">按再营销/拉新维度汇总素材投放表现。</p>
-        <div id="materialAcquisitionTable"></div>
-      </section>
-      <section id="materialAudienceSection">
-        <h2>人群素材分析</h2>
-        <p class="small">按人群维度汇总素材投放表现。</p>
-        <div id="materialAudienceTable"></div>
-      </section>
-      <section id="materialLandingPageSection">
-        <h2>投放页面素材分析</h2>
-        <p class="small">按投放页面维度汇总素材投放表现。</p>
-        <div id="materialLandingPageTable"></div>
+      <section class="material-board-group">
+        <div class="material-board-head">
+          <strong>投放类型分析</strong>
+          <span class="small">集中查看广告类型、广告形式、再营销/拉新、人群和投放页面等投放维度表现。</span>
+        </div>
+        <div class="material-board-stack">
+          <section id="materialAdTypeSection" class="material-board-subsection">
+            <h3>广告类型分析</h3>
+            <span class="small">按广告类型汇总图文广告与视频广告的素材投放表现。</span>
+            <div id="materialAdTypeTable"></div>
+          </section>
+          <section id="materialAdFormSection" class="material-board-subsection">
+            <h3>广告形式素材分析</h3>
+            <span class="small">按广告形式汇总素材投放表现，方便查看不同投放结构的效果差异。</span>
+            <div id="materialAdFormTable"></div>
+          </section>
+          <section id="materialAcquisitionSection" class="material-board-subsection">
+            <h3>再营销/拉新素材分析</h3>
+            <span class="small">按再营销/拉新维度汇总素材投放表现。</span>
+            <div id="materialAcquisitionTable"></div>
+          </section>
+          <section id="materialAudienceSection" class="material-board-subsection">
+            <h3>人群素材分析</h3>
+            <span class="small">按人群维度汇总素材投放表现。</span>
+            <div id="materialAudienceTable"></div>
+          </section>
+          <section id="materialLandingPageSection" class="material-board-subsection">
+            <h3>投放页面素材分析</h3>
+            <span class="small">按投放页面维度汇总素材投放表现。</span>
+            <div id="materialLandingPageTable"></div>
+          </section>
+        </div>
       </section>
     </div>
   </main>
