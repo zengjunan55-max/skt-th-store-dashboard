@@ -1330,6 +1330,7 @@
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
               <span>广告类型</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="materialCategorySection">跳转</button>
             </div>
             <div class="filter-multiselect" id="materialAdTypeFilterWrap">
               <div id="materialAdTypeFilterTrigger" class="filter-trigger" aria-expanded="false">
@@ -1348,6 +1349,7 @@
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
               <span>品类</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="materialCategorySection">跳转</button>
             </div>
             <div class="filter-multiselect" id="materialCategoryFilterWrap">
               <div id="materialCategoryFilterTrigger" class="filter-trigger" aria-expanded="false">
@@ -1366,6 +1368,7 @@
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
               <span>产品</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="materialProductSection">跳转</button>
             </div>
             <div class="filter-multiselect" id="materialProductFilterWrap">
               <div id="materialProductFilterTrigger" class="filter-trigger" aria-expanded="false">
@@ -1384,6 +1387,7 @@
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
               <span>广告形式</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="materialAdFormSection">跳转</button>
             </div>
             <div class="filter-multiselect" id="materialAdFormFilterWrap">
               <div id="materialAdFormFilterTrigger" class="filter-trigger" aria-expanded="false">
@@ -1402,6 +1406,7 @@
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
               <span>再营销/拉新</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="materialAcquisitionSection">跳转</button>
             </div>
             <div class="filter-multiselect" id="materialAcquisitionFilterWrap">
               <div id="materialAcquisitionFilterTrigger" class="filter-trigger" aria-expanded="false">
@@ -1420,6 +1425,7 @@
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
               <span>人群</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="materialAudienceSection">跳转</button>
             </div>
             <div class="filter-multiselect" id="materialAudienceFilterWrap">
               <div id="materialAudienceFilterTrigger" class="filter-trigger" aria-expanded="false">
@@ -1438,6 +1444,7 @@
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
               <span>投放页面</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="materialLandingPageSection">跳转</button>
             </div>
             <div class="filter-multiselect" id="materialLandingPageFilterWrap">
               <div id="materialLandingPageFilterTrigger" class="filter-trigger" aria-expanded="false">
@@ -1480,6 +1487,26 @@
         <h2>产品素材分析</h2>
         <p class="small">按产品汇总素材投放表现，筛选器与上方品类表联动。</p>
         <div id="materialProductTable"></div>
+      </section>
+      <section id="materialAdFormSection">
+        <h2>广告形式素材分析</h2>
+        <p class="small">按广告形式汇总素材投放表现，方便查看不同投放结构的效果差异。</p>
+        <div id="materialAdFormTable"></div>
+      </section>
+      <section id="materialAcquisitionSection">
+        <h2>再营销/拉新素材分析</h2>
+        <p class="small">按再营销/拉新维度汇总素材投放表现。</p>
+        <div id="materialAcquisitionTable"></div>
+      </section>
+      <section id="materialAudienceSection">
+        <h2>人群素材分析</h2>
+        <p class="small">按人群维度汇总素材投放表现。</p>
+        <div id="materialAudienceTable"></div>
+      </section>
+      <section id="materialLandingPageSection">
+        <h2>投放页面素材分析</h2>
+        <p class="small">按投放页面维度汇总素材投放表现。</p>
+        <div id="materialLandingPageTable"></div>
       </section>
     </div>
   </main>
@@ -1754,6 +1781,30 @@
       resize: null
     };
     const materialProductTableState = {
+      sortKey: 'spend',
+      sortDirection: 'desc',
+      columnWidths: {},
+      resize: null
+    };
+    const materialAdFormTableState = {
+      sortKey: 'spend',
+      sortDirection: 'desc',
+      columnWidths: {},
+      resize: null
+    };
+    const materialAcquisitionTableState = {
+      sortKey: 'spend',
+      sortDirection: 'desc',
+      columnWidths: {},
+      resize: null
+    };
+    const materialAudienceTableState = {
+      sortKey: 'spend',
+      sortDirection: 'desc',
+      columnWidths: {},
+      resize: null
+    };
+    const materialLandingPageTableState = {
       sortKey: 'spend',
       sortDirection: 'desc',
       columnWidths: {},
@@ -3265,7 +3316,11 @@
     const materialMonitorDimensionLabels = {
       adType: '广告类型',
       category: '品类',
-      product: '产品'
+      product: '产品',
+      adForm: '广告形式',
+      acquisition: '再营销/拉新',
+      audience: '人群',
+      landingPage: '投放页面'
     };
     const materialAdTypeDisplayOrder = ['图片广告', '视频广告'];
     const outerBreakdownFormOrder = ['收割广告', '种草广告'];
@@ -3275,7 +3330,12 @@
       const rows = getMaterialMonitorRows(range);
       const summaryMap = new Map();
       const totalSpend = rows.reduce((sum, row) => sum + (Number(row.spend_usd) || 0), 0);
-      const getDimensionValue = row => dimensionKey === 'product' ? getRowProductLabel(row) : (row?.category || '');
+      const getDimensionValue = row => {
+        if (dimensionKey === 'product') return getRowProductLabel(row);
+        if (dimensionKey === 'category') return row?.category || '';
+        const config = getMaterialFilterConfig(dimensionKey);
+        return config ? config.rowValue(row) : '';
+      };
 
       rows.forEach(row => {
         const dimensionValue = getDimensionValue(row);
@@ -3980,7 +4040,12 @@
 
     function getMaterialTableState(dimensionKey) {
       if (dimensionKey === 'adType') return materialAdTypeTableState;
-      return dimensionKey === 'product' ? materialProductTableState : materialCategoryTableState;
+      if (dimensionKey === 'product') return materialProductTableState;
+      if (dimensionKey === 'adForm') return materialAdFormTableState;
+      if (dimensionKey === 'acquisition') return materialAcquisitionTableState;
+      if (dimensionKey === 'audience') return materialAudienceTableState;
+      if (dimensionKey === 'landingPage') return materialLandingPageTableState;
+      return materialCategoryTableState;
     }
 
     function getMaterialColumnWidth(dimensionKey, columnKey) {
@@ -4884,13 +4949,7 @@
           event.preventDefault();
           event.stopPropagation();
           const columnKey = handle.dataset.columnKey;
-          const table = root.querySelector(
-            dimensionKey === 'product'
-              ? '.material-product-table'
-              : dimensionKey === 'adType'
-                ? '.material-adtype-table'
-                : '.material-category-table'
-          );
+          const table = root.querySelector(`.${getMaterialTableClassName(dimensionKey)}`);
           if (!table || !columnKey) return;
           const tableState = getMaterialTableState(dimensionKey);
           tableState.resize = {
@@ -4906,6 +4965,53 @@
           document.body.style.userSelect = 'none';
         });
       });
+    }
+
+    function getMaterialTableClassName(dimensionKey) {
+      const classNameMap = {
+        adType: 'material-adtype-table',
+        category: 'material-category-table',
+        product: 'material-product-table',
+        adForm: 'material-adform-table',
+        acquisition: 'material-acquisition-table',
+        audience: 'material-audience-table',
+        landingPage: 'material-landing-page-table'
+      };
+      return classNameMap[dimensionKey] || 'material-category-table';
+    }
+
+    function getMaterialTableMeta(dimensionKey) {
+      const metaMap = {
+        adType: {
+          title: '广告类型汇总',
+          description: '按广告类型汇总图文广告与视频广告的素材投放表现，并在底部展示当前筛选下总计。'
+        },
+        category: {
+          title: '品类素材分析',
+          description: '按品类汇总当前日期范围内的素材投放表现，点击品类可联动当前页签筛选。'
+        },
+        product: {
+          title: '产品素材分析',
+          description: '按产品汇总当前日期范围内的素材投放表现，筛选器与上方品类表联动。'
+        },
+        adForm: {
+          title: '广告形式素材分析',
+          description: '按广告形式汇总当前日期范围内的素材投放表现。'
+        },
+        acquisition: {
+          title: '再营销/拉新素材分析',
+          description: '按再营销/拉新维度汇总当前日期范围内的素材投放表现。'
+        },
+        audience: {
+          title: '人群素材分析',
+          description: '按人群维度汇总当前日期范围内的素材投放表现。'
+        },
+        landingPage: {
+          title: '投放页面素材分析',
+          description: '按投放页面维度汇总当前日期范围内的素材投放表现。'
+        }
+      };
+      return metaMap[dimensionKey] || metaMap.category;
     }
 
     function buildMaterialMonitorTable(dimensionKey) {
@@ -4925,21 +5031,8 @@
         return '<div class="note">当前筛选条件下暂无素材监控数据。</div>';
       }
 
-      const tableClassName = dimensionKey === 'product'
-        ? 'material-product-table'
-        : dimensionKey === 'adType'
-          ? 'material-adtype-table'
-          : 'material-category-table';
-      const title = dimensionKey === 'product'
-        ? '产品素材分析'
-        : dimensionKey === 'adType'
-          ? '广告类型汇总'
-          : '品类素材分析';
-      const description = dimensionKey === 'product'
-        ? '按产品汇总当前日期范围内的素材投放表现，点击产品可联动当前页签筛选。'
-        : dimensionKey === 'adType'
-          ? '按广告类型汇总图文广告与视频广告的素材投放表现，并在底部展示当前筛选下总计。'
-          : '按品类汇总当前日期范围内的素材投放表现，点击品类可联动当前页签筛选。';
+      const tableClassName = getMaterialTableClassName(dimensionKey);
+      const { title, description } = getMaterialTableMeta(dimensionKey);
 
       return `
         <div class="category-summary-card">
@@ -5040,6 +5133,17 @@
       bindMaterialColumnResize(root, 'product');
     }
 
+    function bindMaterialSummaryTableEvents(containerId, dimensionKey) {
+      const root = document.getElementById(containerId);
+      if (!root) return;
+      root.querySelectorAll('[data-material-sort]').forEach(button => {
+        button.addEventListener('click', () => {
+          updateMaterialTableSort(button.dataset.materialDimension || dimensionKey, button.dataset.materialSort);
+        });
+      });
+      bindMaterialColumnResize(root, dimensionKey);
+    }
+
     function renderMaterialCategoryTable() {
       const container = document.getElementById('materialCategoryTable');
       if (!container) return;
@@ -5054,11 +5158,43 @@
       bindMaterialProductTableEvents();
     }
 
+    function renderMaterialAdFormTable() {
+      const container = document.getElementById('materialAdFormTable');
+      if (!container) return;
+      container.innerHTML = buildMaterialMonitorTable('adForm');
+      bindMaterialSummaryTableEvents('materialAdFormTable', 'adForm');
+    }
+
+    function renderMaterialAcquisitionTable() {
+      const container = document.getElementById('materialAcquisitionTable');
+      if (!container) return;
+      container.innerHTML = buildMaterialMonitorTable('acquisition');
+      bindMaterialSummaryTableEvents('materialAcquisitionTable', 'acquisition');
+    }
+
+    function renderMaterialAudienceTable() {
+      const container = document.getElementById('materialAudienceTable');
+      if (!container) return;
+      container.innerHTML = buildMaterialMonitorTable('audience');
+      bindMaterialSummaryTableEvents('materialAudienceTable', 'audience');
+    }
+
+    function renderMaterialLandingPageTable() {
+      const container = document.getElementById('materialLandingPageTable');
+      if (!container) return;
+      container.innerHTML = buildMaterialMonitorTable('landingPage');
+      bindMaterialSummaryTableEvents('materialLandingPageTable', 'landingPage');
+    }
+
     function renderMaterialMonitorSections() {
       renderMaterialTrendSection();
       renderMaterialAdTypeTable();
       renderMaterialCategoryTable();
       renderMaterialProductTable();
+      renderMaterialAdFormTable();
+      renderMaterialAcquisitionTable();
+      renderMaterialAudienceTable();
+      renderMaterialLandingPageTable();
     }
 
     function buildSpTtCompareSummary(range) {
