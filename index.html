@@ -142,6 +142,38 @@
       color: #ffffff;
       box-shadow: 0 10px 20px rgba(23, 107, 135, 0.18);
     }
+    .subtab-block {
+      margin-top: 20px;
+    }
+    .subtab-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .subtab-button {
+      height: 34px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: #5b6b7f;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+    .subtab-button:hover {
+      background: #f4f8fb;
+      color: #27485c;
+    }
+    .subtab-button.active {
+      background: linear-gradient(180deg, #1e6f8c 0%, #176b87 100%);
+      color: #ffffff;
+      box-shadow: 0 8px 18px rgba(23, 107, 135, 0.16);
+    }
     .filter-panel-row {
       display: flex;
       justify-content: flex-start;
@@ -1296,6 +1328,20 @@
         <div id="outerProductStructureSection" style="margin-top:18px;">
           <div id="outerProductStructureTable"></div>
         </div>
+        <div id="outerDimensionSection" class="subtab-block">
+          <h2>维度分析</h2>
+          <p class="small">按板块、广告形式、人群、定向和素材类型拆解站外投放表现。</p>
+          <div class="subtab-toolbar">
+            <div class="tab-list" id="outerDimensionTabs" role="tablist" aria-label="站外维度分析切换">
+              <button class="subtab-button active" type="button" data-outer-dimension-tab="categoryGroup" role="tab" aria-selected="true">板块</button>
+              <button class="subtab-button" type="button" data-outer-dimension-tab="adForm" role="tab" aria-selected="false">广告形式</button>
+              <button class="subtab-button" type="button" data-outer-dimension-tab="audience" role="tab" aria-selected="false">人群</button>
+              <button class="subtab-button" type="button" data-outer-dimension-tab="targeting" role="tab" aria-selected="false">定向</button>
+              <button class="subtab-button" type="button" data-outer-dimension-tab="creativeType" role="tab" aria-selected="false">素材类型</button>
+            </div>
+          </div>
+          <div id="outerDimensionTable"></div>
+        </div>
       </section>
     </div>
 
@@ -1800,6 +1846,13 @@
       columnWidths: {},
       resize: null
     };
+    const outerDimensionAnalysisState = {
+      activeTab: 'categoryGroup'
+    };
+    const outerDimensionTableState = {
+      columnWidths: {},
+      resize: null
+    };
     const outerProductStructureTableState = {
       sortKey: 'gmv',
       sortDirection: 'desc',
@@ -1892,6 +1945,18 @@
     const outerBreakdownColumnDefaults = {
       form: 156,
       adType: 132,
+      spend: 132,
+      spendShare: 132,
+      gmv: 132,
+      orders: 126,
+      roi: 126,
+      impressions: 132,
+      cpm: 126,
+      ctr: 126,
+      conversionRate: 126
+    };
+    const outerDimensionColumnDefaults = {
+      dimension: 168,
       spend: 132,
       spendShare: 132,
       gmv: 132,
@@ -3381,6 +3446,32 @@
     const materialAdTypeDisplayOrder = ['图片广告', '视频广告'];
     const outerBreakdownFormOrder = ['收割广告', '种草广告'];
     const outerBreakdownTypeOrder = ['图片广告', '视频广告', '混合目录', '合创广告', '官号广告'];
+    const outerDimensionTabDefinitions = [
+      { key: 'categoryGroup', label: '板块' },
+      { key: 'adForm', label: '广告形式' },
+      { key: 'audience', label: '人群' },
+      { key: 'targeting', label: '定向' },
+      { key: 'creativeType', label: '素材类型' }
+    ];
+
+    function getOuterDimensionValue(row, dimensionKey) {
+      if (dimensionKey === 'categoryGroup') {
+        return row?.category || getRowProductCategory(row) || '';
+      }
+      if (dimensionKey === 'adForm') {
+        return row?.ad_form || '';
+      }
+      if (dimensionKey === 'audience') {
+        return row?.acquisition_type || '';
+      }
+      if (dimensionKey === 'targeting') {
+        return row?.audience || '';
+      }
+      if (dimensionKey === 'creativeType') {
+        return row?.ad_type || '';
+      }
+      return '';
+    }
 
     function buildMaterialMonitorSummary(range, dimensionKey) {
       const rows = getMaterialMonitorRows(range);
@@ -4240,6 +4331,215 @@
           <span class="category-cell-delta ${formattedDelta.className}">${formattedDelta.text}</span>
         </td>
       `;
+    }
+
+    function getOuterDimensionColumnWidth(columnKey) {
+      return outerDimensionTableState.columnWidths[columnKey] || outerDimensionColumnDefaults[columnKey] || 132;
+    }
+
+    function setOuterDimensionColumnWidth(columnKey, width) {
+      const minWidth = columnKey === 'dimension' ? 148 : 108;
+      outerDimensionTableState.columnWidths[columnKey] = Math.max(minWidth, Math.round(width));
+    }
+
+    function buildOuterDimensionColgroup(headers) {
+      return `
+        <colgroup>
+          ${headers.map(header => `
+            <col data-outer-dimension-column="${header.key}" style="width:${getOuterDimensionColumnWidth(header.key)}px">
+          `).join('')}
+        </colgroup>
+      `;
+    }
+
+    function stopOuterDimensionColumnResize() {
+      const activeResize = outerDimensionTableState.resize;
+      if (!activeResize) return;
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
+      const table = activeResize.table || document.querySelector('.outer-dimension-table');
+      if (table) table.classList.remove('is-resizing');
+      if (activeResize.handle) activeResize.handle.classList.remove('active', 'is-resizing');
+      outerDimensionTableState.resize = null;
+    }
+
+    function bindOuterDimensionColumnResize(root) {
+      root.querySelectorAll('.outer-dimension-resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const columnKey = handle.dataset.columnKey;
+          const table = root.querySelector('.outer-dimension-table');
+          if (!table || !columnKey) return;
+          const startWidth = getOuterDimensionColumnWidth(columnKey);
+          outerDimensionTableState.resize = {
+            columnKey,
+            startX: event.clientX,
+            startWidth,
+            handle,
+            table
+          };
+          table.classList.add('is-resizing');
+          handle.classList.add('active', 'is-resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+        });
+      });
+    }
+
+    function buildOuterDimensionSummary(range, dimensionKey) {
+      const rows = getOuterBreakdownRows(range);
+      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
+      const dimensionMap = new Map();
+
+      rows.forEach(row => {
+        const dimensionValue = getOuterDimensionValue(row, dimensionKey);
+        if (!isRecognizedFilterValue(dimensionValue)) return;
+        if (!dimensionMap.has(dimensionValue)) {
+          dimensionMap.set(dimensionValue, {
+            name: dimensionValue,
+            spend: 0,
+            gmv: 0,
+            orders: 0,
+            impressions: 0,
+            clicks: 0
+          });
+        }
+        const entry = dimensionMap.get(dimensionValue);
+        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
+        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
+        entry.orders += Number(row.orders) || 0;
+        entry.impressions += Number(row.impressions) || 0;
+        entry.clicks += Number(row.clicks) || 0;
+      });
+
+      const items = Array.from(dimensionMap.values())
+        .map(entry => ({
+          name: entry.name,
+          ...getOuterBreakdownMetrics(entry, totalSpend)
+        }))
+        .sort((left, right) => right.spend - left.spend);
+
+      return { items, totalSpend };
+    }
+
+    function buildOuterDimensionMetricCells(currentEntry, compareEntry, totalSpend, compareTotalSpend) {
+      const currentMetrics = {
+        spend: currentEntry?.spend || 0,
+        spendShare: currentEntry?.spendShare || 0,
+        gmv: currentEntry?.gmv || 0,
+        orders: currentEntry?.orders || 0,
+        roi: currentEntry?.roi || 0,
+        impressions: currentEntry?.impressions || 0,
+        cpm: currentEntry?.cpm || 0,
+        ctr: currentEntry?.ctr || 0,
+        conversionRate: currentEntry?.conversionRate || 0
+      };
+      const compareMetrics = {
+        spend: compareEntry?.spend || 0,
+        spendShare: compareEntry?.spendShare || 0,
+        gmv: compareEntry?.gmv || 0,
+        orders: compareEntry?.orders || 0,
+        roi: compareEntry?.roi || 0,
+        impressions: compareEntry?.impressions || 0,
+        cpm: compareEntry?.cpm || 0,
+        ctr: compareEntry?.ctr || 0,
+        conversionRate: compareEntry?.conversionRate || 0
+      };
+      return `
+        ${buildOuterBreakdownMetricCell(moneyNumber.format(currentMetrics.spend), formatDelta(currentMetrics.spend, compareMetrics.spend))}
+        ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.spendShare), formatOuterBreakdownShareDelta(currentMetrics.spendShare, compareMetrics.spendShare))}
+        ${buildOuterBreakdownMetricCell(moneyNumber.format(currentMetrics.gmv), formatDelta(currentMetrics.gmv, compareMetrics.gmv))}
+        ${buildOuterBreakdownMetricCell(metricNumber.format(currentMetrics.orders), formatDelta(currentMetrics.orders, compareMetrics.orders))}
+        ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.roi), formatOuterBreakdownValueDelta(currentMetrics.roi, compareMetrics.roi, value => Number(value || 0).toFixed(2)))}
+        ${buildOuterBreakdownMetricCell(metricNumber.format(currentMetrics.impressions), formatDelta(currentMetrics.impressions, compareMetrics.impressions))}
+        ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.cpm), formatOuterBreakdownValueDelta(currentMetrics.cpm, compareMetrics.cpm, value => Number(value || 0).toFixed(2)))}
+        ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.ctr), formatOuterBreakdownValueDelta(currentMetrics.ctr, compareMetrics.ctr, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
+        ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.conversionRate), formatOuterBreakdownValueDelta(currentMetrics.conversionRate, compareMetrics.conversionRate, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
+      `;
+    }
+
+    function bindOuterDimensionTabs() {
+      const root = document.getElementById('outerDimensionTabs');
+      if (!root) return;
+      root.querySelectorAll('[data-outer-dimension-tab]').forEach(button => {
+        const isActive = button.dataset.outerDimensionTab === outerDimensionAnalysisState.activeTab;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        button.addEventListener('click', () => {
+          outerDimensionAnalysisState.activeTab = button.dataset.outerDimensionTab || 'categoryGroup';
+          renderOuterDimensionTable();
+        });
+      });
+    }
+
+    function bindOuterDimensionEvents() {
+      const root = document.getElementById('outerDimensionTable');
+      if (!root) return;
+      bindOuterDimensionColumnResize(root);
+    }
+
+    function renderOuterDimensionTable() {
+      const root = document.getElementById('outerDimensionTable');
+      if (!root) return;
+      bindOuterDimensionTabs();
+
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const dimensionKey = outerDimensionAnalysisState.activeTab || 'categoryGroup';
+      const activeTab = outerDimensionTabDefinitions.find(item => item.key === dimensionKey) || outerDimensionTabDefinitions[0];
+      const currentSummary = buildOuterDimensionSummary(queryRange, dimensionKey);
+      const compareSummary = buildOuterDimensionSummary(compareRange, dimensionKey);
+      const compareMap = new Map(compareSummary.items.map(item => [item.name, item]));
+      const headers = [
+        { key: 'dimension', label: activeTab.label },
+        { key: 'spend', label: '花费' },
+        { key: 'spendShare', label: '花费占比' },
+        { key: 'gmv', label: 'GMV' },
+        { key: 'orders', label: '订单' },
+        { key: 'roi', label: 'ROI' },
+        { key: 'impressions', label: '曝光' },
+        { key: 'cpm', label: 'CPM' },
+        { key: 'ctr', label: '点击率' },
+        { key: 'conversionRate', label: '转化率' }
+      ];
+
+      const tableHtml = currentSummary.items.length ? `
+        <div class="outer-structure-card">
+          <div class="outer-structure-head">
+            <div class="outer-structure-head-main">
+              <strong>${activeTab.label}分析</strong>
+              <span>按 ${activeTab.label} 维度汇总站外投放表现，口径来自 ALL_data</span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="outer-structure-table outer-breakdown-table outer-dimension-table">
+              ${buildOuterDimensionColgroup(headers)}
+              <thead>
+                <tr>
+                  ${headers.map(header => `
+                    <th>
+                      <span class="outer-breakdown-header-label">${header.label}</span>
+                      <span class="outer-resize-handle outer-dimension-resize-handle" data-column-key="${header.key}" aria-hidden="true"></span>
+                    </th>
+                  `).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${currentSummary.items.map(item => `
+                  <tr>
+                    <td class="category-name">${item.name}</td>
+                    ${buildOuterDimensionMetricCells(item, compareMap.get(item.name), currentSummary.totalSpend, compareSummary.totalSpend)}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : `<div class="note">当前筛选条件下暂无${activeTab.label}维度数据。</div>`;
+
+      root.innerHTML = tableHtml;
+      bindOuterDimensionEvents();
     }
 
     function formatOuterBreakdownShareDelta(currentValue, compareValue) {
@@ -6303,6 +6603,14 @@
         if (col) col.style.width = `${getOuterProductStructureColumnWidth(activeOuterProductResize.columnKey)}px`;
       }
 
+      const activeOuterDimensionResize = outerDimensionTableState.resize;
+      if (activeOuterDimensionResize) {
+        const nextWidth = activeOuterDimensionResize.startWidth + (event.clientX - activeOuterDimensionResize.startX);
+        setOuterDimensionColumnWidth(activeOuterDimensionResize.columnKey, nextWidth);
+        const col = document.querySelector(`.outer-dimension-table col[data-outer-dimension-column="${activeOuterDimensionResize.columnKey}"]`);
+        if (col) col.style.width = `${getOuterDimensionColumnWidth(activeOuterDimensionResize.columnKey)}px`;
+      }
+
       const activeSpTtResize = spTtCompareTableState.resize;
       if (activeSpTtResize) {
         const nextWidth = activeSpTtResize.startWidth + (event.clientX - activeSpTtResize.startX);
@@ -6350,6 +6658,7 @@
       if (outerStructureTableState.resize) stopOuterStructureColumnResize();
       if (outerBreakdownTableState.resize) stopOuterBreakdownColumnResize();
       if (outerProductStructureTableState.resize) stopOuterProductStructureColumnResize();
+      if (outerDimensionTableState.resize) stopOuterDimensionColumnResize();
       if (spTtCompareTableState.resize) stopSpTtCompareColumnResize();
       if (spTtProductCompareTableState.resize) stopSpTtProductCompareColumnResize();
       if (materialCategoryTableState.resize) stopMaterialColumnResize('category');
@@ -7586,6 +7895,7 @@
       renderOuterBreakdownTable();
       renderOuterStructureTable();
       renderOuterProductStructureTable();
+      renderOuterDimensionTable();
       renderSpTtCompareTable();
       renderSpTtProductCompareTable();
       renderMaterialMonitorSections();
