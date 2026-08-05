@@ -3456,7 +3456,7 @@
 
     function getOuterDimensionValue(row, dimensionKey) {
       if (dimensionKey === 'categoryGroup') {
-        return row?.category || getRowProductCategory(row) || '';
+        return row?.ad_form2 || '';
       }
       if (dimensionKey === 'adForm') {
         return row?.ad_form || '';
