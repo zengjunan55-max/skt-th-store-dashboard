@@ -1328,20 +1328,66 @@
         <div id="outerProductStructureSection" style="margin-top:18px;">
           <div id="outerProductStructureTable"></div>
         </div>
-        <div id="outerDimensionSection" class="subtab-block">
-          <h2>维度分析</h2>
-          <p class="small">按板块、广告形式、人群、定向和素材类型拆解站外投放表现。</p>
-          <div class="subtab-toolbar">
-            <div class="tab-list" id="outerDimensionTabs" role="tablist" aria-label="站外维度分析切换">
-              <button class="subtab-button active" type="button" data-outer-dimension-tab="categoryGroup" role="tab" aria-selected="true">板块</button>
-              <button class="subtab-button" type="button" data-outer-dimension-tab="adForm" role="tab" aria-selected="false">广告形式</button>
-              <button class="subtab-button" type="button" data-outer-dimension-tab="audience" role="tab" aria-selected="false">人群</button>
-              <button class="subtab-button" type="button" data-outer-dimension-tab="targeting" role="tab" aria-selected="false">定向</button>
-              <button class="subtab-button" type="button" data-outer-dimension-tab="creativeType" role="tab" aria-selected="false">素材类型</button>
+      </section>
+      <section id="outerDimensionSection" class="subtab-block">
+        <h2>维度分析</h2>
+        <p class="small">按板块、广告形式、人群、定向和素材类型拆解站外投放表现，并使用独立筛选器联动本区域。</p>
+        <div class="subtab-toolbar">
+          <div class="tab-list" id="outerDimensionScopeTabs" role="tablist" aria-label="维度分析范围切换">
+            <button class="subtab-button active" type="button" data-outer-dimension-scope="category" role="tab" aria-selected="true">品类</button>
+            <button class="subtab-button" type="button" data-outer-dimension-scope="product" role="tab" aria-selected="false">产品</button>
+          </div>
+        </div>
+        <div class="filter-panel-row" id="outerDimensionFilterPanelRow">
+          <div class="controls-filter-panel">
+            <div class="filter-control filter-summary-control">
+              <div class="filter-control-head">
+                <span>品类筛选</span>
+              </div>
+              <div class="filter-multiselect" id="outerDimensionCategoryFilterWrap">
+                <div id="outerDimensionCategoryFilterTrigger" class="filter-trigger" aria-expanded="false">
+                  <input id="outerDimensionCategoryFilterInput" class="filter-trigger-input" type="text" value="全部品类" placeholder="搜索品类" autocomplete="off">
+                  <span class="filter-trigger-arrow">▼</span>
+                </div>
+                <div id="outerDimensionCategoryFilterPanel" class="filter-panel">
+                  <div class="filter-panel-actions">
+                    <button type="button" data-filter-action="select-all" data-filter-kind="category" data-filter-scope="outer-dimension">全选</button>
+                    <button type="button" data-filter-action="clear" data-filter-kind="category" data-filter-scope="outer-dimension">清空</button>
+                  </div>
+                  <div id="outerDimensionCategoryFilterOptions" class="filter-options"></div>
+                </div>
+              </div>
+            </div>
+            <div class="filter-control filter-summary-control" id="outerDimensionProductFilterControl">
+              <div class="filter-control-head">
+                <span>产品筛选</span>
+              </div>
+              <div class="filter-multiselect" id="outerDimensionProductFilterWrap">
+                <div id="outerDimensionProductFilterTrigger" class="filter-trigger" aria-expanded="false">
+                  <input id="outerDimensionProductFilterInput" class="filter-trigger-input" type="text" value="全部产品" placeholder="搜索产品" autocomplete="off">
+                  <span class="filter-trigger-arrow">▼</span>
+                </div>
+                <div id="outerDimensionProductFilterPanel" class="filter-panel">
+                  <div class="filter-panel-actions">
+                    <button type="button" data-filter-action="select-all" data-filter-kind="product" data-filter-scope="outer-dimension">全选</button>
+                    <button type="button" data-filter-action="clear" data-filter-kind="product" data-filter-scope="outer-dimension">清空</button>
+                  </div>
+                  <div id="outerDimensionProductFilterOptions" class="filter-options"></div>
+                </div>
+              </div>
             </div>
           </div>
-          <div id="outerDimensionTable"></div>
         </div>
+        <div class="subtab-toolbar">
+          <div class="tab-list" id="outerDimensionTabs" role="tablist" aria-label="站外维度分析切换">
+            <button class="subtab-button active" type="button" data-outer-dimension-tab="categoryGroup" role="tab" aria-selected="true">板块</button>
+            <button class="subtab-button" type="button" data-outer-dimension-tab="adForm" role="tab" aria-selected="false">广告形式</button>
+            <button class="subtab-button" type="button" data-outer-dimension-tab="audience" role="tab" aria-selected="false">人群</button>
+            <button class="subtab-button" type="button" data-outer-dimension-tab="targeting" role="tab" aria-selected="false">定向</button>
+            <button class="subtab-button" type="button" data-outer-dimension-tab="creativeType" role="tab" aria-selected="false">素材类型</button>
+          </div>
+        </div>
+        <div id="outerDimensionTable"></div>
       </section>
     </div>
 
@@ -1808,6 +1854,13 @@
       categorySearch: '',
       productSearch: ''
     };
+    const outerDimensionFilterState = {
+      scope: 'category',
+      categories: [],
+      products: [],
+      categorySearch: '',
+      productSearch: ''
+    };
     const spTtFilterState = {
       categories: [],
       products: [],
@@ -2089,6 +2142,14 @@
       return outerFilterState.products;
     }
 
+    function getOuterDimensionSelectedCategories() {
+      return outerDimensionFilterState.categories;
+    }
+
+    function getOuterDimensionSelectedProducts() {
+      return outerDimensionFilterState.products;
+    }
+
     function getRowProductLabel(row) {
       const candidates = [
         row?.product,
@@ -2126,6 +2187,25 @@
       ];
       return [...new Set(sourceRows
         .filter(row => outerMatchesSelectedCategory(row))
+        .map(row => getRowProductLabel(row))
+        .filter(isRecognizedFilterValue))]
+        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function getOuterDimensionCategoryOptions() {
+      return [...new Set([
+        ...(productTrendData.outer || []).map(row => getRowProductCategory(row) || row?.category || ''),
+        ...(productTrendData.brand || []).map(row => getRowProductCategory(row) || row?.category || '')
+      ].filter(isRecognizedFilterValue))].sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function getOuterDimensionProductOptions() {
+      const sourceRows = [
+        ...(productTrendData.outer || []),
+        ...(productTrendData.brand || [])
+      ];
+      return [...new Set(sourceRows
+        .filter(row => outerDimensionMatchesSelectedCategory(row))
         .map(row => getRowProductLabel(row))
         .filter(isRecognizedFilterValue))]
         .sort((left, right) => left.localeCompare(right, 'zh-CN'));
@@ -2379,6 +2459,14 @@
       return !outerFilterState.products.length;
     }
 
+    function isAllOuterDimensionCategoriesSelected() {
+      return !outerDimensionFilterState.categories.length;
+    }
+
+    function isAllOuterDimensionProductsSelected() {
+      return !outerDimensionFilterState.products.length;
+    }
+
     function buildFilterSummary(selectedValues, allLabel) {
       if (!selectedValues.length) return allLabel;
       if (selectedValues.length === 1) return selectedValues[0];
@@ -2416,6 +2504,20 @@
       const summary = kind === 'category'
         ? buildFilterSummary(getOuterSelectedCategories(), '全部品类')
         : buildFilterSummary(getOuterSelectedProducts(), '全部产品');
+      input.value = isOpen ? searchValue : summary;
+    }
+
+    function syncOuterDimensionFilterTriggerInput(kind) {
+      const inputId = kind === 'category' ? 'outerDimensionCategoryFilterInput' : 'outerDimensionProductFilterInput';
+      const wrapperId = kind === 'category' ? 'outerDimensionCategoryFilterWrap' : 'outerDimensionProductFilterWrap';
+      const input = document.getElementById(inputId);
+      const wrapper = document.getElementById(wrapperId);
+      if (!input || !wrapper) return;
+      const isOpen = wrapper.classList.contains('open');
+      const searchValue = kind === 'category' ? outerDimensionFilterState.categorySearch : outerDimensionFilterState.productSearch;
+      const summary = kind === 'category'
+        ? buildFilterSummary(getOuterDimensionSelectedCategories(), '全部品类')
+        : buildFilterSummary(getOuterDimensionSelectedProducts(), '全部产品');
       input.value = isOpen ? searchValue : summary;
     }
 
@@ -2547,6 +2649,40 @@
       syncOuterFilterTriggerInput('product');
     }
 
+    function populateOuterDimensionCategoryFilter() {
+      const container = document.getElementById('outerDimensionCategoryFilterOptions');
+      if (!container) return;
+      const visibleOptions = filterOptionList(getOuterDimensionCategoryOptions(), outerDimensionFilterState.categorySearch, '全部品类');
+      const selectedCategories = getOuterDimensionSelectedCategories();
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(category => {
+        const checked = category === '全部品类' ? !selectedCategories.length : selectedCategories.includes(category);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${category}" ${checked ? 'checked' : ''}>
+            <span>${category}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的品类</div>';
+      syncOuterDimensionFilterTriggerInput('category');
+    }
+
+    function populateOuterDimensionProductFilter() {
+      const container = document.getElementById('outerDimensionProductFilterOptions');
+      if (!container) return;
+      const visibleOptions = filterOptionList(getOuterDimensionProductOptions(), outerDimensionFilterState.productSearch, '全部产品');
+      const selectedProducts = getOuterDimensionSelectedProducts();
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(product => {
+        const checked = product === '全部产品' ? !selectedProducts.length : selectedProducts.includes(product);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${product}" ${checked ? 'checked' : ''}>
+            <span>${product}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
+      syncOuterDimensionFilterTriggerInput('product');
+    }
+
     function populateSpTtCategoryFilter() {
       const container = document.getElementById('spTtCategoryFilterOptions');
       if (!container) return;
@@ -2660,6 +2796,11 @@
       outerFilterState.products = outerFilterState.products.filter(product => allowed.has(product));
     }
 
+    function normalizeOuterDimensionSelectedProducts() {
+      const allowed = new Set(getOuterDimensionProductOptions());
+      outerDimensionFilterState.products = outerDimensionFilterState.products.filter(product => allowed.has(product));
+    }
+
     function setOuterSelectedCategory(category, shouldRender = true) {
       const nextCategories = category === '全部品类'
         ? []
@@ -2696,6 +2837,36 @@
         renderOuterStructureTable();
         renderOuterProductStructureTable();
       }
+    }
+
+    function setOuterDimensionSelectedCategory(category, shouldRender = true) {
+      const nextCategories = category === '全部品类'
+        ? []
+        : (() => {
+            const current = new Set(getOuterDimensionSelectedCategories());
+            if (current.has(category)) current.delete(category);
+            else current.add(category);
+            return [...current];
+          })();
+      outerDimensionFilterState.categories = nextCategories;
+      normalizeOuterDimensionSelectedProducts();
+      populateOuterDimensionCategoryFilter();
+      populateOuterDimensionProductFilter();
+      if (shouldRender) renderOuterDimensionTable();
+    }
+
+    function setOuterDimensionSelectedProduct(product, shouldRender = true) {
+      const nextProducts = product === '全部产品'
+        ? []
+        : (() => {
+            const current = new Set(getOuterDimensionSelectedProducts());
+            if (current.has(product)) current.delete(product);
+            else current.add(product);
+            return [...current];
+          })();
+      outerDimensionFilterState.products = nextProducts;
+      populateOuterDimensionProductFilter();
+      if (shouldRender) renderOuterDimensionTable();
     }
 
     function setSpTtSelectedCategory(category, shouldRender = true) {
@@ -2771,6 +2942,18 @@
       return [];
     }
 
+    function getVisibleOuterDimensionFilterOptions(kind) {
+      if (kind === 'category') {
+        return filterOptionList(getOuterDimensionCategoryOptions(), outerDimensionFilterState.categorySearch, '全部品类')
+          .filter(option => option !== '全部品类');
+      }
+      if (kind === 'product') {
+        return filterOptionList(getOuterDimensionProductOptions(), outerDimensionFilterState.productSearch, '全部产品')
+          .filter(option => option !== '全部产品');
+      }
+      return [];
+    }
+
     function applyOuterFilterBulk(kind, action) {
       if (kind === 'category') {
         outerFilterState.categories = action === 'select-all'
@@ -2789,6 +2972,24 @@
       renderOuterBreakdownTable();
       renderOuterStructureTable();
       renderOuterProductStructureTable();
+    }
+
+    function applyOuterDimensionFilterBulk(kind, action) {
+      if (kind === 'category') {
+        outerDimensionFilterState.categories = action === 'select-all'
+          ? [...new Set([...(getOuterDimensionSelectedCategories()), ...getVisibleOuterDimensionFilterOptions('category')])]
+          : [];
+        normalizeOuterDimensionSelectedProducts();
+        populateOuterDimensionCategoryFilter();
+        populateOuterDimensionProductFilter();
+      }
+      if (kind === 'product') {
+        outerDimensionFilterState.products = action === 'select-all'
+          ? [...new Set([...(getOuterDimensionSelectedProducts()), ...getVisibleOuterDimensionFilterOptions('product')])]
+          : [];
+        populateOuterDimensionProductFilter();
+      }
+      renderOuterDimensionTable();
     }
 
     function applySpTtFilterBulk(kind, action) {
@@ -2827,6 +3028,10 @@
       outerFilterState.productSearch = '';
       populateOuterCategoryFilter();
       populateOuterProductFilter();
+      outerDimensionFilterState.categorySearch = '';
+      outerDimensionFilterState.productSearch = '';
+      populateOuterDimensionCategoryFilter();
+      populateOuterDimensionProductFilter();
       spTtFilterState.categorySearch = '';
       spTtFilterState.productSearch = '';
       populateSpTtCategoryFilter();
@@ -2869,6 +3074,8 @@
       const productTrigger = document.getElementById('productFilterTrigger');
       const outerCategoryTrigger = document.getElementById('outerCategoryFilterTrigger');
       const outerProductTrigger = document.getElementById('outerProductFilterTrigger');
+      const outerDimensionCategoryTrigger = document.getElementById('outerDimensionCategoryFilterTrigger');
+      const outerDimensionProductTrigger = document.getElementById('outerDimensionProductFilterTrigger');
       const spTtCategoryTrigger = document.getElementById('spTtCategoryFilterTrigger');
       const spTtProductTrigger = document.getElementById('spTtProductFilterTrigger');
       const jumpButtons = document.querySelectorAll('.filter-jump-button');
@@ -2877,6 +3084,8 @@
       const productOptions = document.getElementById('productFilterOptions');
       const outerCategoryOptions = document.getElementById('outerCategoryFilterOptions');
       const outerProductOptions = document.getElementById('outerProductFilterOptions');
+      const outerDimensionCategoryOptions = document.getElementById('outerDimensionCategoryFilterOptions');
+      const outerDimensionProductOptions = document.getElementById('outerDimensionProductFilterOptions');
       const spTtCategoryOptions = document.getElementById('spTtCategoryFilterOptions');
       const spTtProductOptions = document.getElementById('spTtProductFilterOptions');
       const materialFilterEntries = materialFilterConfigs.map(config => ({
@@ -2890,6 +3099,8 @@
       const productInput = document.getElementById('productFilterInput');
       const outerCategoryInput = document.getElementById('outerCategoryFilterInput');
       const outerProductInput = document.getElementById('outerProductFilterInput');
+      const outerDimensionCategoryInput = document.getElementById('outerDimensionCategoryFilterInput');
+      const outerDimensionProductInput = document.getElementById('outerDimensionProductFilterInput');
       const spTtCategoryInput = document.getElementById('spTtCategoryFilterInput');
       const spTtProductInput = document.getElementById('spTtProductFilterInput');
 
@@ -2934,6 +3145,18 @@
         outerProductTrigger.addEventListener('click', event => {
           event.stopPropagation();
           toggleFilterDropdown('outerProductFilterWrap');
+        });
+      }
+      if (outerDimensionCategoryTrigger) {
+        outerDimensionCategoryTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('outerDimensionCategoryFilterWrap');
+        });
+      }
+      if (outerDimensionProductTrigger) {
+        outerDimensionProductTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('outerDimensionProductFilterWrap');
         });
       }
       if (spTtCategoryTrigger) {
@@ -2995,6 +3218,22 @@
           setOuterSelectedProduct(input.value);
         });
         outerProductOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (outerDimensionCategoryOptions) {
+        outerDimensionCategoryOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setOuterDimensionSelectedCategory(input.value);
+        });
+        outerDimensionCategoryOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (outerDimensionProductOptions) {
+        outerDimensionProductOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setOuterDimensionSelectedProduct(input.value);
+        });
+        outerDimensionProductOptions.addEventListener('click', event => event.stopPropagation());
       }
       if (spTtCategoryOptions) {
         spTtCategoryOptions.addEventListener('change', event => {
@@ -3086,6 +3325,32 @@
           populateOuterProductFilter();
         });
       }
+      if (outerDimensionCategoryInput) {
+        outerDimensionCategoryInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        outerDimensionCategoryInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('outerDimensionCategoryFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('outerDimensionCategoryFilterWrap');
+        });
+        outerDimensionCategoryInput.addEventListener('input', event => {
+          outerDimensionFilterState.categorySearch = event.target.value;
+          populateOuterDimensionCategoryFilter();
+        });
+      }
+      if (outerDimensionProductInput) {
+        outerDimensionProductInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        outerDimensionProductInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('outerDimensionProductFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('outerDimensionProductFilterWrap');
+        });
+        outerDimensionProductInput.addEventListener('input', event => {
+          outerDimensionFilterState.productSearch = event.target.value;
+          populateOuterDimensionProductFilter();
+        });
+      }
       if (spTtCategoryInput) {
         spTtCategoryInput.addEventListener('click', event => {
           event.stopPropagation();
@@ -3134,6 +3399,7 @@
           const scope = button.getAttribute('data-filter-scope') || 'store';
           if (!action || !kind) return;
           if (scope === 'outer') applyOuterFilterBulk(kind, action);
+          else if (scope === 'outer-dimension') applyOuterDimensionFilterBulk(kind, action);
           else if (scope === 'sp-tt') applySpTtFilterBulk(kind, action);
           else if (scope === 'material') applyMaterialFilterBulk(kind, action);
           else applyFilterBulk(kind, action);
@@ -3178,6 +3444,18 @@
       const rowProduct = getRowProductLabel(row);
       if (!rowProduct) return isAllOuterProductsSelected();
       return isAllOuterProductsSelected() || getOuterSelectedProducts().includes(rowProduct);
+    }
+
+    function outerDimensionMatchesSelectedCategory(row) {
+      const rowCategory = getRowProductCategory(row) || row?.category || '';
+      if (!rowCategory) return isAllOuterDimensionCategoriesSelected();
+      return isAllOuterDimensionCategoriesSelected() || getOuterDimensionSelectedCategories().includes(rowCategory);
+    }
+
+    function outerDimensionMatchesSelectedProduct(row) {
+      const rowProduct = getRowProductLabel(row);
+      if (!rowProduct) return isAllOuterDimensionProductsSelected();
+      return isAllOuterDimensionProductsSelected() || getOuterDimensionSelectedProducts().includes(rowProduct);
     }
 
     function filterMainRows(rows, range) {
@@ -4387,8 +4665,19 @@
       });
     }
 
+    function getOuterDimensionRows(range) {
+      return [
+        ...filterRows(productTrendData.outer || [], range),
+        ...filterRows(productTrendData.brand || [], range)
+      ].filter(row =>
+        outerBreakdownFormOrder.includes(row.ad_form2 || '') &&
+        outerDimensionMatchesSelectedCategory(row) &&
+        outerDimensionMatchesSelectedProduct(row)
+      );
+    }
+
     function buildOuterDimensionSummary(range, dimensionKey) {
-      const rows = getOuterBreakdownRows(range);
+      const rows = getOuterDimensionRows(range);
       const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
       const dimensionMap = new Map();
 
@@ -4466,10 +4755,24 @@
         const isActive = button.dataset.outerDimensionTab === outerDimensionAnalysisState.activeTab;
         button.classList.toggle('active', isActive);
         button.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        button.addEventListener('click', () => {
+        button.onclick = () => {
           outerDimensionAnalysisState.activeTab = button.dataset.outerDimensionTab || 'categoryGroup';
           renderOuterDimensionTable();
-        });
+        };
+      });
+    }
+
+    function bindOuterDimensionScopeTabs() {
+      const root = document.getElementById('outerDimensionScopeTabs');
+      if (!root) return;
+      root.querySelectorAll('[data-outer-dimension-scope]').forEach(button => {
+        const isActive = button.dataset.outerDimensionScope === outerDimensionFilterState.scope;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        button.onclick = () => {
+          outerDimensionFilterState.scope = button.dataset.outerDimensionScope || 'category';
+          renderOuterDimensionTable();
+        };
       });
     }
 
@@ -4483,11 +4786,19 @@
       const root = document.getElementById('outerDimensionTable');
       if (!root) return;
       bindOuterDimensionTabs();
+      bindOuterDimensionScopeTabs();
+      populateOuterDimensionCategoryFilter();
+      populateOuterDimensionProductFilter();
 
       const queryRange = getRange('qStart', 'qEnd');
       const compareRange = getRange('cStart', 'cEnd');
       const dimensionKey = outerDimensionAnalysisState.activeTab || 'categoryGroup';
       const activeTab = outerDimensionTabDefinitions.find(item => item.key === dimensionKey) || outerDimensionTabDefinitions[0];
+      const scopeLabel = outerDimensionFilterState.scope === 'product' ? '产品' : '品类';
+      const productFilterControl = document.getElementById('outerDimensionProductFilterControl');
+      if (productFilterControl) {
+        productFilterControl.style.display = outerDimensionFilterState.scope === 'product' ? '' : 'none';
+      }
       const currentSummary = buildOuterDimensionSummary(queryRange, dimensionKey);
       const compareSummary = buildOuterDimensionSummary(compareRange, dimensionKey);
       const compareMap = new Map(compareSummary.items.map(item => [item.name, item]));
@@ -4508,8 +4819,8 @@
         <div class="outer-structure-card">
           <div class="outer-structure-head">
             <div class="outer-structure-head-main">
-              <strong>${activeTab.label}分析</strong>
-              <span>按 ${activeTab.label} 维度汇总站外投放表现，口径来自 ALL_data</span>
+              <strong>${scopeLabel}${activeTab.label}分析</strong>
+              <span>按 ${scopeLabel}筛选范围查看 ${activeTab.label} 维度汇总站外投放表现，口径来自 ALL_data</span>
             </div>
           </div>
           <div class="table-wrap">
