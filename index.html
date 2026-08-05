@@ -926,8 +926,12 @@
       box-sizing: border-box;
       pointer-events: none;
     }
-    .material-filter-summary {
+    .material-filter-summary-row {
+      width: 100%;
       margin-top: 10px;
+    }
+    .material-filter-summary {
+      width: 100%;
       padding: 10px 14px;
       border: 1px solid #dbe6ef;
       border-radius: 12px;
@@ -935,9 +939,47 @@
       color: #2b4662;
       font-size: 14px;
       line-height: 1.5;
+      box-sizing: border-box;
     }
     .material-filter-summary strong {
       color: #102a43;
+    }
+    .material-filter-chip-list {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .material-filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid #d7e6f2;
+      border-radius: 999px;
+      background: #f7fbff;
+      color: #16324d;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+    .material-filter-chip-close {
+      width: 18px;
+      height: 18px;
+      border: 0;
+      border-radius: 999px;
+      background: #dbe8f2;
+      color: #35516b;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .material-filter-chip-close:hover {
+      background: #c9ddec;
     }
     .category-cell-main {
       display: block;
@@ -1365,7 +1407,9 @@
             </div>
           </div>
         </div>
-        <div id="materialFilterSummary" class="material-filter-summary">已筛选项：当前无筛选</div>
+        <div class="material-filter-summary-row">
+          <div id="materialFilterSummary" class="material-filter-summary">已筛选项：当前无筛选</div>
+        </div>
       </div>
       <section id="materialCategorySection">
         <h2>素材监控</h2>
@@ -1983,17 +2027,27 @@
     function renderMaterialFilterSummary() {
       const container = document.getElementById('materialFilterSummary');
       if (!container) return;
-      const parts = materialFilterConfigs
-        .map(config => {
-          const values = getSelectedMaterialFilterValues(config.key);
-          if (!values.length) return '';
-          const label = config.allLabel.replace('全部', '');
-          return `${label}：${values.join('、')}`;
-        })
-        .filter(Boolean);
-      container.innerHTML = parts.length
-        ? `<strong>已筛选项：</strong>${parts.join('；')}`
+      const chips = materialFilterConfigs.flatMap(config => {
+        const values = getSelectedMaterialFilterValues(config.key);
+        const label = config.allLabel.replace('全部', '');
+        return values.map(value => ({ kind: config.key, label, value }));
+      });
+      container.innerHTML = chips.length
+        ? `<strong>已筛选项：</strong><span class="material-filter-chip-list">${chips.map(chip => `
+            <span class="material-filter-chip">
+              <span>${chip.label}：${chip.value}</span>
+              <button class="material-filter-chip-close" type="button" data-material-filter-remove="${chip.kind}" data-material-filter-value="${chip.value}" aria-label="关闭 ${chip.label} ${chip.value}">×</button>
+            </span>
+          `).join('')}</span>`
         : '<strong>已筛选项：</strong>当前无筛选';
+      container.querySelectorAll('[data-material-filter-remove]').forEach(button => {
+        button.addEventListener('click', () => {
+          setSelectedMaterialFilter(
+            button.dataset.materialFilterRemove || '',
+            button.dataset.materialFilterValue || ''
+          );
+        });
+      });
     }
 
     function normalizeSelectedMaterialFilters() {
