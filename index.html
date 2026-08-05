@@ -3358,6 +3358,37 @@
       });
     }
 
+    function isMaterialAbsoluteDeltaMetric(metricKey) {
+      return metricKey === 'spendShare'
+        || metricKey === 'roi'
+        || metricKey === 'cvr'
+        || metricKey === 'ctr'
+        || metricKey === 'cpm';
+    }
+
+    function formatMaterialMetricDelta(metricKey, currentValue, compareValue) {
+      if (compareValue === null || compareValue === undefined) return { text: '/', className: '' };
+      if (isMaterialAbsoluteDeltaMetric(metricKey)) {
+        if (metricKey === 'spendShare' || metricKey === 'cvr' || metricKey === 'ctr') {
+          return formatCategoryDelta(
+            formatOuterBreakdownValueDelta(
+              currentValue,
+              compareValue,
+              value => `${(Number(value || 0) * 100).toFixed(2)}%`
+            )
+          );
+        }
+        return formatCategoryDelta(
+          formatOuterBreakdownValueDelta(
+            currentValue,
+            compareValue,
+            value => Number(value || 0).toFixed(2)
+          )
+        );
+      }
+      return formatCategoryDelta(formatDelta(currentValue, compareValue));
+    }
+
     function updateMaterialTableSort(dimensionKey, sortKey) {
       const tableState = getMaterialTableState(dimensionKey);
       if (tableState.sortKey === sortKey) {
@@ -4301,10 +4332,15 @@
 
     function buildMaterialMonitorTable(dimensionKey) {
       const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
       const tableState = getMaterialTableState(dimensionKey);
       const items = dimensionKey === 'adType'
         ? buildMaterialAdTypeSummary(queryRange)
         : sortMaterialSummaryItems(buildMaterialMonitorSummary(queryRange, dimensionKey), tableState);
+      const compareItems = dimensionKey === 'adType'
+        ? buildMaterialAdTypeSummary(compareRange)
+        : buildMaterialMonitorSummary(compareRange, dimensionKey);
+      const compareMap = Object.fromEntries(compareItems.map(item => [item.name, item]));
       const metricHeaders = [{ key: 'name', label: materialMonitorDimensionLabels[dimensionKey] || '维度' }, ...materialMonitorMetricDefinitions];
 
       if (!items.length) {
@@ -4365,16 +4401,22 @@
               </thead>
               <tbody>
                 ${items.map(item => {
+                  const compare = compareMap[item.name] || {};
                   return `
                     <tr class="${item.name === '总计' ? ' total-row' : ''}">
                       <td class="category-name">
                         <span class="material-static-label">${item.name}</span>
                       </td>
-                      ${materialMonitorMetricDefinitions.map(metric => `
-                        <td class="num">
-                          <span class="category-cell-main">${formatMetricValue({ ...metric, value: item[metric.key] || 0 })}</span>
-                        </td>
-                      `).join('')}
+                      ${materialMonitorMetricDefinitions.map(metric => {
+                        const value = item[metric.key] || 0;
+                        const delta = formatMaterialMetricDelta(metric.key, item[metric.key], compare[metric.key]);
+                        return `
+                          <td class="num">
+                            <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                            <span class="category-cell-delta ${delta.className || 'empty'}">${delta.text}</span>
+                          </td>
+                        `;
+                      }).join('')}
                     </tr>
                   `;
                 }).join('')}
