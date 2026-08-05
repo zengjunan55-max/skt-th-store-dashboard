@@ -1424,6 +1424,21 @@
       <section id="materialCategorySection">
         <h2>素材监控</h2>
         <p class="small">默认汇总图文广告与视频广告，按当前日期范围统计素材投放表现。</p>
+        <div class="compare-grid">
+          <div id="materialCompareCards"></div>
+          <div class="trend-card">
+            <div class="trend-head">
+              <div>
+                <strong>素材趋势</strong>
+                <span class="small">点击上方卡片后，可在同一张趋势图中对比素材核心指标的本期与环比走势。</span>
+              </div>
+            </div>
+            <div class="trend-wrap">
+              <canvas id="materialTrendChart"></canvas>
+              <div id="materialTrendTooltip" class="trend-tooltip"></div>
+            </div>
+          </div>
+        </div>
         <div id="materialAdTypeTable"></div>
         <div id="materialCategoryTable"></div>
       </section>
@@ -1574,8 +1589,18 @@
       { key: 'gap', label: 'GAP', type: 'count', axisGroup: 'right', chartType: 'line', currentColor: '#b9770e', compareColor: '#e7c27d' },
       { key: 'ratio', label: '倍差', type: 'multiple', axisGroup: 'ratio', chartType: 'line', currentColor: '#d95f43', compareColor: '#f0b3a5' }
     ];
+    const materialTrendMetricDefinitions = [
+      { key: 'spend', label: '花费', type: 'money2', axisGroup: 'left', chartType: 'line', currentColor: '#1e6f8c', compareColor: '#8fc4d2' },
+      { key: 'gmv', label: 'GMV', type: 'money2', axisGroup: 'left', chartType: 'line', currentColor: '#2f6fdd', compareColor: '#a8c4f4' },
+      { key: 'clicks', label: '点击', type: 'count', axisGroup: 'left', chartType: 'line', currentColor: '#3f8f56', compareColor: '#a9d6b4' },
+      { key: 'roi', label: 'ROI', type: 'roi', axisGroup: 'right', chartType: 'line', currentColor: '#d95f43', compareColor: '#f0b3a5' },
+      { key: 'cpm', label: 'CPM', type: 'money2', axisGroup: 'right', chartType: 'line', currentColor: '#b9770e', compareColor: '#e7c27d' },
+      { key: 'cvr', label: 'CVR', type: 'percent', axisGroup: 'right', chartType: 'line', currentColor: '#8e44ad', compareColor: '#cfb0e0' },
+      { key: 'ctr', label: 'CTR', type: 'percent', axisGroup: 'right', chartType: 'line', currentColor: '#c2410c', compareColor: '#fdba74' }
+    ];
     const metricDefinitionMap = Object.fromEntries(metricDefinitions.map(metric => [metric.key, metric]));
     const spTtTrendMetricDefinitionMap = Object.fromEntries(spTtTrendMetricDefinitions.map(metric => [metric.key, metric]));
+    const materialTrendMetricDefinitionMap = Object.fromEntries(materialTrendMetricDefinitions.map(metric => [metric.key, metric]));
     const storeTrendState = {
       selectedMetricKeys: ['gmv'],
       hiddenSeriesKeys: [],
@@ -1588,6 +1613,16 @@
     };
     const spTtTrendState = {
       selectedMetricKeys: ['totalSales'],
+      hiddenSeriesKeys: [],
+      activeRows: [],
+      hoverIndex: null,
+      geometry: null,
+      legendItems: [],
+      revealAnimations: {},
+      animationFrameId: null
+    };
+    const materialTrendState = {
+      selectedMetricKeys: ['spend'],
       hiddenSeriesKeys: [],
       activeRows: [],
       hoverIndex: null,
@@ -3381,6 +3416,517 @@
       return formatCategoryDelta(formatDelta(currentValue, compareValue));
     }
 
+    function computeMaterialTrendMetrics(range) {
+      const rows = getMaterialMonitorRows(range);
+      const totals = rows.reduce((acc, row) => {
+        acc.spend += Number(row.spend_usd) || 0;
+        acc.gmv += Number(row.conversion_value) || 0;
+        acc.orders += Number(row.orders) || 0;
+        acc.clicks += Number(row.clicks) || 0;
+        acc.impressions += Number(row.impressions) || 0;
+        return acc;
+      }, {
+        spend: 0,
+        gmv: 0,
+        orders: 0,
+        clicks: 0,
+        impressions: 0
+      });
+      return {
+        spend: totals.spend,
+        gmv: totals.gmv,
+        clicks: totals.clicks,
+        roi: totals.spend ? totals.gmv / totals.spend : 0,
+        cpm: totals.impressions ? (totals.spend / totals.impressions) * 1000 : 0,
+        cvr: totals.clicks ? totals.orders / totals.clicks : 0,
+        ctr: totals.impressions ? totals.clicks / totals.impressions : 0
+      };
+    }
+
+    function aggregateMaterialRowsByDate(rows) {
+      const map = {};
+      rows.forEach(row => {
+        if (!row?.date) return;
+        if (!map[row.date]) {
+          map[row.date] = {
+            date: row.date,
+            spend: 0,
+            gmv: 0,
+            orders: 0,
+            clicks: 0,
+            impressions: 0
+          };
+        }
+        const entry = map[row.date];
+        entry.spend += Number(row.spend_usd) || 0;
+        entry.gmv += Number(row.conversion_value) || 0;
+        entry.orders += Number(row.orders) || 0;
+        entry.clicks += Number(row.clicks) || 0;
+        entry.impressions += Number(row.impressions) || 0;
+      });
+      return map;
+    }
+
+    function buildMaterialTrendMetricMap(range) {
+      return aggregateMaterialRowsByDate(getMaterialMonitorRows(range));
+    }
+
+    function getMaterialTrendMetricSeriesValue(metricKey, row) {
+      if (!row) return null;
+      if (metricKey === 'spend') return row.spend;
+      if (metricKey === 'gmv') return row.gmv;
+      if (metricKey === 'clicks') return row.clicks;
+      if (metricKey === 'roi') return row.spend ? row.gmv / row.spend : 0;
+      if (metricKey === 'cpm') return row.impressions ? (row.spend / row.impressions) * 1000 : 0;
+      if (metricKey === 'cvr') return row.clicks ? row.orders / row.clicks : 0;
+      if (metricKey === 'ctr') return row.impressions ? row.clicks / row.impressions : 0;
+      return null;
+    }
+
+    function buildMaterialTrendRows() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentDates = buildDateList(queryRange);
+      const compareDates = buildDateList(compareRange);
+      const rowCount = Math.max(currentDates.length, compareDates.length);
+      const currentMap = buildMaterialTrendMetricMap(queryRange);
+      const compareMap = buildMaterialTrendMetricMap(compareRange);
+
+      return Array.from({ length: rowCount }, (_, index) => {
+        const currentDate = currentDates[index] || '';
+        const compareDate = compareDates[index] || '';
+        const currentValues = {};
+        const compareValues = {};
+
+        materialTrendMetricDefinitions.forEach(metric => {
+          currentValues[metric.key] = getMaterialTrendMetricSeriesValue(metric.key, currentMap[currentDate]);
+          compareValues[metric.key] = getMaterialTrendMetricSeriesValue(metric.key, compareMap[compareDate]);
+        });
+
+        return {
+          label: currentDate ? currentDate.slice(5) : compareDate.slice(5),
+          currentDate,
+          compareDate,
+          currentValues,
+          compareValues
+        };
+      });
+    }
+
+    function isMaterialTrendSeriesVisible(metricKey, valuesKey) {
+      return !materialTrendState.hiddenSeriesKeys.includes(getSeriesKey(metricKey, valuesKey));
+    }
+
+    function toggleMaterialTrendSeriesVisibility(metricKey, valuesKey) {
+      const seriesKey = getSeriesKey(metricKey, valuesKey);
+      if (materialTrendState.hiddenSeriesKeys.includes(seriesKey)) {
+        materialTrendState.hiddenSeriesKeys = materialTrendState.hiddenSeriesKeys.filter(key => key !== seriesKey);
+      } else {
+        materialTrendState.hiddenSeriesKeys = [...materialTrendState.hiddenSeriesKeys, seriesKey];
+      }
+    }
+
+    function startMaterialTrendSeriesReveal(metricKey, valuesKey) {
+      materialTrendState.revealAnimations[getSeriesKey(metricKey, valuesKey)] = null;
+    }
+
+    function startMaterialTrendMetricReveal(metricKey) {
+      startMaterialTrendSeriesReveal(metricKey, 'currentValues');
+      startMaterialTrendSeriesReveal(metricKey, 'compareValues');
+    }
+
+    function getMaterialTrendSeriesRevealProgress(metricKey, valuesKey, now) {
+      const seriesKey = getSeriesKey(metricKey, valuesKey);
+      if (!(seriesKey in materialTrendState.revealAnimations)) return 1;
+      const startTime = materialTrendState.revealAnimations[seriesKey];
+      if (startTime === null) {
+        materialTrendState.revealAnimations[seriesKey] = now;
+        return 0;
+      }
+      const progress = Math.min(1, (now - startTime) / trendRevealDuration);
+      if (progress >= 1) {
+        delete materialTrendState.revealAnimations[seriesKey];
+        return 1;
+      }
+      return progress;
+    }
+
+    function scheduleMaterialTrendAnimationFrame() {
+      if (materialTrendState.animationFrameId !== null) return;
+      materialTrendState.animationFrameId = requestAnimationFrame(() => {
+        materialTrendState.animationFrameId = null;
+        renderMaterialTrend();
+      });
+    }
+
+    function prepareMaterialTrendCanvas() {
+      const canvas = document.getElementById('materialTrendChart');
+      const rect = canvas.getBoundingClientRect();
+      const cssWidth = Math.max(320, Math.round(rect.width || canvas.clientWidth || 1280));
+      const cssHeight = Math.max(420, Math.round(rect.height || canvas.clientHeight || 420));
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const targetWidth = Math.round(cssWidth * dpr);
+      const targetHeight = Math.round(cssHeight * dpr);
+
+      if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { canvas, ctx, width: cssWidth, height: cssHeight };
+    }
+
+    function formatMaterialTrendCardDelta(metricKey, currentValue, compareValue) {
+      if (isMaterialAbsoluteDeltaMetric(metricKey)) {
+        const delta = formatMaterialMetricDelta(metricKey, currentValue, compareValue);
+        return delta.text === '/' ? { text: '/', className: '' } : delta;
+      }
+      return formatDelta(currentValue, compareValue);
+    }
+
+    function renderMaterialCompareCards() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentMetrics = computeMaterialTrendMetrics(queryRange);
+      const compareMetrics = computeMaterialTrendMetrics(compareRange);
+      const container = document.getElementById('materialCompareCards');
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="cmp-cards">
+          ${materialTrendMetricDefinitions.map(metric => {
+            const delta = formatMaterialTrendCardDelta(metric.key, currentMetrics[metric.key], compareMetrics[metric.key]);
+            const isActive = materialTrendState.selectedMetricKeys.includes(metric.key);
+            return `
+              <div class="cmp-card ${isActive ? 'active' : ''}" data-material-trend-metric-key="${metric.key}">
+                <span>${metric.label}</span>
+                <b>${formatMetricValue({ ...metric, value: currentMetrics[metric.key] })}</b>
+                <small class="${delta.className || ''}">${delta.text}</small>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      container.querySelectorAll('.cmp-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const metricKey = card.dataset.materialTrendMetricKey;
+          if (materialTrendState.selectedMetricKeys.includes(metricKey)) {
+            if (materialTrendState.selectedMetricKeys.length > 1) {
+              materialTrendState.selectedMetricKeys = materialTrendState.selectedMetricKeys.filter(key => key !== metricKey);
+            }
+          } else {
+            materialTrendState.selectedMetricKeys = [...materialTrendState.selectedMetricKeys, metricKey];
+            startMaterialTrendMetricReveal(metricKey);
+          }
+          materialTrendState.hoverIndex = null;
+          renderMaterialTrendSection();
+        });
+      });
+    }
+
+    function renderMaterialTrend() {
+      const now = performance.now();
+      const selectedMetrics = materialTrendMetricDefinitions.filter(metric => materialTrendState.selectedMetricKeys.includes(metric.key));
+      const trendRows = buildMaterialTrendRows();
+      materialTrendState.activeRows = trendRows;
+
+      const { ctx, width, height } = prepareMaterialTrendCanvas();
+      const tooltip = document.getElementById('materialTrendTooltip');
+      const legendStartX = 88;
+      const legendStartY = 24;
+      const legendMaxWidth = Math.max(180, width - 176);
+      const legendItemsSource = selectedMetrics.flatMap(metric => ([
+        { metric, valuesKey: 'currentValues', label: `${metric.label} 本期`, color: metric.currentColor, dashed: false },
+        { metric, valuesKey: 'compareValues', label: `${metric.label} 环比`, color: metric.compareColor, dashed: true }
+      ]));
+
+      const renderLegend = () => {
+        const markerSize = 18;
+        const labelGap = 18;
+        const itemGap = 34;
+        const rowGap = 14;
+        const rowHeight = 22;
+        let cursorX = legendStartX;
+        let cursorY = legendStartY;
+        const legendItems = [];
+
+        ctx.save();
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        legendItemsSource.forEach(item => {
+          const textWidth = ctx.measureText(item.label).width;
+          const itemWidth = markerSize + labelGap + textWidth;
+          if (cursorX > legendStartX && cursorX + itemWidth > legendStartX + legendMaxWidth) {
+            cursorX = legendStartX;
+            cursorY += rowHeight + rowGap;
+          }
+
+          const isVisible = isMaterialTrendSeriesVisible(item.metric.key, item.valuesKey);
+          ctx.save();
+          ctx.globalAlpha = isVisible ? 1 : 0.35;
+          ctx.fillStyle = item.color;
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = 2.5;
+
+          if (item.dashed) ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(cursorX, cursorY);
+          ctx.lineTo(cursorX + markerSize - 2, cursorY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.arc(cursorX + (markerSize - 2) / 2, cursorY, item.metric.key === 'ctr' || item.metric.key === 'cvr' ? 2.8 : 3.2, 0, Math.PI * 2);
+          if (item.dashed) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.fill();
+          }
+
+          const textX = cursorX + markerSize + labelGap;
+          ctx.fillStyle = '#334155';
+          ctx.fillText(item.label, textX, cursorY);
+          if (!isVisible) {
+            ctx.strokeStyle = '#7c8aa0';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(textX, cursorY);
+            ctx.lineTo(textX + textWidth, cursorY);
+            ctx.stroke();
+          }
+          ctx.restore();
+
+          legendItems.push({
+            ...item,
+            x: cursorX,
+            y: cursorY - rowHeight / 2,
+            width: itemWidth,
+            height: rowHeight
+          });
+
+          cursorX += itemWidth + itemGap;
+        });
+
+        ctx.restore();
+        return { items: legendItems, height: legendItems.length ? (cursorY - legendStartY) + rowHeight : 0 };
+      };
+
+      const initialLegendLayout = renderLegend();
+      const padding = { top: Math.max(70, legendStartY + initialLegendLayout.height + 16), right: 88, bottom: 42, left: 88 };
+      const plotW = width - padding.left - padding.right;
+      const plotH = height - padding.top - padding.bottom;
+      const step = plotW / Math.max(1, trendRows.length - 1);
+      const leftMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'left').map(metric => metric.key);
+      const rightMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'right').map(metric => metric.key);
+      const leftRange = getAxisRange(trendRows, leftMetricKeys, { zeroBased: true });
+      const rightRange = getAxisRange(trendRows, rightMetricKeys, { zeroBased: false, minPaddingRatio: 0.18 });
+      const getX = index => padding.left + step * index;
+      const getY = (value, axisGroup) => {
+        const range = axisGroup === 'right' ? rightRange : leftRange;
+        const safeValue = value || 0;
+        const denominator = Math.max(0.000001, range.max - range.min);
+        return padding.top + plotH - ((safeValue - range.min) / denominator) * plotH;
+      };
+
+      materialTrendState.geometry = { padding, plotW, plotH, step, getX };
+      materialTrendState.legendItems = initialLegendLayout.items;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = '#d8dee8';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 4; i += 1) {
+        const y = padding.top + (plotH / 3) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+      }
+
+      if (leftMetricKeys.length) drawAxisLabels(ctx, leftRange.max, 'left', padding, plotW, plotH, value => metricNumber.format(value));
+      if (rightMetricKeys.length) drawAxisLabelsForRange(ctx, rightRange, 'right', padding, plotW, plotH, value => metricNumber.format(value));
+
+      function beginRevealClip(progress) {
+        if (progress >= 1) return;
+        const revealWidth = Math.max(0, Math.min(plotW, plotW * progress));
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(padding.left, padding.top, revealWidth, plotH);
+        ctx.clip();
+      }
+
+      function endRevealClip(progress) {
+        if (progress >= 1) return;
+        ctx.restore();
+      }
+
+      function drawLineMetric(metric) {
+        function drawSeries(valuesKey, color, dashed) {
+          if (!isMaterialTrendSeriesVisible(metric.key, valuesKey)) return;
+          const revealProgress = getMaterialTrendSeriesRevealProgress(metric.key, valuesKey, now);
+          ctx.save();
+          beginRevealClip(revealProgress);
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.lineWidth = metric.key === 'ctr' || metric.key === 'cvr' ? 2 : 3;
+          if (dashed) ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          let started = false;
+          trendRows.forEach((row, index) => {
+            const value = row[valuesKey][metric.key];
+            if (value === null || value === undefined) return;
+            const x = getX(index);
+            const y = getY(value, metric.axisGroup);
+            if (!started) {
+              ctx.moveTo(x, y);
+              started = true;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          trendRows.forEach((row, index) => {
+            const value = row[valuesKey][metric.key];
+            if (value === null || value === undefined) return;
+            const radius = metric.key === 'ctr' || metric.key === 'cvr' ? 3 : 4;
+            ctx.beginPath();
+            ctx.arc(getX(index), getY(value, metric.axisGroup), radius, 0, Math.PI * 2);
+            if (dashed) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fill();
+              ctx.strokeStyle = color;
+              ctx.lineWidth = metric.key === 'ctr' || metric.key === 'cvr' ? 1.5 : 2;
+              ctx.stroke();
+              ctx.fillStyle = color;
+            } else {
+              ctx.fill();
+            }
+          });
+          endRevealClip(revealProgress);
+          ctx.restore();
+        }
+
+        drawSeries('compareValues', metric.compareColor, true);
+        drawSeries('currentValues', metric.currentColor, false);
+      }
+
+      selectedMetrics.forEach(drawLineMetric);
+
+      if (materialTrendState.hoverIndex !== null && trendRows[materialTrendState.hoverIndex]) {
+        const hoverX = getX(materialTrendState.hoverIndex);
+        ctx.strokeStyle = 'rgba(23, 107, 135, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(hoverX, padding.top);
+        ctx.lineTo(hoverX, padding.top + plotH);
+        ctx.stroke();
+      } else {
+        tooltip.style.display = 'none';
+      }
+
+      ctx.fillStyle = '#65758b';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      trendRows.forEach((row, index) => {
+        ctx.fillText(row.label, getX(index), height - 12);
+      });
+
+      const finalLegendLayout = renderLegend();
+      materialTrendState.legendItems = finalLegendLayout.items;
+
+      if (Object.keys(materialTrendState.revealAnimations).length) scheduleMaterialTrendAnimationFrame();
+    }
+
+    function renderMaterialTrendSection() {
+      renderMaterialCompareCards();
+      renderMaterialTrend();
+    }
+
+    function updateMaterialTrendTooltip(clientX, clientY) {
+      const canvas = document.getElementById('materialTrendChart');
+      const tooltip = document.getElementById('materialTrendTooltip');
+      const geometry = materialTrendState.geometry;
+      if (!geometry || !materialTrendState.activeRows.length) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const rows = materialTrendState.activeRows;
+      const plotLeft = geometry.padding.left;
+      const plotRight = geometry.padding.left + geometry.plotW;
+      const plotTop = geometry.padding.top;
+      const plotBottom = geometry.padding.top + geometry.plotH;
+
+      if (x < plotLeft || x > plotRight || y < plotTop || y > plotBottom) {
+        materialTrendState.hoverIndex = null;
+        tooltip.style.display = 'none';
+        renderMaterialTrend();
+        return;
+      }
+
+      const index = Math.max(0, Math.min(rows.length - 1, Math.round((x - plotLeft) / Math.max(1, geometry.step))));
+      materialTrendState.hoverIndex = index;
+      renderMaterialTrend();
+
+      const row = rows[index];
+      const selectedMetrics = materialTrendMetricDefinitions.filter(metric => materialTrendState.selectedMetricKeys.includes(metric.key));
+      tooltip.innerHTML = `
+        <strong>本期 ${row.currentDate || '-'}</strong>
+        <span>环比 ${row.compareDate || '-'}</span>
+        ${selectedMetrics.map(metric => {
+          const currentValue = row.currentValues[metric.key];
+          const compareValue = row.compareValues[metric.key];
+          const currentText = currentValue === null || currentValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: currentValue });
+          const compareText = compareValue === null || compareValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: compareValue });
+          const parts = [];
+          if (isMaterialTrendSeriesVisible(metric.key, 'currentValues')) parts.push(`<span style="color:${metric.currentColor}">${metric.label} 本期: ${currentText}</span>`);
+          if (isMaterialTrendSeriesVisible(metric.key, 'compareValues')) parts.push(`<span style="color:${metric.compareColor}">${metric.label} 环比: ${compareText}</span>`);
+          return parts.join('');
+        }).join('')}
+      `;
+
+      const wrapRect = canvas.parentElement.getBoundingClientRect();
+      tooltip.style.display = 'block';
+      const left = Math.min(Math.max(clientX - wrapRect.left + 18, 8), wrapRect.width - tooltip.offsetWidth - 8);
+      const top = Math.min(Math.max(clientY - wrapRect.top - tooltip.offsetHeight - 18, 8), wrapRect.height - tooltip.offsetHeight - 8);
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    }
+
+    function hideMaterialTrendTooltip() {
+      materialTrendState.hoverIndex = null;
+      document.getElementById('materialTrendTooltip').style.display = 'none';
+      renderMaterialTrend();
+    }
+
+    function handleMaterialTrendCanvasClick(clientX, clientY) {
+      const canvas = document.getElementById('materialTrendChart');
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const hitLegendItem = materialTrendState.legendItems.find(item =>
+        x >= item.x && x <= item.x + item.width && y >= item.y && y <= item.y + item.height
+      );
+      if (!hitLegendItem) return;
+
+      const willShowSeries = materialTrendState.hiddenSeriesKeys.includes(getSeriesKey(hitLegendItem.metric.key, hitLegendItem.valuesKey));
+      toggleMaterialTrendSeriesVisibility(hitLegendItem.metric.key, hitLegendItem.valuesKey);
+      if (willShowSeries) startMaterialTrendSeriesReveal(hitLegendItem.metric.key, hitLegendItem.valuesKey);
+      materialTrendState.hoverIndex = null;
+      document.getElementById('materialTrendTooltip').style.display = 'none';
+      renderMaterialTrend();
+    }
+
     function updateMaterialTableSort(dimensionKey, sortKey) {
       const tableState = getMaterialTableState(dimensionKey);
       if (tableState.sortKey === sortKey) {
@@ -4469,6 +5015,7 @@
     }
 
     function renderMaterialMonitorSections() {
+      renderMaterialTrendSection();
       renderMaterialAdTypeTable();
       renderMaterialCategoryTable();
       renderMaterialProductTable();
@@ -7085,11 +7632,16 @@
       spTtTrendCanvas.addEventListener('mousemove', event => updateSpTtTrendTooltip(event.clientX, event.clientY));
       spTtTrendCanvas.addEventListener('mouseleave', hideSpTtTrendTooltip);
       spTtTrendCanvas.addEventListener('click', event => handleSpTtTrendCanvasClick(event.clientX, event.clientY));
+      const materialTrendCanvas = document.getElementById('materialTrendChart');
+      materialTrendCanvas.addEventListener('mousemove', event => updateMaterialTrendTooltip(event.clientX, event.clientY));
+      materialTrendCanvas.addEventListener('mouseleave', hideMaterialTrendTooltip);
+      materialTrendCanvas.addEventListener('click', event => handleMaterialTrendCanvasClick(event.clientX, event.clientY));
     }
 
     bootstrapDashboard();
     window.addEventListener('resize', renderStoreTrendSection);
     window.addEventListener('resize', renderSpTtTrendSection);
+    window.addEventListener('resize', renderMaterialTrendSection);
 
     document.querySelectorAll('.controls label').forEach(label => {
       const input = label.querySelector('input[type="date"]');
@@ -7114,6 +7666,7 @@
       input.addEventListener('change', renderOuterProductStructureTable);
       input.addEventListener('change', renderSpTtTrendSection);
       input.addEventListener('change', renderSpTtCompareTable);
+      input.addEventListener('change', renderMaterialMonitorSections);
     });
 
     applySavedRefreshState();
