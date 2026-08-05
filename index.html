@@ -981,20 +981,23 @@
     .material-filter-chip-close:hover {
       background: #c9ddec;
     }
+    #materialFilterPanelRow {
+      display: block;
+    }
     #materialFilterPanelRow .controls-filter-panel {
       flex-wrap: nowrap;
       gap: 8px;
       align-items: stretch;
-      overflow-x: auto;
+      overflow-x: visible;
       overflow-y: visible;
-      padding-bottom: 2px;
+      padding-bottom: 0;
     }
     #materialFilterPanelRow .filter-control,
     #materialFilterPanelRow .filter-summary-control {
-      width: 178px;
-      min-width: 178px;
+      width: 168px;
+      min-width: 168px;
       padding: 8px 10px;
-      flex: 0 0 178px;
+      flex: 0 0 168px;
     }
     .category-cell-main {
       display: block;
@@ -1294,6 +1297,9 @@
 
     <div class="tab-panel" data-tab-panel="material" role="tabpanel" aria-labelledby="analysis-tab-material" hidden>
       <div class="filter-panel-row" id="materialFilterPanelRow">
+        <div class="material-filter-summary-row">
+          <div id="materialFilterSummary" class="material-filter-summary">已筛选项：当前无筛选</div>
+        </div>
         <div class="controls-filter-panel">
           <div class="filter-control filter-summary-control">
             <div class="filter-control-head">
@@ -1426,9 +1432,6 @@
       <section id="materialCategorySection">
         <h2>素材监控</h2>
         <p class="small">默认汇总图文广告与视频广告，按当前日期范围统计素材投放表现。</p>
-        <div class="material-filter-summary-row">
-          <div id="materialFilterSummary" class="material-filter-summary">已筛选项：当前无筛选</div>
-        </div>
         <div id="materialAdTypeTable"></div>
         <div id="materialCategoryTable"></div>
       </section>
