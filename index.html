@@ -4196,7 +4196,11 @@
         : dimensionKey === 'adType'
           ? 'material-adtype-table'
           : 'material-category-table';
-      const dataPrefix = dimensionKey === 'product' ? 'material-product' : 'material-category';
+      const dataPrefix = dimensionKey === 'product'
+        ? 'material-product'
+        : dimensionKey === 'adType'
+          ? 'material-adtype'
+          : 'material-category';
       const title = dimensionKey === 'product'
         ? '产品素材分析'
         : dimensionKey === 'adType'
@@ -4250,12 +4254,14 @@
                     ? getSelectedMaterialFilterValues('product').includes(item.name)
                     : dimensionKey === 'category'
                       ? getSelectedMaterialFilterValues('category').includes(item.name)
-                      : false;
+                      : dimensionKey === 'adType'
+                        ? getSelectedMaterialFilterValues('adType').includes(item.name)
+                        : false;
                   return `
                     <tr class="${isActive ? 'active' : ''}${item.name === '总计' ? ' total-row' : ''}">
                       <td class="category-name">
-                        ${dimensionKey === 'adType' || item.name === '总计'
-                          ? `<span class="category-pill ${item.name === '总计' ? 'active' : ''}" style="pointer-events:none;">${item.name}</span>`
+                        ${item.name === '总计'
+                          ? `<span class="category-pill active" style="pointer-events:none;">${item.name}</span>`
                           : `<button class="category-pill ${isActive ? 'active' : ''}" type="button" data-${dataPrefix}-pill="${item.name}">${item.name}</button>`}
                       </td>
                       ${materialMonitorMetricDefinitions.map(metric => `
@@ -4276,6 +4282,11 @@
     function bindMaterialAdTypeTableEvents() {
       const root = document.getElementById('materialAdTypeTable');
       if (!root) return;
+      root.querySelectorAll('[data-material-adtype-pill]').forEach(button => {
+        button.addEventListener('click', () => {
+          setSelectedMaterialFilter('adType', button.dataset.materialAdtypePill || '全部广告类型');
+        });
+      });
       bindMaterialColumnResize(root, 'adType');
     }
 
