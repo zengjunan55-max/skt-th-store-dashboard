@@ -3385,7 +3385,7 @@
     function buildMaterialMonitorSummary(range, dimensionKey) {
       const rows = getMaterialMonitorRows(range);
       const summaryMap = new Map();
-      const totalSpend = rows.reduce((sum, row) => sum + (Number(row.spend_usd) || 0), 0);
+      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
       const getDimensionValue = row => {
         if (dimensionKey === 'product') return getRowProductLabel(row);
         if (dimensionKey === 'category') return row?.category || '';
@@ -3409,8 +3409,8 @@
         }
         const entry = summaryMap.get(dimensionValue);
         if (isRecognizedFilterValue(row?.material_code)) entry.materialCodes.add(row.material_code);
-        entry.spend += Number(row.spend_usd) || 0;
-        entry.gmv += Number(row.conversion_value) || 0;
+        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
+        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
         entry.orders += Number(row.orders) || 0;
         entry.clicks += Number(row.clicks) || 0;
         entry.impressions += Number(row.impressions) || 0;
@@ -3438,7 +3438,7 @@
     function buildMaterialAdTypeSummary(range) {
       const rows = getMaterialMonitorRows(range);
       const adTypeMap = new Map();
-      const totalSpend = rows.reduce((sum, row) => sum + (Number(row.spend_usd) || 0), 0);
+      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
 
       const ensureAdType = adType => {
         if (!adTypeMap.has(adType)) {
@@ -3460,8 +3460,8 @@
         if (!materialAdTypeDisplayOrder.includes(adType)) return;
         const entry = ensureAdType(adType);
         if (isRecognizedFilterValue(row?.material_code)) entry.materialCodes.add(row.material_code);
-        entry.spend += Number(row.spend_usd) || 0;
-        entry.gmv += Number(row.conversion_value) || 0;
+        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
+        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
         entry.orders += Number(row.orders) || 0;
         entry.clicks += Number(row.clicks) || 0;
         entry.impressions += Number(row.impressions) || 0;
@@ -3569,8 +3569,8 @@
     function computeMaterialTrendMetrics(range) {
       const rows = getMaterialMonitorRows(range);
       const totals = rows.reduce((acc, row) => {
-        acc.spend += Number(row.spend_usd) || 0;
-        acc.gmv += Number(row.conversion_value) || 0;
+        acc.spend += (Number(row.spend_usd) || 0) * 6.9;
+        acc.gmv += (Number(row.conversion_value) || 0) * 6.9;
         acc.orders += Number(row.orders) || 0;
         acc.clicks += Number(row.clicks) || 0;
         acc.impressions += Number(row.impressions) || 0;
@@ -3608,8 +3608,8 @@
           };
         }
         const entry = map[row.date];
-        entry.spend += Number(row.spend_usd) || 0;
-        entry.gmv += Number(row.conversion_value) || 0;
+        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
+        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
         entry.orders += Number(row.orders) || 0;
         entry.clicks += Number(row.clicks) || 0;
         entry.impressions += Number(row.impressions) || 0;
