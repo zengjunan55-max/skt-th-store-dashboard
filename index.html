@@ -909,6 +909,36 @@
       background: linear-gradient(180deg, #f4fbff 0%, #dff0fb 100%);
       color: var(--brand);
     }
+    .material-static-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 112px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid #d5e2ee;
+      background: linear-gradient(180deg, #ffffff 0%, #f2f7fb 100%);
+      color: #2b4662;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.2;
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+    .material-filter-summary {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border: 1px solid #dbe6ef;
+      border-radius: 12px;
+      background: #ffffff;
+      color: #2b4662;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .material-filter-summary strong {
+      color: #102a43;
+    }
     .category-cell-main {
       display: block;
       color: #102a43;
@@ -1335,6 +1365,7 @@
             </div>
           </div>
         </div>
+        <div id="materialFilterSummary" class="material-filter-summary">已筛选项：当前无筛选</div>
       </div>
       <section id="materialCategorySection">
         <h2>素材监控</h2>
@@ -1946,6 +1977,23 @@
 
     function populateMaterialFilters() {
       materialFilterConfigs.forEach(config => populateMaterialFilter(config.key));
+      renderMaterialFilterSummary();
+    }
+
+    function renderMaterialFilterSummary() {
+      const container = document.getElementById('materialFilterSummary');
+      if (!container) return;
+      const parts = materialFilterConfigs
+        .map(config => {
+          const values = getSelectedMaterialFilterValues(config.key);
+          if (!values.length) return '';
+          const label = config.allLabel.replace('全部', '');
+          return `${label}：${values.join('、')}`;
+        })
+        .filter(Boolean);
+      container.innerHTML = parts.length
+        ? `<strong>已筛选项：</strong>${parts.join('；')}`
+        : '<strong>已筛选项：</strong>当前无筛选';
     }
 
     function normalizeSelectedMaterialFilters() {
@@ -4196,11 +4244,6 @@
         : dimensionKey === 'adType'
           ? 'material-adtype-table'
           : 'material-category-table';
-      const dataPrefix = dimensionKey === 'product'
-        ? 'material-product'
-        : dimensionKey === 'adType'
-          ? 'material-adtype'
-          : 'material-category';
       const title = dimensionKey === 'product'
         ? '产品素材分析'
         : dimensionKey === 'adType'
@@ -4250,19 +4293,10 @@
               </thead>
               <tbody>
                 ${items.map(item => {
-                  const isActive = dimensionKey === 'product'
-                    ? getSelectedMaterialFilterValues('product').includes(item.name)
-                    : dimensionKey === 'category'
-                      ? getSelectedMaterialFilterValues('category').includes(item.name)
-                      : dimensionKey === 'adType'
-                        ? getSelectedMaterialFilterValues('adType').includes(item.name)
-                        : false;
                   return `
-                    <tr class="${isActive ? 'active' : ''}${item.name === '总计' ? ' total-row' : ''}">
+                    <tr class="${item.name === '总计' ? ' total-row' : ''}">
                       <td class="category-name">
-                        ${item.name === '总计'
-                          ? `<span class="category-pill active" style="pointer-events:none;">${item.name}</span>`
-                          : `<button class="category-pill ${isActive ? 'active' : ''}" type="button" data-${dataPrefix}-pill="${item.name}">${item.name}</button>`}
+                        <span class="material-static-label">${item.name}</span>
                       </td>
                       ${materialMonitorMetricDefinitions.map(metric => `
                         <td class="num">
@@ -4282,11 +4316,6 @@
     function bindMaterialAdTypeTableEvents() {
       const root = document.getElementById('materialAdTypeTable');
       if (!root) return;
-      root.querySelectorAll('[data-material-adtype-pill]').forEach(button => {
-        button.addEventListener('click', () => {
-          setSelectedMaterialFilter('adType', button.dataset.materialAdtypePill || '全部广告类型');
-        });
-      });
       bindMaterialColumnResize(root, 'adType');
     }
 
@@ -4300,11 +4329,6 @@
     function bindMaterialCategoryTableEvents() {
       const root = document.getElementById('materialCategoryTable');
       if (!root) return;
-      root.querySelectorAll('[data-material-category-pill]').forEach(button => {
-        button.addEventListener('click', () => {
-          setSelectedMaterialFilter('category', button.dataset.materialCategoryPill || '全部品类');
-        });
-      });
       root.querySelectorAll('[data-material-sort]').forEach(button => {
         button.addEventListener('click', () => {
           updateMaterialTableSort(button.dataset.materialDimension || 'category', button.dataset.materialSort);
@@ -4316,11 +4340,6 @@
     function bindMaterialProductTableEvents() {
       const root = document.getElementById('materialProductTable');
       if (!root) return;
-      root.querySelectorAll('[data-material-product-pill]').forEach(button => {
-        button.addEventListener('click', () => {
-          setSelectedMaterialFilter('product', button.dataset.materialProductPill || '全部产品');
-        });
-      });
       root.querySelectorAll('[data-material-sort]').forEach(button => {
         button.addEventListener('click', () => {
           updateMaterialTableSort(button.dataset.materialDimension || 'product', button.dataset.materialSort);
