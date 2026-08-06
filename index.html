@@ -1182,7 +1182,6 @@
         <button class="tab-button active" id="analysis-tab-store" type="button" data-tab-target="store" role="tab" aria-selected="true">店铺分析</button>
         <button class="tab-button" id="analysis-tab-outer" type="button" data-tab-target="outer" role="tab" aria-selected="false">站外分析</button>
         <button class="tab-button" id="analysis-tab-sp-tt" type="button" data-tab-target="sp-tt" role="tab" aria-selected="false">SP-TT销量对比</button>
-        <button class="tab-button" id="analysis-tab-material" type="button" data-tab-target="material" role="tab" aria-selected="false">素材监控</button>
       </div>
     </div>
   </header>
@@ -1536,214 +1535,6 @@
       </section>
     </div>
 
-    <div class="tab-panel" data-tab-panel="material" role="tabpanel" aria-labelledby="analysis-tab-material" hidden>
-      <div class="filter-panel-row" id="materialFilterPanelRow">
-        <div class="material-filter-summary-row">
-          <div id="materialFilterSummary" class="material-filter-summary">已筛选项：当前无筛选</div>
-        </div>
-        <div class="controls-filter-panel">
-          <div class="filter-control filter-summary-control">
-            <div class="filter-control-head">
-              <span>广告类型</span>
-              <button class="filter-jump-button" type="button" data-scroll-target="materialAdTypeSection">跳转</button>
-            </div>
-            <div class="filter-multiselect" id="materialAdTypeFilterWrap">
-              <div id="materialAdTypeFilterTrigger" class="filter-trigger" aria-expanded="false">
-                <input id="materialAdTypeFilterInput" class="filter-trigger-input" type="text" value="全部广告类型" placeholder="搜索广告类型" autocomplete="off">
-                <span class="filter-trigger-arrow">▼</span>
-              </div>
-              <div id="materialAdTypeFilterPanel" class="filter-panel">
-                <div class="filter-panel-actions">
-                  <button type="button" data-filter-action="select-all" data-filter-kind="adType" data-filter-scope="material">全选</button>
-                  <button type="button" data-filter-action="clear" data-filter-kind="adType" data-filter-scope="material">清空</button>
-                </div>
-                <div id="materialAdTypeFilterOptions" class="filter-options"></div>
-              </div>
-            </div>
-          </div>
-          <div class="filter-control filter-summary-control">
-            <div class="filter-control-head">
-              <span>品类</span>
-              <button class="filter-jump-button" type="button" data-scroll-target="materialCategorySection">跳转</button>
-            </div>
-            <div class="filter-multiselect" id="materialCategoryFilterWrap">
-              <div id="materialCategoryFilterTrigger" class="filter-trigger" aria-expanded="false">
-                <input id="materialCategoryFilterInput" class="filter-trigger-input" type="text" value="全部品类" placeholder="搜索品类" autocomplete="off">
-                <span class="filter-trigger-arrow">▼</span>
-              </div>
-              <div id="materialCategoryFilterPanel" class="filter-panel">
-                <div class="filter-panel-actions">
-                  <button type="button" data-filter-action="select-all" data-filter-kind="category" data-filter-scope="material">全选</button>
-                  <button type="button" data-filter-action="clear" data-filter-kind="category" data-filter-scope="material">清空</button>
-                </div>
-                <div id="materialCategoryFilterOptions" class="filter-options"></div>
-              </div>
-            </div>
-          </div>
-          <div class="filter-control filter-summary-control">
-            <div class="filter-control-head">
-              <span>产品</span>
-              <button class="filter-jump-button" type="button" data-scroll-target="materialProductSection">跳转</button>
-            </div>
-            <div class="filter-multiselect" id="materialProductFilterWrap">
-              <div id="materialProductFilterTrigger" class="filter-trigger" aria-expanded="false">
-                <input id="materialProductFilterInput" class="filter-trigger-input" type="text" value="全部产品" placeholder="搜索产品" autocomplete="off">
-                <span class="filter-trigger-arrow">▼</span>
-              </div>
-              <div id="materialProductFilterPanel" class="filter-panel">
-                <div class="filter-panel-actions">
-                  <button type="button" data-filter-action="select-all" data-filter-kind="product" data-filter-scope="material">全选</button>
-                  <button type="button" data-filter-action="clear" data-filter-kind="product" data-filter-scope="material">清空</button>
-                </div>
-                <div id="materialProductFilterOptions" class="filter-options"></div>
-              </div>
-            </div>
-          </div>
-          <div class="filter-control filter-summary-control">
-            <div class="filter-control-head">
-              <span>广告形式</span>
-              <button class="filter-jump-button" type="button" data-scroll-target="materialAdFormSection">跳转</button>
-            </div>
-            <div class="filter-multiselect" id="materialAdFormFilterWrap">
-              <div id="materialAdFormFilterTrigger" class="filter-trigger" aria-expanded="false">
-                <input id="materialAdFormFilterInput" class="filter-trigger-input" type="text" value="全部广告形式" placeholder="搜索广告形式" autocomplete="off">
-                <span class="filter-trigger-arrow">▼</span>
-              </div>
-              <div id="materialAdFormFilterPanel" class="filter-panel">
-                <div class="filter-panel-actions">
-                  <button type="button" data-filter-action="select-all" data-filter-kind="adForm" data-filter-scope="material">全选</button>
-                  <button type="button" data-filter-action="clear" data-filter-kind="adForm" data-filter-scope="material">清空</button>
-                </div>
-                <div id="materialAdFormFilterOptions" class="filter-options"></div>
-              </div>
-            </div>
-          </div>
-          <div class="filter-control filter-summary-control">
-            <div class="filter-control-head">
-              <span>再营销/拉新</span>
-              <button class="filter-jump-button" type="button" data-scroll-target="materialAcquisitionSection">跳转</button>
-            </div>
-            <div class="filter-multiselect" id="materialAcquisitionFilterWrap">
-              <div id="materialAcquisitionFilterTrigger" class="filter-trigger" aria-expanded="false">
-                <input id="materialAcquisitionFilterInput" class="filter-trigger-input" type="text" value="全部类型" placeholder="搜索再营销/拉新" autocomplete="off">
-                <span class="filter-trigger-arrow">▼</span>
-              </div>
-              <div id="materialAcquisitionFilterPanel" class="filter-panel">
-                <div class="filter-panel-actions">
-                  <button type="button" data-filter-action="select-all" data-filter-kind="acquisition" data-filter-scope="material">全选</button>
-                  <button type="button" data-filter-action="clear" data-filter-kind="acquisition" data-filter-scope="material">清空</button>
-                </div>
-                <div id="materialAcquisitionFilterOptions" class="filter-options"></div>
-              </div>
-            </div>
-          </div>
-          <div class="filter-control filter-summary-control">
-            <div class="filter-control-head">
-              <span>人群</span>
-              <button class="filter-jump-button" type="button" data-scroll-target="materialAudienceSection">跳转</button>
-            </div>
-            <div class="filter-multiselect" id="materialAudienceFilterWrap">
-              <div id="materialAudienceFilterTrigger" class="filter-trigger" aria-expanded="false">
-                <input id="materialAudienceFilterInput" class="filter-trigger-input" type="text" value="全部人群" placeholder="搜索人群" autocomplete="off">
-                <span class="filter-trigger-arrow">▼</span>
-              </div>
-              <div id="materialAudienceFilterPanel" class="filter-panel">
-                <div class="filter-panel-actions">
-                  <button type="button" data-filter-action="select-all" data-filter-kind="audience" data-filter-scope="material">全选</button>
-                  <button type="button" data-filter-action="clear" data-filter-kind="audience" data-filter-scope="material">清空</button>
-                </div>
-                <div id="materialAudienceFilterOptions" class="filter-options"></div>
-              </div>
-            </div>
-          </div>
-          <div class="filter-control filter-summary-control">
-            <div class="filter-control-head">
-              <span>投放页面</span>
-              <button class="filter-jump-button" type="button" data-scroll-target="materialLandingPageSection">跳转</button>
-            </div>
-            <div class="filter-multiselect" id="materialLandingPageFilterWrap">
-              <div id="materialLandingPageFilterTrigger" class="filter-trigger" aria-expanded="false">
-                <input id="materialLandingPageFilterInput" class="filter-trigger-input" type="text" value="全部页面" placeholder="搜索投放页面" autocomplete="off">
-                <span class="filter-trigger-arrow">▼</span>
-              </div>
-              <div id="materialLandingPageFilterPanel" class="filter-panel">
-                <div class="filter-panel-actions">
-                  <button type="button" data-filter-action="select-all" data-filter-kind="landingPage" data-filter-scope="material">全选</button>
-                  <button type="button" data-filter-action="clear" data-filter-kind="landingPage" data-filter-scope="material">清空</button>
-                </div>
-                <div id="materialLandingPageFilterOptions" class="filter-options"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <section class="material-board-group">
-        <div class="material-board-head">
-          <strong>素材趋势</strong>
-          <span class="small">默认汇总图文广告与视频广告，按当前日期范围统计素材投放表现。</span>
-        </div>
-        <div class="compare-grid">
-          <div id="materialCompareCards"></div>
-          <div class="trend-card">
-            <div class="trend-wrap">
-              <canvas id="materialTrendChart"></canvas>
-              <div id="materialTrendTooltip" class="trend-tooltip"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-      <section class="material-board-group">
-        <div class="material-board-head">
-          <strong>品类/产品分析</strong>
-          <span class="small">用于查看品类与产品两个层级的素材投放表现，筛选器与下方汇总表同步联动。</span>
-        </div>
-        <div class="material-board-stack">
-          <section id="materialCategorySection" class="material-board-subsection">
-            <h3>品类素材分析</h3>
-            <span class="small">按品类汇总当前日期范围内的素材投放表现。</span>
-            <div id="materialCategoryTable"></div>
-          </section>
-          <section id="materialProductSection" class="material-board-subsection">
-            <h3>产品素材分析</h3>
-            <span class="small">按产品汇总素材投放表现，筛选器与上方品类表联动。</span>
-            <div id="materialProductTable"></div>
-          </section>
-        </div>
-      </section>
-      <section class="material-board-group">
-        <div class="material-board-head">
-          <strong>投放类型分析</strong>
-          <span class="small">集中查看广告类型、广告形式、再营销/拉新、人群和投放页面等投放维度表现。</span>
-        </div>
-        <div class="material-board-stack">
-          <section id="materialAdTypeSection" class="material-board-subsection">
-            <h3>广告类型分析</h3>
-            <span class="small">按广告类型汇总图文广告与视频广告的素材投放表现。</span>
-            <div id="materialAdTypeTable"></div>
-          </section>
-          <section id="materialAdFormSection" class="material-board-subsection">
-            <h3>广告形式素材分析</h3>
-            <span class="small">按广告形式汇总素材投放表现，方便查看不同投放结构的效果差异。</span>
-            <div id="materialAdFormTable"></div>
-          </section>
-          <section id="materialAcquisitionSection" class="material-board-subsection">
-            <h3>再营销/拉新素材分析</h3>
-            <span class="small">按再营销/拉新维度汇总素材投放表现。</span>
-            <div id="materialAcquisitionTable"></div>
-          </section>
-          <section id="materialAudienceSection" class="material-board-subsection">
-            <h3>人群素材分析</h3>
-            <span class="small">按人群维度汇总素材投放表现。</span>
-            <div id="materialAudienceTable"></div>
-          </section>
-          <section id="materialLandingPageSection" class="material-board-subsection">
-            <h3>投放页面素材分析</h3>
-            <span class="small">按投放页面维度汇总素材投放表现。</span>
-            <div id="materialLandingPageTable"></div>
-          </section>
-        </div>
-      </section>
-    </div>
   </main>
   <button id="scrollTopButton" class="scroll-top-button" type="button" aria-label="回到顶部" title="回到顶部">↑</button>
 
@@ -8325,7 +8116,6 @@
       renderOuterDimensionTable();
       renderSpTtCompareTable();
       renderSpTtProductCompareTable();
-      renderMaterialMonitorSections();
     }
 
     function updateTrendTooltip(clientX, clientY) {
@@ -8524,7 +8314,6 @@
     function setActiveTab(tabKey) {
       const filterRow = document.getElementById('storeFilterPanelRow');
       const spTtFilterRow = document.getElementById('spTtFilterPanelRow');
-      const materialFilterRow = document.getElementById('materialFilterPanelRow');
       document.querySelectorAll('#analysisTabs .tab-button').forEach(button => {
         const isActive = button.dataset.tabTarget === tabKey;
         button.classList.toggle('active', isActive);
@@ -8541,12 +8330,8 @@
       if (spTtFilterRow) {
         spTtFilterRow.classList.toggle('is-hidden', tabKey !== 'sp-tt');
       }
-      if (materialFilterRow) {
-        materialFilterRow.classList.toggle('is-hidden', tabKey !== 'material');
-      }
       if (tabKey === 'store') renderStoreTrendSection();
       if (tabKey === 'sp-tt') renderSpTtTrendSection();
-      if (tabKey === 'material') renderMaterialMonitorSections();
     }
 
     function bindAnalysisTabs() {
@@ -8575,7 +8360,6 @@
       populateOuterProductFilter();
       populateSpTtCategoryFilter();
       populateSpTtProductFilter();
-      populateMaterialFilters();
       bindMultiSelectFilterEvents();
       bindAnalysisTabs();
       renderAnalysisSections();
@@ -8590,16 +8374,11 @@
       spTtTrendCanvas.addEventListener('mousemove', event => updateSpTtTrendTooltip(event.clientX, event.clientY));
       spTtTrendCanvas.addEventListener('mouseleave', hideSpTtTrendTooltip);
       spTtTrendCanvas.addEventListener('click', event => handleSpTtTrendCanvasClick(event.clientX, event.clientY));
-      const materialTrendCanvas = document.getElementById('materialTrendChart');
-      materialTrendCanvas.addEventListener('mousemove', event => updateMaterialTrendTooltip(event.clientX, event.clientY));
-      materialTrendCanvas.addEventListener('mouseleave', hideMaterialTrendTooltip);
-      materialTrendCanvas.addEventListener('click', event => handleMaterialTrendCanvasClick(event.clientX, event.clientY));
     }
 
     bootstrapDashboard();
     window.addEventListener('resize', renderStoreTrendSection);
     window.addEventListener('resize', renderSpTtTrendSection);
-    window.addEventListener('resize', renderMaterialTrendSection);
 
     document.querySelectorAll('.controls label').forEach(label => {
       const input = label.querySelector('input[type="date"]');
@@ -8624,7 +8403,6 @@
       input.addEventListener('change', renderOuterProductStructureTable);
       input.addEventListener('change', renderSpTtTrendSection);
       input.addEventListener('change', renderSpTtCompareTable);
-      input.addEventListener('change', renderMaterialMonitorSections);
     });
 
     applySavedRefreshState();
