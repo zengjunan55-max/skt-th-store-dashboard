@@ -1330,8 +1330,9 @@
         </div>
       </section>
       <section id="outerDimensionSection" class="subtab-block">
-        <h2>维度分析</h2>
+        <h2>站外维度分析</h2>
         <p class="small">按品类、产品、板块、广告形式、人群、定向和素材类型拆解站外投放表现，并使用独立筛选器联动本区域。</p>
+        <div class="material-filter-summary" id="outerDimensionFilterSummary">已筛选项：当前无筛选</div>
         <div class="filter-panel-row" id="outerDimensionFilterPanelRow">
           <div class="controls-filter-panel">
             <div class="filter-control filter-summary-control">
@@ -2770,6 +2771,48 @@
 
     function populateOuterDimensionFilters() {
       outerDimensionFilterConfigs.forEach(config => populateOuterDimensionFilter(config.key));
+      renderOuterDimensionFilterSummary();
+    }
+
+    function renderOuterDimensionFilterSummary() {
+      const container = document.getElementById('outerDimensionFilterSummary');
+      if (!container) return;
+      const chips = outerDimensionFilterConfigs.flatMap(config => {
+        const values = getSelectedOuterDimensionFilterValues(config.key);
+        const label = config.allLabel.replace('全部', '');
+        return values.map(value => ({ kind: config.key, label, value }));
+      });
+      container.innerHTML = chips.length
+        ? `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;"><div><strong>已筛选项：</strong><span class="material-filter-chip-list">${chips.map(chip => `
+            <span class="material-filter-chip">
+              <span>${chip.label}：${chip.value}</span>
+              <button class="material-filter-chip-close" type="button" data-outer-dimension-filter-remove="${chip.kind}" data-outer-dimension-filter-value="${chip.value}" aria-label="关闭 ${chip.label} ${chip.value}">×</button>
+            </span>
+          `).join('')}</span></div><button type="button" class="filter-jump-button" id="outerDimensionFilterClearButton">一键清除筛选</button></div>`
+        : '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><span><strong>已筛选项：</strong>当前无筛选</span><button type="button" class="filter-jump-button" id="outerDimensionFilterClearButton">一键清除筛选</button></div>';
+      container.querySelectorAll('[data-outer-dimension-filter-remove]').forEach(button => {
+        button.addEventListener('click', () => {
+          setSelectedOuterDimensionFilter(
+            button.dataset.outerDimensionFilterRemove || '',
+            button.dataset.outerDimensionFilterValue || ''
+          );
+        });
+      });
+      const clearButton = document.getElementById('outerDimensionFilterClearButton');
+      if (clearButton) {
+        clearButton.addEventListener('click', () => {
+          clearOuterDimensionFilters();
+        });
+      }
+    }
+
+    function clearOuterDimensionFilters(shouldRender = true) {
+      outerDimensionFilterConfigs.forEach(config => {
+        outerDimensionFilterState[config.stateKey] = [];
+        outerDimensionFilterState[config.searchKey] = '';
+      });
+      populateOuterDimensionFilters();
+      if (shouldRender) renderOuterDimensionTable();
     }
 
     function populateSpTtCategoryFilter() {
