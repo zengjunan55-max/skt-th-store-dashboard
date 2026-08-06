@@ -1618,7 +1618,45 @@
       return rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
     }
 
+    function getRangeCacheToken(range) {
+      return `${range.start.toISOString().slice(0, 10)}_${range.end.toISOString().slice(0, 10)}`;
+    }
+
+    function getStoreSelectionCacheToken() {
+      return JSON.stringify({
+        stores: getSelectedStores(),
+        categories: getSelectedCategories(),
+        products: getSelectedProducts(),
+        useProducts: hasSelectedProducts()
+      });
+    }
+
+    function getSpTtSelectionCacheToken() {
+      return JSON.stringify({
+        categories: getSpTtSelectedCategories(),
+        products: getSpTtSelectedProducts()
+      });
+    }
+
+    function getOuterSelectionCacheToken() {
+      return JSON.stringify({
+        categories: getOuterSelectedCategories(),
+        products: getOuterSelectedProducts()
+      });
+    }
+
+    function getOuterDimensionSelectionCacheToken() {
+      return JSON.stringify({
+        activeTab: outerDimensionAnalysisState.activeTab || 'category',
+        filters: Object.fromEntries(outerDimensionFilterConfigs.map(config => [config.key, getSelectedOuterDimensionFilterValues(config.key)]))
+      });
+    }
+
     function computeStoreMetrics(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getStoreSelectionCacheToken()}`;
+      if (dashboardDataCache.storeMetrics.has(cacheKey)) {
+        return dashboardDataCache.storeMetrics.get(cacheKey);
+      }
       const useProductRows = hasSelectedProducts();
       const mainRows = useProductRows
         ? filterProductMainRows(productTrendData.main || [], range)
@@ -1640,7 +1678,7 @@
       const outerSpend = sumBy(outerRows, 'spend_usd') * 6.9;
       const brandSpend = sumBy(brandRows, 'spend_usd') * 6.9;
 
-      return {
+      const metrics = {
         gmv: salesThb / 4.8,
         visitors,
         conversion: visitors ? buyers / visitors : 0,
@@ -1649,6 +1687,7 @@
         outerSpend,
         brandSpend
       };
+      return setCacheValue(dashboardDataCache.storeMetrics, cacheKey, metrics);
     }
 
     function formatMetricValue(metric) {
@@ -1696,7 +1735,11 @@
       geometry: null,
       legendItems: [],
       revealAnimations: {},
-      animationFrameId: null
+      animationFrameId: null,
+      trendRowsCacheKey: '',
+      hoverRafId: null,
+      lastPointer: null,
+      baseCanvasSnapshot: null
     };
     const spTtTrendState = {
       selectedMetricKeys: ['totalSales'],
@@ -1706,7 +1749,11 @@
       geometry: null,
       legendItems: [],
       revealAnimations: {},
-      animationFrameId: null
+      animationFrameId: null,
+      trendRowsCacheKey: '',
+      hoverRafId: null,
+      lastPointer: null,
+      baseCanvasSnapshot: null
     };
     const materialTrendState = {
       selectedMetricKeys: ['spend'],
@@ -1716,7 +1763,8 @@
       geometry: null,
       legendItems: [],
       revealAnimations: {},
-      animationFrameId: null
+      animationFrameId: null,
+      baseCanvasSnapshot: null
     };
     const filterState = {
       stores: [],
@@ -1769,6 +1817,28 @@
       acquisitionSearch: '',
       audienceSearch: '',
       landingPageSearch: ''
+    };
+    const dashboardRenderState = {
+      activeTab: 'store',
+      rafId: null,
+      dirtyTabs: {
+        store: true,
+        outer: true,
+        'sp-tt': true
+      }
+    };
+    const dashboardDataCache = {
+      storeMetrics: new Map(),
+      storeMetricMaps: new Map(),
+      categorySummary: new Map(),
+      productSummary: new Map(),
+      outerStructureSummary: new Map(),
+      outerProductStructureSummary: new Map(),
+      outerDimensionSummary: new Map(),
+      spTtMetrics: new Map(),
+      spTtMetricMaps: new Map(),
+      spTtCompareSummary: new Map(),
+      spTtProductCompareSummary: new Map()
     };
     const categoryTableState = {
       sortKey: 'gmv',
@@ -1860,6 +1930,72 @@
       resize: null
     };
     const trendRevealDuration = 420;
+
+    function scheduleFrame(callback) {
+      return requestAnimationFrame(callback);
+    }
+
+    function invalidateTab(tabKey) {
+      dashboardRenderState.dirtyTabs[tabKey] = true;
+    }
+
+    function invalidateAllTabs() {
+      invalidateTab('store');
+      invalidateTab('outer');
+      invalidateTab('sp-tt');
+    }
+
+    function clearDashboardDataCaches() {
+      Object.values(dashboardDataCache).forEach(cache => cache.clear());
+      storeTrendState.baseCanvasSnapshot = null;
+      spTtTrendState.baseCanvasSnapshot = null;
+      materialTrendState.baseCanvasSnapshot = null;
+    }
+
+    function setCacheValue(cache, key, value, maxSize = 36) {
+      if (!cache.has(key) && cache.size >= maxSize) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey !== undefined) cache.delete(oldestKey);
+      }
+      cache.set(key, value);
+      return value;
+    }
+
+    function invalidateOuterSummaryCaches() {
+      dashboardDataCache.outerStructureSummary.clear();
+      dashboardDataCache.outerProductStructureSummary.clear();
+      dashboardDataCache.outerDimensionSummary.clear();
+    }
+
+    function scheduleActiveTabRender(force = false) {
+      if (dashboardRenderState.rafId !== null) return;
+      dashboardRenderState.rafId = scheduleFrame(() => {
+        dashboardRenderState.rafId = null;
+        renderActiveTab(force);
+      });
+    }
+
+    function renderTabContent(tabKey) {
+      if (tabKey === 'store') {
+        renderStoreTrendSection();
+      } else if (tabKey === 'outer') {
+        renderOuterBreakdownTable();
+        renderOuterStructureTable();
+        renderOuterProductStructureTable();
+        renderOuterDimensionTable();
+      } else if (tabKey === 'sp-tt') {
+        renderSpTtTrendSection();
+        renderSpTtCompareTable();
+        renderSpTtProductCompareTable();
+      }
+      dashboardRenderState.dirtyTabs[tabKey] = false;
+    }
+
+    function renderActiveTab(force = false) {
+      const tabKey = dashboardRenderState.activeTab || 'store';
+      if (!force && !dashboardRenderState.dirtyTabs[tabKey]) return;
+      renderTabContent(tabKey);
+    }
     const categoryColumnDefaults = {
       category: 156,
       gmv: 152,
@@ -2623,7 +2759,11 @@
         outerDimensionFilterState[config.searchKey] = '';
       });
       populateOuterDimensionFilters();
-      if (shouldRender) renderOuterDimensionTable();
+      if (shouldRender) {
+        dashboardDataCache.outerDimensionSummary.clear();
+        invalidateTab('outer');
+        scheduleActiveTabRender();
+      }
     }
 
     function populateSpTtCategoryFilter() {
@@ -2675,7 +2815,9 @@
       populateProductFilter();
       if (shouldRender) {
         storeTrendState.hoverIndex = null;
-        renderAnalysisSections();
+        invalidateStoreTrendCache();
+        invalidateTab('store');
+        scheduleActiveTabRender();
       }
     }
 
@@ -2713,7 +2855,9 @@
       populateProductFilter();
       if (shouldRender) {
         storeTrendState.hoverIndex = null;
-        renderAnalysisSections();
+        invalidateStoreTrendCache();
+        invalidateTab('store');
+        scheduleActiveTabRender();
       }
     }
 
@@ -2730,7 +2874,9 @@
       populateProductFilter();
       if (shouldRender) {
         storeTrendState.hoverIndex = null;
-        renderAnalysisSections();
+        invalidateStoreTrendCache();
+        invalidateTab('store');
+        scheduleActiveTabRender();
       }
     }
 
@@ -2765,9 +2911,9 @@
       populateOuterCategoryFilter();
       populateOuterProductFilter();
       if (shouldRender) {
-        renderOuterBreakdownTable();
-        renderOuterStructureTable();
-        renderOuterProductStructureTable();
+        invalidateOuterSummaryCaches();
+        invalidateTab('outer');
+        scheduleActiveTabRender();
       }
     }
 
@@ -2783,9 +2929,9 @@
       outerFilterState.products = nextProducts;
       populateOuterProductFilter();
       if (shouldRender) {
-        renderOuterBreakdownTable();
-        renderOuterStructureTable();
-        renderOuterProductStructureTable();
+        invalidateOuterSummaryCaches();
+        invalidateTab('outer');
+        scheduleActiveTabRender();
       }
     }
 
@@ -2801,7 +2947,11 @@
       outerDimensionFilterState.categories = nextCategories;
       normalizeSelectedOuterDimensionFilters();
       populateOuterDimensionFilters();
-      if (shouldRender) renderOuterDimensionTable();
+      if (shouldRender) {
+        dashboardDataCache.outerDimensionSummary.clear();
+        invalidateTab('outer');
+        scheduleActiveTabRender();
+      }
     }
 
     function setOuterDimensionSelectedProduct(product, shouldRender = true) {
@@ -2822,7 +2972,11 @@
       outerDimensionFilterState[config.stateKey] = nextValues;
       normalizeSelectedOuterDimensionFilters();
       populateOuterDimensionFilters();
-      if (shouldRender) renderOuterDimensionTable();
+      if (shouldRender) {
+        dashboardDataCache.outerDimensionSummary.clear();
+        invalidateTab('outer');
+        scheduleActiveTabRender();
+      }
     }
 
     function setSpTtSelectedCategory(category, shouldRender = true) {
@@ -2839,9 +2993,9 @@
       populateSpTtCategoryFilter();
       populateSpTtProductFilter();
       if (shouldRender) {
-        renderSpTtTrendSection();
-        renderSpTtCompareTable();
-        renderSpTtProductCompareTable();
+        invalidateSpTtTrendCache();
+        invalidateTab('sp-tt');
+        scheduleActiveTabRender();
       }
     }
 
@@ -2857,9 +3011,9 @@
       spTtFilterState.products = nextProducts;
       populateSpTtProductFilter();
       if (shouldRender) {
-        renderSpTtTrendSection();
-        renderSpTtCompareTable();
-        renderSpTtProductCompareTable();
+        invalidateSpTtTrendCache();
+        invalidateTab('sp-tt');
+        scheduleActiveTabRender();
       }
     }
 
@@ -2883,7 +3037,9 @@
         populateProductFilter();
       }
       storeTrendState.hoverIndex = null;
-      renderAnalysisSections();
+      invalidateStoreTrendCache();
+      invalidateTab('store');
+      scheduleActiveTabRender();
     }
 
     function getVisibleOuterFilterOptions(kind) {
@@ -2920,9 +3076,9 @@
           : [];
         populateOuterProductFilter();
       }
-      renderOuterBreakdownTable();
-      renderOuterStructureTable();
-      renderOuterProductStructureTable();
+      invalidateOuterSummaryCaches();
+      invalidateTab('outer');
+      scheduleActiveTabRender();
     }
 
     function applyOuterDimensionFilterBulk(kind, action) {
@@ -2933,7 +3089,9 @@
         : [];
       normalizeSelectedOuterDimensionFilters();
       populateOuterDimensionFilters();
-      renderOuterDimensionTable();
+      dashboardDataCache.outerDimensionSummary.clear();
+      invalidateTab('outer');
+      scheduleActiveTabRender();
     }
 
     function applySpTtFilterBulk(kind, action) {
@@ -2951,9 +3109,9 @@
           : [];
         populateSpTtProductFilter();
       }
-      renderSpTtTrendSection();
-      renderSpTtCompareTable();
-      renderSpTtProductCompareTable();
+      invalidateSpTtTrendCache();
+      invalidateTab('sp-tt');
+      scheduleActiveTabRender();
     }
 
     function closeFilterDropdowns() {
@@ -3525,6 +3683,46 @@
       });
     }
 
+    function getRevealOpacity(progress) {
+      const safeProgress = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 1;
+      return 0.02 + safeProgress * 0.98;
+    }
+
+    function easeOutCubic(progress) {
+      const safeProgress = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 1;
+      return 1 - Math.pow(1 - safeProgress, 3);
+    }
+
+    function getAnimatedLineWidth(axisGroup, progress) {
+      const targetWidth = axisGroup === 'conversion' || axisGroup === 'ratio' ? 2 : 3;
+      return Math.max(0.8, targetWidth * (0.45 + easeOutCubic(progress) * 0.55));
+    }
+
+    function getAnimatedPointRadius(axisGroup, progress) {
+      const targetRadius = axisGroup === 'conversion' || axisGroup === 'ratio' ? 3 : 4;
+      return Math.max(1.4, targetRadius * (0.4 + easeOutCubic(progress) * 0.6));
+    }
+
+    function getAnimatedBarHeight(height, progress) {
+      return Math.max(0, height * easeOutCubic(progress));
+    }
+
+    function cloneCanvasSnapshot(canvas) {
+      const snapshot = document.createElement('canvas');
+      snapshot.width = canvas.width;
+      snapshot.height = canvas.height;
+      const snapshotCtx = snapshot.getContext('2d');
+      snapshotCtx.drawImage(canvas, 0, 0);
+      return snapshot;
+    }
+
+    function restoreCanvasSnapshot(ctx, snapshot, width, height) {
+      if (!snapshot) return false;
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(snapshot, 0, 0, width, height);
+      return true;
+    }
+
     function getMetricSeriesValue(metricKey, row) {
       if (!row) return null;
       if (metricKey === 'gmv') return row.sales_thb / 4.8;
@@ -3538,20 +3736,24 @@
     }
 
     function buildMetricMaps(range) {
-      if (hasSelectedProducts()) {
-        return {
+      const cacheKey = `${getRangeCacheToken(range)}::${getStoreSelectionCacheToken()}`;
+      if (dashboardDataCache.storeMetricMaps.has(cacheKey)) {
+        return dashboardDataCache.storeMetricMaps.get(cacheKey);
+      }
+      const maps = hasSelectedProducts()
+        ? {
           main: aggregateMainRowsByDate(filterProductMainRows(productTrendData.main || [], range)),
           inner: aggregateInnerRowsByDate(filterProductInnerRows(productTrendData.inner || [], range)),
           outer: aggregateOuterRowsByDate(filterProductOuterRows(productTrendData.outer || [], range)),
           brand: aggregateOuterRowsByDate(filterProductBrandRows(productTrendData.brand || [], range))
+        }
+        : {
+          main: aggregateMainRowsByDate(filterMainRows(storeTrendData.main, range)),
+          inner: aggregateInnerRowsByDate(filterInnerRows(storeTrendData.inner, range)),
+          outer: aggregateOuterRowsByDate(filterOuterRows(storeTrendData.outer || [], range)),
+          brand: aggregateOuterRowsByDate(filterBrandRows(storeTrendData.brand || [], range))
         };
-      }
-      return {
-        main: aggregateMainRowsByDate(filterMainRows(storeTrendData.main, range)),
-        inner: aggregateInnerRowsByDate(filterInnerRows(storeTrendData.inner, range)),
-        outer: aggregateOuterRowsByDate(filterOuterRows(storeTrendData.outer || [], range)),
-        brand: aggregateOuterRowsByDate(filterBrandRows(storeTrendData.brand || [], range))
-      };
+      return setCacheValue(dashboardDataCache.storeMetricMaps, cacheKey, maps);
     }
 
     function getMetricSeriesValueByDate(metricKey, date, maps) {
@@ -4605,6 +4807,10 @@
     }
 
     function buildOuterDimensionSummary(range, dimensionKey) {
+      const cacheKey = `${dimensionKey}::${getRangeCacheToken(range)}::${getOuterDimensionSelectionCacheToken()}`;
+      if (dashboardDataCache.outerDimensionSummary.has(cacheKey)) {
+        return dashboardDataCache.outerDimensionSummary.get(cacheKey);
+      }
       const rows = getOuterDimensionRows(range);
       const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
       const dimensionMap = new Map();
@@ -4637,7 +4843,8 @@
         }))
         .sort((left, right) => right.spend - left.spend);
 
-      return { items, totalSpend };
+      const summary = { items, totalSpend };
+      return setCacheValue(dashboardDataCache.outerDimensionSummary, cacheKey, summary);
     }
 
     function buildOuterDimensionMetricCells(currentEntry, compareEntry, totalSpend, compareTotalSpend) {
@@ -4802,6 +5009,10 @@
     }
 
     function buildOuterStructureSummary(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getOuterSelectionCacheToken()}`;
+      if (dashboardDataCache.outerStructureSummary.has(cacheKey)) {
+        return dashboardDataCache.outerStructureSummary.get(cacheKey);
+      }
       const categoryMap = new Map();
       const ensureCategory = category => {
         if (!category) return null;
@@ -4864,7 +5075,7 @@
         }
       });
 
-      return Array.from(categoryMap.values()).map(entry => ({
+      const summary = Array.from(categoryMap.values()).map(entry => ({
         category: entry.category,
         gmv: entry.salesThb / 4.8,
         totalSpend: entry.totalSpendUsd * 6.9,
@@ -4876,9 +5087,14 @@
         collabConversionRoi: entry.collabConversionSpendUsd ? entry.collabConversionValue / entry.collabConversionSpendUsd : 0,
         collabExposureSpend: entry.collabExposureSpendUsd * 6.9
       }));
+      return setCacheValue(dashboardDataCache.outerStructureSummary, cacheKey, summary);
     }
 
     function buildOuterProductStructureSummary(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getOuterSelectionCacheToken()}`;
+      if (dashboardDataCache.outerProductStructureSummary.has(cacheKey)) {
+        return dashboardDataCache.outerProductStructureSummary.get(cacheKey);
+      }
       const productMap = new Map();
       const ensureProduct = product => {
         if (!product) return null;
@@ -4946,7 +5162,7 @@
         }
       });
 
-      return Array.from(productMap.values()).map(entry => ({
+      const summary = Array.from(productMap.values()).map(entry => ({
         product: entry.product,
         gmv: entry.salesThb / 4.8,
         totalSpend: entry.totalSpendUsd * 6.9,
@@ -4958,9 +5174,14 @@
         collabConversionRoi: entry.collabConversionSpendUsd ? entry.collabConversionValue / entry.collabConversionSpendUsd : 0,
         collabExposureSpend: entry.collabExposureSpendUsd * 6.9
       })).filter(item => item.gmv);
+      return setCacheValue(dashboardDataCache.outerProductStructureSummary, cacheKey, summary);
     }
 
     function buildCategorySummary(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getSelectedStores().join('|')}::${getSelectedCategories().join('|')}`;
+      if (dashboardDataCache.categorySummary.has(cacheKey)) {
+        return dashboardDataCache.categorySummary.get(cacheKey);
+      }
       const categoryMap = new Map();
       const ensureCategory = category => {
         if (!category) return null;
@@ -5014,7 +5235,7 @@
         if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
       });
 
-      return Array.from(categoryMap.values()).map(entry => ({
+      const summary = Array.from(categoryMap.values()).map(entry => ({
         category: entry.category,
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
@@ -5024,6 +5245,7 @@
         harvestSpend: entry.harvestSpendUsd * 6.9,
         seedingSpend: entry.seedingSpendUsd * 6.9
       }));
+      return setCacheValue(dashboardDataCache.categorySummary, cacheKey, summary);
     }
 
     function buildCategorySummaryMap(range) {
@@ -5250,6 +5472,10 @@
     }
 
     function buildProductSummary(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getSelectedStores().join('|')}::${getSelectedCategories().join('|')}::${getSelectedProducts().join('|')}`;
+      if (dashboardDataCache.productSummary.has(cacheKey)) {
+        return dashboardDataCache.productSummary.get(cacheKey);
+      }
       const productMap = new Map();
       const ensureProduct = product => {
         if (!product) return null;
@@ -5311,7 +5537,7 @@
         if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
       });
 
-      return Array.from(productMap.values()).map(entry => ({
+      const summary = Array.from(productMap.values()).map(entry => ({
         product: entry.product,
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
@@ -5321,6 +5547,7 @@
         harvestSpend: entry.harvestSpendUsd * 6.9,
         seedingSpend: entry.seedingSpendUsd * 6.9
       }));
+      return setCacheValue(dashboardDataCache.productSummary, cacheKey, summary);
     }
 
     function getProductSortValue(product, currentMap, metricKey) {
@@ -5761,6 +5988,10 @@
     }
 
     function buildSpTtCompareSummary(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getSpTtSelectionCacheToken()}`;
+      if (dashboardDataCache.spTtCompareSummary.has(cacheKey)) {
+        return dashboardDataCache.spTtCompareSummary.get(cacheKey);
+      }
       const categoryMap = new Map();
       (spTtSalesData.rows || []).forEach(row => {
         if (!row?.date || !row?.category || !isInRange(row.date, range.start, range.end)) return;
@@ -5776,7 +6007,7 @@
         entry.spSales += Number(row.spSales) || 0;
         entry.ttSales += Number(row.ttSales) || 0;
       });
-      return Array.from(categoryMap.values()).map(entry => {
+      const summary = Array.from(categoryMap.values()).map(entry => {
         const totalSales = entry.spSales + entry.ttSales;
         const gap = entry.spSales - entry.ttSales;
         return {
@@ -5788,9 +6019,14 @@
           ratio: entry.ttSales ? entry.spSales / entry.ttSales : 0
         };
       });
+      return setCacheValue(dashboardDataCache.spTtCompareSummary, cacheKey, summary);
     }
 
     function buildSpTtProductCompareSummary(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getSpTtSelectionCacheToken()}`;
+      if (dashboardDataCache.spTtProductCompareSummary.has(cacheKey)) {
+        return dashboardDataCache.spTtProductCompareSummary.get(cacheKey);
+      }
       const productMap = new Map();
       (spTtSalesData.rows || []).forEach(row => {
         if (!row?.date || !row?.productName || !isInRange(row.date, range.start, range.end)) return;
@@ -5806,7 +6042,7 @@
         entry.spSales += Number(row.spSales) || 0;
         entry.ttSales += Number(row.ttSales) || 0;
       });
-      return Array.from(productMap.values()).map(entry => {
+      const summary = Array.from(productMap.values()).map(entry => {
         const totalSales = entry.spSales + entry.ttSales;
         const gap = entry.spSales - entry.ttSales;
         return {
@@ -5818,9 +6054,14 @@
           ratio: entry.ttSales ? entry.spSales / entry.ttSales : 0
         };
       });
+      return setCacheValue(dashboardDataCache.spTtProductCompareSummary, cacheKey, summary);
     }
 
     function computeSpTtMetrics(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getSpTtSelectionCacheToken()}`;
+      if (dashboardDataCache.spTtMetrics.has(cacheKey)) {
+        return dashboardDataCache.spTtMetrics.get(cacheKey);
+      }
       const rows = (spTtSalesData.rows || []).filter(row =>
         row?.date &&
         isInRange(row.date, range.start, range.end) &&
@@ -5829,13 +6070,14 @@
       );
       const spSales = rows.reduce((sum, row) => sum + (Number(row.spSales) || 0), 0);
       const ttSales = rows.reduce((sum, row) => sum + (Number(row.ttSales) || 0), 0);
-      return {
+      const metrics = {
         totalSales: spSales + ttSales,
         spSales,
         ttSales,
         gap: spSales - ttSales,
         ratio: ttSales ? spSales / ttSales : 0
       };
+      return setCacheValue(dashboardDataCache.spTtMetrics, cacheKey, metrics);
     }
 
     function aggregateSpTtRowsByDate(rows) {
@@ -5864,12 +6106,17 @@
     }
 
     function buildSpTtMetricMaps(range) {
-      return aggregateSpTtRowsByDate((spTtSalesData.rows || []).filter(row =>
+      const cacheKey = `${getRangeCacheToken(range)}::${getSpTtSelectionCacheToken()}`;
+      if (dashboardDataCache.spTtMetricMaps.has(cacheKey)) {
+        return dashboardDataCache.spTtMetricMaps.get(cacheKey);
+      }
+      const maps = aggregateSpTtRowsByDate((spTtSalesData.rows || []).filter(row =>
         row?.date &&
         isInRange(row.date, range.start, range.end) &&
         spTtMatchesSelectedCategory(row) &&
         spTtMatchesSelectedProduct(row)
       ));
+      return setCacheValue(dashboardDataCache.spTtMetricMaps, cacheKey, maps);
     }
 
     function buildSpTtTrendRows() {
@@ -6001,7 +6248,8 @@
             startSpTtMetricReveal(metricKey);
           }
           spTtTrendState.hoverIndex = null;
-          renderSpTtTrendSection();
+          renderSpTtCompareCards();
+          renderSpTtTrend();
         });
       });
     }
@@ -6009,8 +6257,7 @@
     function renderSpTtTrend() {
       const now = performance.now();
       const selectedMetrics = spTtTrendMetricDefinitions.filter(metric => spTtTrendState.selectedMetricKeys.includes(metric.key));
-      const trendRows = buildSpTtTrendRows();
-      spTtTrendState.activeRows = trendRows;
+      const trendRows = getCachedSpTtTrendRows();
 
       const { ctx, width, height } = prepareSpTtTrendCanvas();
       const tooltip = document.getElementById('spTtTrendTooltip');
@@ -6157,11 +6404,13 @@
         function drawSeries(valuesKey, color, dashed) {
           if (!isSpTtSeriesVisible(metric.key, valuesKey)) return;
           const revealProgress = getSpTtSeriesRevealProgress(metric.key, valuesKey, now);
+          const easedProgress = easeOutCubic(revealProgress);
           ctx.save();
-          beginRevealClip(revealProgress);
+          ctx.globalAlpha = getRevealOpacity(easedProgress);
+          beginRevealClip(easedProgress);
           ctx.strokeStyle = color;
           ctx.fillStyle = color;
-          ctx.lineWidth = metric.axisGroup === 'ratio' ? 2 : 3;
+          ctx.lineWidth = getAnimatedLineWidth(metric.axisGroup, easedProgress);
           if (dashed) ctx.setLineDash([7, 5]);
           ctx.beginPath();
           let started = false;
@@ -6183,21 +6432,20 @@
           trendRows.forEach((row, index) => {
             const value = row[valuesKey][metric.key];
             if (value === null || value === undefined) return;
-            const radius = metric.axisGroup === 'ratio' ? 3 : 4;
             ctx.beginPath();
-            ctx.arc(getX(index), getY(value, metric.axisGroup), radius, 0, Math.PI * 2);
+            ctx.arc(getX(index), getY(value, metric.axisGroup), getAnimatedPointRadius(metric.axisGroup, easedProgress), 0, Math.PI * 2);
             if (dashed) {
               ctx.fillStyle = '#ffffff';
               ctx.fill();
               ctx.strokeStyle = color;
-              ctx.lineWidth = metric.axisGroup === 'ratio' ? 1.5 : 2;
+              ctx.lineWidth = Math.max(1.1, getAnimatedLineWidth(metric.axisGroup, easedProgress) - 0.8);
               ctx.stroke();
               ctx.fillStyle = color;
             } else {
               ctx.fill();
             }
           });
-          endRevealClip(revealProgress);
+          endRevealClip(easedProgress);
           ctx.restore();
         }
 
@@ -6216,21 +6464,33 @@
           const compareValue = row.compareValues[metric.key];
           if (isSpTtSeriesVisible(metric.key, 'currentValues') && currentValue !== null && currentValue !== undefined) {
             const revealProgress = getSpTtSeriesRevealProgress(metric.key, 'currentValues', now);
+            const easedProgress = easeOutCubic(revealProgress);
             const currentX = centerX - groupWidth / 2;
             const currentY = getY(currentValue, metric.axisGroup);
+            const currentHeight = baseY - currentY;
+            const animatedHeight = getAnimatedBarHeight(currentHeight, easedProgress);
+            ctx.save();
+            ctx.globalAlpha = getRevealOpacity(easedProgress);
             ctx.fillStyle = metric.currentColor;
-            beginRevealClip(revealProgress);
-            ctx.fillRect(currentX, currentY, barWidth, baseY - currentY);
-            endRevealClip(revealProgress);
+            beginRevealClip(easedProgress);
+            ctx.fillRect(currentX, baseY - animatedHeight, barWidth, animatedHeight);
+            endRevealClip(easedProgress);
+            ctx.restore();
           }
           if (isSpTtSeriesVisible(metric.key, 'compareValues') && compareValue !== null && compareValue !== undefined) {
             const revealProgress = getSpTtSeriesRevealProgress(metric.key, 'compareValues', now);
+            const easedProgress = easeOutCubic(revealProgress);
             const compareX = centerX - groupWidth / 2 + barWidth + gap;
             const compareY = getY(compareValue, metric.axisGroup);
+            const compareHeight = baseY - compareY;
+            const animatedHeight = getAnimatedBarHeight(compareHeight, easedProgress);
+            ctx.save();
+            ctx.globalAlpha = getRevealOpacity(easedProgress);
             ctx.fillStyle = metric.compareColor;
-            beginRevealClip(revealProgress);
-            ctx.fillRect(compareX, compareY, barWidth, baseY - compareY);
-            endRevealClip(revealProgress);
+            beginRevealClip(easedProgress);
+            ctx.fillRect(compareX, baseY - animatedHeight, barWidth, animatedHeight);
+            endRevealClip(easedProgress);
+            ctx.restore();
           }
         });
       }
@@ -6260,12 +6520,34 @@
       const finalLegendLayout = renderLegend();
       spTtTrendState.legendItems = finalLegendLayout.items;
 
+      if (spTtTrendState.hoverIndex === null) {
+        spTtTrendState.baseCanvasSnapshot = cloneCanvasSnapshot(ctx.canvas);
+      }
+
       if (Object.keys(spTtTrendState.revealAnimations).length) scheduleSpTtTrendAnimationFrame();
     }
 
     function renderSpTtTrendSection() {
       renderSpTtCompareCards();
       renderSpTtTrend();
+    }
+
+    function redrawSpTtTrendHoverGuide() {
+      const geometry = spTtTrendState.geometry;
+      const rows = spTtTrendState.activeRows;
+      const snapshot = spTtTrendState.baseCanvasSnapshot;
+      const hoverIndex = spTtTrendState.hoverIndex;
+      if (!geometry || !rows.length) return;
+      const { ctx, width, height } = prepareSpTtTrendCanvas();
+      const restored = restoreCanvasSnapshot(ctx, snapshot, width, height);
+      if (!restored || hoverIndex === null || !rows[hoverIndex]) return;
+      const hoverX = geometry.getX(hoverIndex);
+      ctx.strokeStyle = 'rgba(23, 107, 135, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hoverX, geometry.padding.top);
+      ctx.lineTo(hoverX, geometry.padding.top + geometry.plotH);
+      ctx.stroke();
     }
 
     function updateSpTtTrendTooltip(clientX, clientY) {
@@ -6284,13 +6566,16 @@
       const plotBottom = geometry.padding.top + geometry.plotH;
 
       if (x < plotLeft || x > plotRight || y < plotTop || y > plotBottom) {
-        spTtTrendState.hoverIndex = null;
-        tooltip.style.display = 'none';
-        renderSpTtTrend();
+        if (spTtTrendState.hoverIndex !== null) {
+          spTtTrendState.hoverIndex = null;
+          tooltip.style.display = 'none';
+          redrawSpTtTrendHoverGuide();
+        }
         return;
       }
 
       const index = Math.max(0, Math.min(rows.length - 1, Math.round((x - plotLeft) / Math.max(1, geometry.step))));
+      const hoverChanged = spTtTrendState.hoverIndex !== index;
       spTtTrendState.hoverIndex = index;
       const row = rows[index];
       const selectedMetrics = spTtTrendMetricDefinitions.filter(metric => spTtTrendState.selectedMetricKeys.includes(metric.key));
@@ -6315,13 +6600,17 @@
       const top = Math.min(Math.max(clientY - wrapRect.top - tooltip.offsetHeight - 18, 8), wrapRect.height - tooltip.offsetHeight - 8);
       tooltip.style.left = `${left}px`;
       tooltip.style.top = `${top}px`;
-      renderSpTtTrend();
+      if (hoverChanged) {
+        redrawSpTtTrendHoverGuide();
+      }
     }
 
     function hideSpTtTrendTooltip() {
+      if (spTtTrendState.hoverIndex === null) return;
       spTtTrendState.hoverIndex = null;
+      spTtTrendState.lastPointer = null;
       document.getElementById('spTtTrendTooltip').style.display = 'none';
-      renderSpTtTrend();
+      redrawSpTtTrendHoverGuide();
     }
 
     function handleSpTtTrendCanvasClick(clientX, clientY) {
@@ -7664,7 +7953,8 @@
             startMetricReveal(metricKey);
           }
           storeTrendState.hoverIndex = null;
-          renderStoreTrendSection();
+          renderCompareCards();
+          renderTrend();
         });
       });
     }
@@ -7697,6 +7987,75 @@
           compareValues
         };
       });
+    }
+
+    function getSpTtTrendRowsCacheKey() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      return JSON.stringify({
+        queryStart: queryRange.start.toISOString().slice(0, 10),
+        queryEnd: queryRange.end.toISOString().slice(0, 10),
+        compareStart: compareRange.start.toISOString().slice(0, 10),
+        compareEnd: compareRange.end.toISOString().slice(0, 10),
+        categories: getSpTtSelectedCategories(),
+        products: getSpTtSelectedProducts()
+      });
+    }
+
+    function invalidateSpTtTrendCache() {
+      dashboardDataCache.spTtMetrics.clear();
+      dashboardDataCache.spTtMetricMaps.clear();
+      dashboardDataCache.spTtCompareSummary.clear();
+      dashboardDataCache.spTtProductCompareSummary.clear();
+      spTtTrendState.trendRowsCacheKey = '';
+      spTtTrendState.activeRows = [];
+      spTtTrendState.baseCanvasSnapshot = null;
+    }
+
+    function getCachedSpTtTrendRows() {
+      const cacheKey = getSpTtTrendRowsCacheKey();
+      if (spTtTrendState.trendRowsCacheKey === cacheKey && spTtTrendState.activeRows.length) {
+        return spTtTrendState.activeRows;
+      }
+      const rows = buildSpTtTrendRows();
+      spTtTrendState.trendRowsCacheKey = cacheKey;
+      spTtTrendState.activeRows = rows;
+      return rows;
+    }
+
+    function getStoreTrendRowsCacheKey() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      return JSON.stringify({
+        queryStart: queryRange.start.toISOString().slice(0, 10),
+        queryEnd: queryRange.end.toISOString().slice(0, 10),
+        compareStart: compareRange.start.toISOString().slice(0, 10),
+        compareEnd: compareRange.end.toISOString().slice(0, 10),
+        stores: getSelectedStores(),
+        categories: getSelectedCategories(),
+        products: getSelectedProducts()
+      });
+    }
+
+    function invalidateStoreTrendCache() {
+      dashboardDataCache.storeMetrics.clear();
+      dashboardDataCache.storeMetricMaps.clear();
+      dashboardDataCache.categorySummary.clear();
+      dashboardDataCache.productSummary.clear();
+      storeTrendState.trendRowsCacheKey = '';
+      storeTrendState.activeRows = [];
+      storeTrendState.baseCanvasSnapshot = null;
+    }
+
+    function getCachedStoreTrendRows() {
+      const cacheKey = getStoreTrendRowsCacheKey();
+      if (storeTrendState.trendRowsCacheKey === cacheKey && storeTrendState.activeRows.length) {
+        return storeTrendState.activeRows;
+      }
+      const rows = buildTrendRows();
+      storeTrendState.trendRowsCacheKey = cacheKey;
+      storeTrendState.activeRows = rows;
+      return rows;
     }
 
     function getAxisRange(rows, metricKeys, options = {}) {
@@ -7859,8 +8218,7 @@
     function renderTrend() {
       const now = performance.now();
       const selectedMetrics = metricDefinitions.filter(metric => storeTrendState.selectedMetricKeys.includes(metric.key));
-      const trendRows = buildTrendRows();
-      storeTrendState.activeRows = trendRows;
+      const trendRows = getCachedStoreTrendRows();
 
       const { ctx, width, height } = prepareTrendCanvas();
       const tooltip = document.getElementById('trendTooltip');
@@ -7926,11 +8284,13 @@
         function drawSeries(valuesKey, color, dashed) {
           if (!isSeriesVisible(metric.key, valuesKey)) return;
           const revealProgress = getSeriesRevealProgress(metric.key, valuesKey, now);
+          const easedProgress = easeOutCubic(revealProgress);
           ctx.save();
-          beginRevealClip(revealProgress);
+          ctx.globalAlpha = getRevealOpacity(easedProgress);
+          beginRevealClip(easedProgress);
           ctx.strokeStyle = color;
           ctx.fillStyle = color;
-          ctx.lineWidth = 3;
+          ctx.lineWidth = getAnimatedLineWidth(metric.axisGroup, easedProgress);
           if (dashed) ctx.setLineDash([7, 5]);
           ctx.beginPath();
           let started = false;
@@ -7953,19 +8313,19 @@
             const value = row[valuesKey][metric.key];
             if (value === null || value === undefined) return;
             ctx.beginPath();
-            ctx.arc(getX(index), getY(value, metric.axisGroup), metric.axisGroup === 'conversion' ? 4 : 4, 0, Math.PI * 2);
+            ctx.arc(getX(index), getY(value, metric.axisGroup), getAnimatedPointRadius(metric.axisGroup, easedProgress), 0, Math.PI * 2);
             if (dashed) {
               ctx.fillStyle = '#ffffff';
               ctx.fill();
               ctx.strokeStyle = color;
-              ctx.lineWidth = 2;
+              ctx.lineWidth = Math.max(1.2, getAnimatedLineWidth(metric.axisGroup, easedProgress) - 0.8);
               ctx.stroke();
               ctx.fillStyle = color;
             } else {
               ctx.fill();
             }
           });
-          endRevealClip(revealProgress);
+          endRevealClip(easedProgress);
           ctx.restore();
         }
 
@@ -7984,21 +8344,33 @@
           const compareValue = row.compareValues[metric.key];
           if (isSeriesVisible(metric.key, 'currentValues') && currentValue !== null && currentValue !== undefined) {
             const revealProgress = getSeriesRevealProgress(metric.key, 'currentValues', now);
+            const easedProgress = easeOutCubic(revealProgress);
             const currentX = centerX - groupWidth / 2;
             const currentY = getY(currentValue, metric.axisGroup);
+            const currentHeight = baseY - currentY;
+            const animatedHeight = getAnimatedBarHeight(currentHeight, easedProgress);
+            ctx.save();
+            ctx.globalAlpha = getRevealOpacity(easedProgress);
             ctx.fillStyle = metric.currentColor;
-            beginRevealClip(revealProgress);
-            ctx.fillRect(currentX, currentY, barWidth, baseY - currentY);
-            endRevealClip(revealProgress);
+            beginRevealClip(easedProgress);
+            ctx.fillRect(currentX, baseY - animatedHeight, barWidth, animatedHeight);
+            endRevealClip(easedProgress);
+            ctx.restore();
           }
           if (isSeriesVisible(metric.key, 'compareValues') && compareValue !== null && compareValue !== undefined) {
             const revealProgress = getSeriesRevealProgress(metric.key, 'compareValues', now);
+            const easedProgress = easeOutCubic(revealProgress);
             const compareX = centerX - groupWidth / 2 + barWidth + gap;
             const compareY = getY(compareValue, metric.axisGroup);
+            const compareHeight = baseY - compareY;
+            const animatedHeight = getAnimatedBarHeight(compareHeight, easedProgress);
+            ctx.save();
+            ctx.globalAlpha = getRevealOpacity(easedProgress);
             ctx.fillStyle = metric.compareColor;
-            beginRevealClip(revealProgress);
-            ctx.fillRect(compareX, compareY, barWidth, baseY - compareY);
-            endRevealClip(revealProgress);
+            beginRevealClip(easedProgress);
+            ctx.fillRect(compareX, baseY - animatedHeight, barWidth, animatedHeight);
+            endRevealClip(easedProgress);
+            ctx.restore();
           }
         });
       }
@@ -8027,6 +8399,10 @@
 
       const finalLegendLayout = renderTrendLegend(ctx, buildTrendLegendItems(selectedMetrics), legendStartX, legendStartY, legendMaxWidth);
       storeTrendState.legendItems = finalLegendLayout.items;
+
+      if (storeTrendState.hoverIndex === null) {
+        storeTrendState.baseCanvasSnapshot = cloneCanvasSnapshot(ctx.canvas);
+      }
 
       if (Object.keys(storeTrendState.revealAnimations).length) scheduleTrendAnimationFrame();
     }
@@ -8107,15 +8483,62 @@
       renderProductAnalysisTable();
     }
 
+    function redrawStoreTrendHoverGuide() {
+      const geometry = storeTrendState.geometry;
+      const rows = storeTrendState.activeRows;
+      const snapshot = storeTrendState.baseCanvasSnapshot;
+      const hoverIndex = storeTrendState.hoverIndex;
+      if (!geometry || !rows.length) return;
+      const { ctx, width, height } = prepareTrendCanvas();
+      const restored = restoreCanvasSnapshot(ctx, snapshot, width, height);
+      if (!restored || hoverIndex === null || !rows[hoverIndex]) return;
+      const hoverX = geometry.getX(hoverIndex);
+      ctx.strokeStyle = 'rgba(23, 107, 135, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hoverX, geometry.padding.top);
+      ctx.lineTo(hoverX, geometry.padding.top + geometry.plotH);
+      ctx.stroke();
+    }
+
     function renderAnalysisSections() {
-      renderStoreTrendSection();
-      renderSpTtTrendSection();
-      renderOuterBreakdownTable();
-      renderOuterStructureTable();
-      renderOuterProductStructureTable();
-      renderOuterDimensionTable();
-      renderSpTtCompareTable();
-      renderSpTtProductCompareTable();
+      invalidateAllTabs();
+      renderActiveTab(true);
+    }
+
+    function handleGlobalDateChange() {
+      storeTrendState.hoverIndex = null;
+      spTtTrendState.hoverIndex = null;
+      clearDashboardDataCaches();
+      invalidateStoreTrendCache();
+      invalidateSpTtTrendCache();
+      materialTrendState.baseCanvasSnapshot = null;
+      invalidateAllTabs();
+      scheduleActiveTabRender(true);
+    }
+
+    function scheduleActiveTabResize() {
+      scheduleActiveTabRender(true);
+    }
+
+    function queueStoreTrendHover(clientX, clientY) {
+      storeTrendState.lastPointer = { clientX, clientY };
+      if (storeTrendState.hoverRafId !== null) return;
+      storeTrendState.hoverRafId = scheduleFrame(() => {
+        storeTrendState.hoverRafId = null;
+        if (!storeTrendState.lastPointer) return;
+        updateTrendTooltip(storeTrendState.lastPointer.clientX, storeTrendState.lastPointer.clientY);
+      });
+    }
+
+    function queueSpTtTrendHover(clientX, clientY) {
+      spTtTrendState.lastPointer = { clientX, clientY };
+      if (spTtTrendState.hoverRafId !== null) return;
+      spTtTrendState.hoverRafId = scheduleFrame(() => {
+        spTtTrendState.hoverRafId = null;
+        if (!spTtTrendState.lastPointer) return;
+        updateSpTtTrendTooltip(spTtTrendState.lastPointer.clientX, spTtTrendState.lastPointer.clientY);
+      });
     }
 
     function updateTrendTooltip(clientX, clientY) {
@@ -8134,15 +8557,20 @@
       const plotBottom = geometry.padding.top + geometry.plotH;
 
       if (x < plotLeft || x > plotRight || y < plotTop || y > plotBottom) {
-        storeTrendState.hoverIndex = null;
-        tooltip.style.display = 'none';
-        renderTrend();
+        if (storeTrendState.hoverIndex !== null) {
+          storeTrendState.hoverIndex = null;
+          tooltip.style.display = 'none';
+          redrawStoreTrendHoverGuide();
+        }
         return;
       }
 
       const index = Math.max(0, Math.min(rows.length - 1, Math.round((x - plotLeft) / Math.max(1, geometry.step))));
+      const hoverChanged = storeTrendState.hoverIndex !== index;
       storeTrendState.hoverIndex = index;
-      renderTrend();
+      if (hoverChanged) {
+        redrawStoreTrendHoverGuide();
+      }
 
       const row = rows[index];
       const selectedMetrics = metricDefinitions.filter(metric => storeTrendState.selectedMetricKeys.includes(metric.key));
@@ -8170,9 +8598,11 @@
     }
 
     function hideTrendTooltip() {
+      if (storeTrendState.hoverIndex === null) return;
       storeTrendState.hoverIndex = null;
+      storeTrendState.lastPointer = null;
       document.getElementById('trendTooltip').style.display = 'none';
-      renderTrend();
+      redrawStoreTrendHoverGuide();
     }
 
     function handleTrendCanvasClick(clientX, clientY) {
@@ -8312,6 +8742,7 @@
     }
 
     function setActiveTab(tabKey) {
+      dashboardRenderState.activeTab = tabKey;
       const filterRow = document.getElementById('storeFilterPanelRow');
       const spTtFilterRow = document.getElementById('spTtFilterPanelRow');
       document.querySelectorAll('#analysisTabs .tab-button').forEach(button => {
@@ -8330,8 +8761,8 @@
       if (spTtFilterRow) {
         spTtFilterRow.classList.toggle('is-hidden', tabKey !== 'sp-tt');
       }
-      if (tabKey === 'store') renderStoreTrendSection();
-      if (tabKey === 'sp-tt') renderSpTtTrendSection();
+      invalidateTab(tabKey);
+      scheduleActiveTabRender();
     }
 
     function bindAnalysisTabs() {
@@ -8362,23 +8793,23 @@
       populateSpTtProductFilter();
       bindMultiSelectFilterEvents();
       bindAnalysisTabs();
-      renderAnalysisSections();
+      invalidateAllTabs();
+      renderActiveTab(true);
       renderProducts();
       renderAudit();
 
       const trendCanvas = document.getElementById('compareTrendChart');
-      trendCanvas.addEventListener('mousemove', event => updateTrendTooltip(event.clientX, event.clientY));
-      trendCanvas.addEventListener('mouseleave', hideTrendTooltip);
-      trendCanvas.addEventListener('click', event => handleTrendCanvasClick(event.clientX, event.clientY));
+      trendCanvas.addEventListener('mousemove', event => queueStoreTrendHover(event.clientX, event.clientY), { passive: true });
+      trendCanvas.addEventListener('mouseleave', hideTrendTooltip, { passive: true });
+      trendCanvas.addEventListener('click', event => handleTrendCanvasClick(event.clientX, event.clientY), { passive: true });
       const spTtTrendCanvas = document.getElementById('spTtTrendChart');
-      spTtTrendCanvas.addEventListener('mousemove', event => updateSpTtTrendTooltip(event.clientX, event.clientY));
-      spTtTrendCanvas.addEventListener('mouseleave', hideSpTtTrendTooltip);
-      spTtTrendCanvas.addEventListener('click', event => handleSpTtTrendCanvasClick(event.clientX, event.clientY));
+      spTtTrendCanvas.addEventListener('mousemove', event => queueSpTtTrendHover(event.clientX, event.clientY), { passive: true });
+      spTtTrendCanvas.addEventListener('mouseleave', hideSpTtTrendTooltip, { passive: true });
+      spTtTrendCanvas.addEventListener('click', event => handleSpTtTrendCanvasClick(event.clientX, event.clientY), { passive: true });
     }
 
     bootstrapDashboard();
-    window.addEventListener('resize', renderStoreTrendSection);
-    window.addEventListener('resize', renderSpTtTrendSection);
+    window.addEventListener('resize', scheduleActiveTabResize, { passive: true });
 
     document.querySelectorAll('.controls label').forEach(label => {
       const input = label.querySelector('input[type="date"]');
@@ -8397,12 +8828,7 @@
         if (typeof input.showPicker === 'function') input.showPicker();
       });
 
-      input.addEventListener('change', renderStoreTrendSection);
-      input.addEventListener('change', renderOuterBreakdownTable);
-      input.addEventListener('change', renderOuterStructureTable);
-      input.addEventListener('change', renderOuterProductStructureTable);
-      input.addEventListener('change', renderSpTtTrendSection);
-      input.addEventListener('change', renderSpTtCompareTable);
+      input.addEventListener('change', handleGlobalDateChange);
     });
 
     applySavedRefreshState();
