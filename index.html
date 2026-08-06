@@ -1373,6 +1373,24 @@
             </div>
             <div class="filter-control filter-summary-control">
               <div class="filter-control-head">
+                <span>板块筛选</span>
+              </div>
+              <div class="filter-multiselect" id="outerDimensionCategoryGroupFilterWrap">
+                <div id="outerDimensionCategoryGroupFilterTrigger" class="filter-trigger" aria-expanded="false">
+                  <input id="outerDimensionCategoryGroupFilterInput" class="filter-trigger-input" type="text" value="全部板块" placeholder="搜索板块" autocomplete="off">
+                  <span class="filter-trigger-arrow">▼</span>
+                </div>
+                <div id="outerDimensionCategoryGroupFilterPanel" class="filter-panel">
+                  <div class="filter-panel-actions">
+                    <button type="button" data-filter-action="select-all" data-filter-kind="categoryGroup" data-filter-scope="outer-dimension">全选</button>
+                    <button type="button" data-filter-action="clear" data-filter-kind="categoryGroup" data-filter-scope="outer-dimension">清空</button>
+                  </div>
+                  <div id="outerDimensionCategoryGroupFilterOptions" class="filter-options"></div>
+                </div>
+              </div>
+            </div>
+            <div class="filter-control filter-summary-control">
+              <div class="filter-control-head">
                 <span>广告形式筛选</span>
               </div>
               <div class="filter-multiselect" id="outerDimensionAdFormFilterWrap">
@@ -1926,12 +1944,14 @@
     const outerDimensionFilterState = {
       categories: [],
       products: [],
+      categoryGroups: [],
       adForms: [],
       audiences: [],
       targetings: [],
       creativeTypes: [],
       categorySearch: '',
       productSearch: '',
+      categoryGroupSearch: '',
       adFormSearch: '',
       audienceSearch: '',
       targetingSearch: '',
@@ -3841,6 +3861,7 @@
     const outerDimensionFilterConfigs = [
       { key: 'category', stateKey: 'categories', searchKey: 'categorySearch', allLabel: '全部品类', wrapperId: 'outerDimensionCategoryFilterWrap', triggerId: 'outerDimensionCategoryFilterTrigger', inputId: 'outerDimensionCategoryFilterInput', optionsId: 'outerDimensionCategoryFilterOptions', rowValue: row => getRowProductCategory(row) || row?.category || '' },
       { key: 'product', stateKey: 'products', searchKey: 'productSearch', allLabel: '全部产品', wrapperId: 'outerDimensionProductFilterWrap', triggerId: 'outerDimensionProductFilterTrigger', inputId: 'outerDimensionProductFilterInput', optionsId: 'outerDimensionProductFilterOptions', rowValue: row => getRowProductLabel(row) },
+      { key: 'categoryGroup', stateKey: 'categoryGroups', searchKey: 'categoryGroupSearch', allLabel: '全部板块', wrapperId: 'outerDimensionCategoryGroupFilterWrap', triggerId: 'outerDimensionCategoryGroupFilterTrigger', inputId: 'outerDimensionCategoryGroupFilterInput', optionsId: 'outerDimensionCategoryGroupFilterOptions', rowValue: row => row?.ad_form2 || '' },
       { key: 'adForm', stateKey: 'adForms', searchKey: 'adFormSearch', allLabel: '全部广告形式', wrapperId: 'outerDimensionAdFormFilterWrap', triggerId: 'outerDimensionAdFormFilterTrigger', inputId: 'outerDimensionAdFormFilterInput', optionsId: 'outerDimensionAdFormFilterOptions', rowValue: row => row?.ad_form || '' },
       { key: 'audience', stateKey: 'audiences', searchKey: 'audienceSearch', allLabel: '全部人群', wrapperId: 'outerDimensionAudienceFilterWrap', triggerId: 'outerDimensionAudienceFilterTrigger', inputId: 'outerDimensionAudienceFilterInput', optionsId: 'outerDimensionAudienceFilterOptions', rowValue: row => row?.acquisition_type || '' },
       { key: 'targeting', stateKey: 'targetings', searchKey: 'targetingSearch', allLabel: '全部定向', wrapperId: 'outerDimensionTargetingFilterWrap', triggerId: 'outerDimensionTargetingFilterTrigger', inputId: 'outerDimensionTargetingFilterInput', optionsId: 'outerDimensionTargetingFilterOptions', rowValue: row => row?.audience || '' },
