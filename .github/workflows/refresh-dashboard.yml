@@ -49,10 +49,14 @@ jobs:
             store-trend-data-main.js \
             store-trend-data-inner.js \
             store-trend-data-outer.js \
+            store-trend-data-outer.part1.js \
+            store-trend-data-outer.part2.js \
             store-trend-data-brand.js \
             product-trend-data-main.js \
             product-trend-data-inner.js \
             product-trend-data-outer.js \
+            product-trend-data-outer.part1.js \
+            product-trend-data-outer.part2.js \
             product-trend-data-brand.js \
             sp-tt-sales-data.js \
             tools/build_deploy_data.py
