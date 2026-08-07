@@ -381,6 +381,10 @@ def summarize_dates(rows):
     return {"count": len(rows), "min": dates[0] if dates else None, "max": dates[-1] if dates else None}
 
 
+def write_manifest(path, payload):
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def main():
     source_path = download_latest_workbook()
     wb = load_workbook(source_path)
@@ -399,6 +403,23 @@ def main():
     write_assignment(REPO_ROOT / "product-trend-data-brand.js", "window.productTrendData = window.productTrendData || {};", "window.productTrendData.brand", product_payload["brand"])
 
     write_assignment(REPO_ROOT / "sp-tt-sales-data.js", "", "window.spTtSalesData", sp_tt_payload)
+
+    write_manifest(
+        REPO_ROOT / "dashboard-data-manifest.json",
+        {
+            "store_main": summarize_dates(store_payload["main"]),
+            "store_inner": summarize_dates(store_payload["inner"]),
+            "store_outer": summarize_dates(store_payload["outer"]),
+            "store_outer_parts": ["store-trend-data-outer.part1.js", "store-trend-data-outer.part2.js"],
+            "store_brand": summarize_dates(store_payload["brand"]),
+            "product_main": summarize_dates(product_payload["main"]),
+            "product_inner": summarize_dates(product_payload["inner"]),
+            "product_outer": summarize_dates(product_payload["outer"]),
+            "product_outer_parts": ["product-trend-data-outer.part1.js", "product-trend-data-outer.part2.js"],
+            "product_brand": summarize_dates(product_payload["brand"]),
+            "sp_tt": summarize_dates(sp_tt_payload["rows"]),
+        },
+    )
 
     print(
         json.dumps(

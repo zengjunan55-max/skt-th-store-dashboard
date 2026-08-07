@@ -1,4 +1,5 @@
 const RUNNING_STATUSES = new Set(["queued", "in_progress", "pending", "waiting", "requested"]);
+const COMPLETED_STATUSES = new Set(["completed"]);
 
 function json(data, init = {}) {
   return new Response(JSON.stringify(data), {
@@ -22,7 +23,7 @@ function getConfig(env) {
 }
 
 async function githubRequest(config, path, init = {}) {
-  const response = await fetch(`https://api.github.com${path}`, {
+  return fetch(`https://api.github.com${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${config.token}`,
@@ -32,11 +33,10 @@ async function githubRequest(config, path, init = {}) {
       ...(init.headers || {}),
     },
   });
-  return response;
 }
 
 async function listWorkflowRuns(config) {
-  const path = `/repos/${config.owner}/${config.repo}/actions/workflows/${encodeURIComponent(config.workflowId)}/runs?per_page=5&branch=${encodeURIComponent(config.ref)}&event=workflow_dispatch`;
+  const path = `/repos/${config.owner}/${config.repo}/actions/workflows/${encodeURIComponent(config.workflowId)}/runs?per_page=10&branch=${encodeURIComponent(config.ref)}&event=workflow_dispatch`;
   const response = await githubRequest(config, path);
   if (!response.ok) {
     const text = await response.text();
@@ -44,6 +44,16 @@ async function listWorkflowRuns(config) {
   }
   const data = await response.json();
   return Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
+}
+
+async function getWorkflowRun(config, runId) {
+  const path = `/repos/${config.owner}/${config.repo}/actions/runs/${runId}`;
+  const response = await githubRequest(config, path);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`get_workflow_run_failed:${response.status}:${text}`);
+  }
+  return response.json();
 }
 
 async function dispatchWorkflow(config, payload) {
@@ -62,13 +72,27 @@ async function dispatchWorkflow(config, payload) {
 }
 
 async function waitForNewRun(config, previousRunId) {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     const runs = await listWorkflowRuns(config);
     const latest = runs[0];
     if (latest && latest.id !== previousRunId) {
       return latest;
     }
+  }
+  return null;
+}
+
+async function waitForRunCompletion(config, runId) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const run = await getWorkflowRun(config, runId);
+    if (COMPLETED_STATUSES.has(run.status)) {
+      return run;
+    }
+    if (!RUNNING_STATUSES.has(run.status)) {
+      return run;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
   return null;
 }
@@ -79,7 +103,7 @@ export async function onRequestPost(context) {
     return json(
       {
         ok: false,
-        message: "未配置令牌",
+        message: "GITHUB_TOKEN is not configured.",
         detail: "Cloudflare Pages environment variable GITHUB_TOKEN is missing.",
       },
       { status: 500 },
@@ -93,7 +117,7 @@ export async function onRequestPost(context) {
       return json(
         {
           ok: false,
-          message: "刷新进行中",
+          message: "Refresh is already running. Please try again later.",
           runUrl: activeRun.html_url || "",
           runId: activeRun.id || null,
         },
@@ -111,17 +135,59 @@ export async function onRequestPost(context) {
     });
 
     const newRun = await waitForNewRun(config, previousRunId);
-    return json({
-      ok: true,
-      message: "已触发刷新",
-      runUrl: newRun && newRun.html_url ? newRun.html_url : "",
-      runId: newRun && newRun.id ? newRun.id : null,
-    });
+    if (!newRun || !newRun.id) {
+      return json(
+        {
+          ok: true,
+          message: "Refresh triggered, but the run record was not available yet.",
+          runUrl: "",
+          runId: null,
+        },
+        { status: 202 },
+      );
+    }
+
+    const completedRun = await waitForRunCompletion(config, newRun.id);
+    if (completedRun && completedRun.status === "completed" && completedRun.conclusion === "success") {
+      return json({
+        ok: true,
+        message: "Refresh completed. Reload the page to see the latest data.",
+        runUrl: completedRun.html_url || newRun.html_url || "",
+        runId: completedRun.id || newRun.id,
+        status: completedRun.status,
+        conclusion: completedRun.conclusion,
+      });
+    }
+
+    if (completedRun && completedRun.status === "completed") {
+      return json(
+        {
+          ok: false,
+          message: "Refresh completed, but the workflow failed.",
+          runUrl: completedRun.html_url || newRun.html_url || "",
+          runId: completedRun.id || newRun.id,
+          status: completedRun.status,
+          conclusion: completedRun.conclusion || "",
+        },
+        { status: 500 },
+      );
+    }
+
+    return json(
+      {
+        ok: true,
+        message: "Refresh triggered and is still running.",
+        runUrl: newRun.html_url || "",
+        runId: newRun.id,
+        status: newRun.status || "queued",
+      },
+      { status: 202 },
+    );
   } catch (error) {
     return json(
       {
         ok: false,
-        message: "触发失败",
+        message: "Failed to trigger refresh.",
         detail: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },

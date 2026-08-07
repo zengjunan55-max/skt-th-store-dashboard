@@ -40,26 +40,43 @@ jobs:
       - name: Build latest deploy data
         run: python tools/build_deploy_data.py
 
+      - name: Validate generated data
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import re
+
+          root = Path(".")
+          manifest = root / "dashboard-data-manifest.json"
+          if not manifest.exists():
+              raise SystemExit("dashboard-data-manifest.json missing")
+
+          data = json.loads(manifest.read_text(encoding="utf-8"))
+          required_parts = []
+          for key in ("store_outer_parts", "product_outer_parts"):
+              for part in data.get(key, []):
+                  required_parts.append(part)
+
+          for part in required_parts:
+              part_path = root / part
+              if not part_path.exists():
+                  raise SystemExit(f"missing generated chunk: {part}")
+              if part_path.stat().st_size == 0:
+                  raise SystemExit(f"empty generated chunk: {part}")
+
+          for loader_name in ("store-trend-data-outer.js", "product-trend-data-outer.js"):
+              loader = (root / loader_name).read_text(encoding="utf-8")
+              parts = re.findall(r"loadScript\('([^']+)'\)", loader)
+              if not parts:
+                  raise SystemExit(f"{loader_name} does not reference chunk files")
+          PY
+
       - name: Commit refreshed files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            store-trend-data-stores.js \
-            store-trend-data-main.js \
-            store-trend-data-inner.js \
-            store-trend-data-outer.js \
-            store-trend-data-outer.part1.js \
-            store-trend-data-outer.part2.js \
-            store-trend-data-brand.js \
-            product-trend-data-main.js \
-            product-trend-data-inner.js \
-            product-trend-data-outer.js \
-            product-trend-data-outer.part1.js \
-            product-trend-data-outer.part2.js \
-            product-trend-data-brand.js \
-            sp-tt-sales-data.js \
-            tools/build_deploy_data.py
+          git add -A store-trend-data-* product-trend-data-* sp-tt-sales-data.js dashboard-data-manifest.json tools/build_deploy_data.py
           if git diff --cached --quiet; then
             echo "No dashboard data changes to commit."
             exit 0
