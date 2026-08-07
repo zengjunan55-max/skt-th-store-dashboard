@@ -1093,6 +1093,25 @@
       padding: 8px 10px;
       flex: 0 0 168px;
     }
+    #outerDimensionFilterPanelRow .controls-filter-panel {
+      width: 100%;
+      flex-wrap: nowrap;
+      gap: 8px;
+      align-items: stretch;
+      overflow-x: visible;
+      overflow-y: visible;
+      padding-bottom: 0;
+    }
+    #outerDimensionFilterPanelRow .filter-control,
+    #outerDimensionFilterPanelRow .filter-summary-control {
+      flex: 1 1 calc((100% - 48px) / 7);
+      width: calc((100% - 48px) / 7);
+      min-width: 0;
+      padding: 8px 10px;
+    }
+    #outerDimensionFilterPanelRow .filter-trigger-input {
+      min-width: 0;
+    }
     .category-cell-main {
       display: block;
       color: #102a43;
@@ -1155,6 +1174,12 @@
     @media (max-width: 980px) {
       main, header { padding-left: 18px; padding-right: 18px; }
       .controls-meta, .controls-filter-panel { width: 100%; }
+      #outerDimensionFilterPanelRow .controls-filter-panel { flex-wrap: wrap; }
+      #outerDimensionFilterPanelRow .filter-control,
+      #outerDimensionFilterPanelRow .filter-summary-control {
+        flex: 1 1 220px;
+        width: 220px;
+      }
       canvas { height: 330px; }
     }
   </style>
