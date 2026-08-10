@@ -1755,12 +1755,15 @@
       const voucherThb = sumBy(rows, 'voucher_from_shopee');
       const platformDiscountThb = sumBy(rows, 'platform_discount');
       const target = getStoreReceiptTarget(range);
+      const totalSubsidyThb = voucherThb + platformDiscountThb;
       const metrics = {
         actualGmv: actualGmvThb / 4.8,
         voucher: voucherThb / 4.8,
         voucherRatio: actualGmvThb ? voucherThb / actualGmvThb : 0,
         platformDiscount: platformDiscountThb / 4.8,
         platformDiscountRatio: actualGmvThb ? platformDiscountThb / actualGmvThb : 0,
+        totalSubsidy: totalSubsidyThb / 4.8,
+        totalSubsidyRatio: actualGmvThb ? totalSubsidyThb / actualGmvThb : 0,
         target,
         progress: target ? (actualGmvThb / 4.8) / target : 0
       };
@@ -8084,6 +8087,7 @@
       const currentMetrics = computeStoreReceiptMetrics(queryRange);
       const compareMetrics = computeStoreReceiptMetrics(compareRange);
       const progressPercent = Math.max(0, Math.min(100, (currentMetrics.progress || 0) * 100));
+      const formatRatioText = (value) => `占比 ${((value || 0) * 100).toFixed(2)}%`;
       const cards = [
         {
           key: 'actualGmv',
@@ -8100,25 +8104,22 @@
           key: 'platformDiscount',
           label: '平台货补(RMB)',
           value: moneyNumber.format(currentMetrics.platformDiscount || 0),
-          delta: formatDelta(currentMetrics.platformDiscount || 0, compareMetrics.platformDiscount || 0)
-        },
-        {
-          key: 'platformDiscountRatio',
-          label: '货补占比%',
-          value: `${((currentMetrics.platformDiscountRatio || 0) * 100).toFixed(2)}%`,
-          delta: formatDelta(currentMetrics.platformDiscountRatio || 0, compareMetrics.platformDiscountRatio || 0)
+          delta: formatDelta(currentMetrics.platformDiscount || 0, compareMetrics.platformDiscount || 0),
+          ratioText: formatRatioText(currentMetrics.platformDiscountRatio || 0)
         },
         {
           key: 'voucher',
           label: '平台券补(RMB)',
           value: moneyNumber.format(currentMetrics.voucher || 0),
-          delta: formatDelta(currentMetrics.voucher || 0, compareMetrics.voucher || 0)
+          delta: formatDelta(currentMetrics.voucher || 0, compareMetrics.voucher || 0),
+          ratioText: formatRatioText(currentMetrics.voucherRatio || 0)
         },
         {
-          key: 'voucherRatio',
-          label: '券补占比%',
-          value: `${((currentMetrics.voucherRatio || 0) * 100).toFixed(2)}%`,
-          delta: formatDelta(currentMetrics.voucherRatio || 0, compareMetrics.voucherRatio || 0)
+          key: 'totalSubsidy',
+          label: '总补贴(RMB)',
+          value: moneyNumber.format(currentMetrics.totalSubsidy || 0),
+          delta: formatDelta(currentMetrics.totalSubsidy || 0, compareMetrics.totalSubsidy || 0),
+          ratioText: formatRatioText(currentMetrics.totalSubsidyRatio || 0)
         }
       ];
 
@@ -8128,7 +8129,14 @@
             <div class="cmp-card receipt-card">
               <span>${card.label}</span>
               <b>${card.value}</b>
-              <small class="${card.delta.className || ''}">${card.delta.text}</small>
+              ${card.ratioText ? `
+                <div class="cmp-card-meta">
+                  <small class="${card.delta.className || ''}">${card.delta.text}</small>
+                  <small class="cmp-card-fee-ratio">${card.ratioText}</small>
+                </div>
+              ` : `
+                <small class="${card.delta.className || ''}">${card.delta.text}</small>
+              `}
               ${card.progress ? `
                 <div class="receipt-progress">
                   <div class="receipt-progress-label">
