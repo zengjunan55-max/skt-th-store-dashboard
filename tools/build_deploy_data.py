@@ -256,7 +256,7 @@ def build_store_and_product_payloads(wb):
             "actual_gmv": num(get_cell(row, idx, "GMV(After Seller Discounts)")),
             "platform_discount": num(get_cell(row, idx, "Platform Discount")),
             "voucher_from_shopee": num(get_cell(row, idx, "Voucher from shopee")),
-        } if norm(get_cell(row, idx, "Order Status")) == "COMPLETED" and recognized(get_cell(row, idx, "时间")) and recognized(get_cell(row, idx, "Shop Name")) else None
+        } if recognized(get_cell(row, idx, "时间")) and recognized(get_cell(row, idx, "Shop Name")) else None
     )
 
     rows = all_ws.iter_rows(min_row=1, values_only=True)
