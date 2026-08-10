@@ -5059,7 +5059,69 @@
     function bindOuterDimensionEvents() {
       const root = document.getElementById('outerDimensionTable');
       if (!root) return;
+      const exportButton = root.querySelector('[data-export-outer-dimension]');
+      if (exportButton) {
+        exportButton.addEventListener('click', exportOuterDimensionTable);
+      }
       bindOuterDimensionColumnResize(root);
+    }
+
+    function exportOuterDimensionTable() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const dimensionKey = outerDimensionAnalysisState.activeTab || 'category';
+      const activeTab = outerDimensionTabDefinitions.find(item => item.key === dimensionKey) || outerDimensionTabDefinitions[0];
+      const currentSummary = buildOuterDimensionSummary(queryRange, dimensionKey);
+      const compareSummary = buildOuterDimensionSummary(compareRange, dimensionKey);
+      const compareMap = new Map(compareSummary.items.map(item => [item.name, item]));
+      if (!currentSummary.items.length) return;
+
+      const metricDefinitions = [
+        { key: 'spend', label: '花费', formatter: value => moneyNumber.format(value) },
+        { key: 'spendShare', label: '花费占比', formatter: value => formatOuterBreakdownPercent(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownShareDelta(current, compare)).text },
+        { key: 'gmv', label: 'GMV', formatter: value => moneyNumber.format(value) },
+        { key: 'orders', label: '订单', formatter: value => metricNumber.format(value) },
+        { key: 'roi', label: 'ROI', formatter: value => formatOuterBreakdownFixed(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownValueDelta(current, compare, val => Number(val || 0).toFixed(2))).text },
+        { key: 'impressions', label: '曝光', formatter: value => metricNumber.format(value) },
+        { key: 'cpm', label: 'CPM', formatter: value => formatOuterBreakdownFixed(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownValueDelta(current, compare, val => Number(val || 0).toFixed(2))).text },
+        { key: 'ctr', label: '点击率', formatter: value => formatOuterBreakdownPercent(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownValueDelta(current, compare, val => `${(Number(val || 0) * 100).toFixed(1)}%`)).text },
+        { key: 'conversionRate', label: '转化率', formatter: value => formatOuterBreakdownPercent(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownValueDelta(current, compare, val => `${(Number(val || 0) * 100).toFixed(1)}%`)).text }
+      ];
+
+      const buildMetricPairCells = (current, compare) => metricDefinitions.map(metric => {
+        const currentValue = current?.[metric.key] || 0;
+        const compareValue = compare?.[metric.key] || 0;
+        const deltaText = metric.deltaFormatter
+          ? metric.deltaFormatter(currentValue, compareValue)
+          : formatCategoryDelta(formatDelta(currentValue, compareValue)).text;
+        return `
+          <td>${metric.formatter(currentValue)}</td>
+          <td>${deltaText}</td>
+        `;
+      }).join('');
+
+      downloadExcelHtml(
+        `${activeTab.label}分析_${getExportDatePart()}.xls`,
+        `${activeTab.label}分析`,
+        `
+          <table>
+            <thead>
+              <tr>
+                <th>${activeTab.label}</th>
+                ${metricDefinitions.map(metric => `<th>${metric.label}</th><th>${metric.label}环比</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${currentSummary.items.map(item => `
+                <tr>
+                  <td>${item.name}</td>
+                  ${buildMetricPairCells(item, compareMap.get(item.name))}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `
+      );
     }
 
     function renderOuterDimensionTable() {
@@ -5095,6 +5157,7 @@
               <strong>${activeTab.label}分析</strong>
               <span>按独立筛选条件查看 ${activeTab.label} 维度汇总站外投放表现，口径来自 ALL_data</span>
             </div>
+            <button class="table-export-button" type="button" data-export-outer-dimension>导出</button>
           </div>
           <div class="table-wrap">
             <table class="outer-structure-table outer-breakdown-table outer-dimension-table">
