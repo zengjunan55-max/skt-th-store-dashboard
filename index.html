@@ -540,6 +540,18 @@
       color: var(--muted);
       font-weight: 700;
     }
+    .cmp-card-fee-ratio-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      flex: 0 0 auto;
+    }
+    .cmp-card-fee-ratio-group small {
+      margin-top: 0;
+      text-align: right;
+      white-space: nowrap;
+    }
     .cmp-card small.delta-down { color: var(--good); font-weight: 700; }
     .cmp-card small.delta-up { color: var(--bad); font-weight: 700; }
     .cmp-card.active {
@@ -3617,6 +3629,13 @@
       const delta = ((currentValue - compareValue) / compareValue) * 100;
       const deltaText = `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`;
       return { text: `环比 ${deltaText}`, className: delta >= 0 ? 'delta-up' : 'delta-down' };
+    }
+
+    function formatAbsoluteRatioDelta(currentValue, compareValue) {
+      if (compareValue == null || Number.isNaN(compareValue)) return { text: '/', className: '' };
+      const delta = (currentValue || 0) - (compareValue || 0);
+      const deltaText = `${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(2)}%`;
+      return { text: `占比环比 ${deltaText}`, className: delta >= 0 ? 'delta-up' : 'delta-down' };
     }
 
     function formatFeeRatio(gmvValue, spendValue) {
@@ -8105,21 +8124,24 @@
           label: '平台货补(RMB)',
           value: moneyNumber.format(currentMetrics.platformDiscount || 0),
           delta: formatDelta(currentMetrics.platformDiscount || 0, compareMetrics.platformDiscount || 0),
-          ratioText: formatRatioText(currentMetrics.platformDiscountRatio || 0)
+          ratioText: formatRatioText(currentMetrics.platformDiscountRatio || 0),
+          ratioDelta: formatAbsoluteRatioDelta(currentMetrics.platformDiscountRatio || 0, compareMetrics.platformDiscountRatio || 0)
         },
         {
           key: 'voucher',
           label: '平台券补(RMB)',
           value: moneyNumber.format(currentMetrics.voucher || 0),
           delta: formatDelta(currentMetrics.voucher || 0, compareMetrics.voucher || 0),
-          ratioText: formatRatioText(currentMetrics.voucherRatio || 0)
+          ratioText: formatRatioText(currentMetrics.voucherRatio || 0),
+          ratioDelta: formatAbsoluteRatioDelta(currentMetrics.voucherRatio || 0, compareMetrics.voucherRatio || 0)
         },
         {
           key: 'totalSubsidy',
           label: '总补贴(RMB)',
           value: moneyNumber.format(currentMetrics.totalSubsidy || 0),
           delta: formatDelta(currentMetrics.totalSubsidy || 0, compareMetrics.totalSubsidy || 0),
-          ratioText: formatRatioText(currentMetrics.totalSubsidyRatio || 0)
+          ratioText: formatRatioText(currentMetrics.totalSubsidyRatio || 0),
+          ratioDelta: formatAbsoluteRatioDelta(currentMetrics.totalSubsidyRatio || 0, compareMetrics.totalSubsidyRatio || 0)
         }
       ];
 
@@ -8132,7 +8154,10 @@
               ${card.ratioText ? `
                 <div class="cmp-card-meta">
                   <small class="${card.delta.className || ''}">${card.delta.text}</small>
-                  <small class="cmp-card-fee-ratio">${card.ratioText}</small>
+                  <div class="cmp-card-fee-ratio-group">
+                    <small class="cmp-card-fee-ratio">${card.ratioText}</small>
+                    <small class="${card.ratioDelta?.className || ''}">${card.ratioDelta?.text || '/'}</small>
+                  </div>
                 </div>
               ` : `
                 <small class="${card.delta.className || ''}">${card.delta.text}</small>
