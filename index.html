@@ -8468,7 +8468,9 @@
       const padding = { top: Math.max(70, legendStartY + initialLegendLayout.height + 16), right: 88, bottom: 42, left: 88 };
       const plotW = width - padding.left - padding.right;
       const plotH = height - padding.top - padding.bottom;
-      const step = plotW / Math.max(1, trendRows.length - 1);
+      const edgeInset = trendRows.length > 1 ? Math.min(22, Math.max(14, plotW * 0.035)) : 0;
+      const effectivePlotW = Math.max(1, plotW - edgeInset * 2);
+      const step = effectivePlotW / Math.max(1, trendRows.length - 1);
       const leftMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'left').map(metric => metric.key);
       const rightMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'right').map(metric => metric.key);
       const visitorsMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'visitors').map(metric => metric.key);
@@ -8477,7 +8479,7 @@
       const rightRange = getAxisRange(trendRows, rightMetricKeys, { zeroBased: true });
       const visitorsRange = getAxisRange(trendRows, visitorsMetricKeys, { zeroBased: false, minPaddingRatio: 0.16 });
       const conversionRange = getAxisRange(trendRows, conversionMetricKeys, { zeroBased: false, minPaddingRatio: 0.22 });
-      const getX = index => padding.left + step * index;
+      const getX = index => padding.left + edgeInset + step * index;
       const getY = (value, axisGroup) => {
         const range = axisGroup === 'right' ? rightRange : axisGroup === 'visitors' ? visitorsRange : axisGroup === 'conversion' ? conversionRange : leftRange;
         const safeValue = value || 0;
@@ -8485,7 +8487,7 @@
         return padding.top + plotH - ((safeValue - range.min) / denominator) * plotH;
       };
 
-      storeTrendState.geometry = { padding, plotW, plotH, step, getX };
+      storeTrendState.geometry = { padding, plotW, plotH, step, getX, edgeInset };
       storeTrendState.legendItems = initialLegendLayout.items;
 
       ctx.clearRect(0, 0, width, height);
@@ -8795,6 +8797,7 @@
       const plotRight = geometry.padding.left + geometry.plotW;
       const plotTop = geometry.padding.top;
       const plotBottom = geometry.padding.top + geometry.plotH;
+      const edgeInset = geometry.edgeInset || 0;
 
       if (x < plotLeft || x > plotRight || y < plotTop || y > plotBottom) {
         if (storeTrendState.hoverIndex !== null) {
@@ -8805,7 +8808,7 @@
         return;
       }
 
-      const index = Math.max(0, Math.min(rows.length - 1, Math.round((x - plotLeft) / Math.max(1, geometry.step))));
+      const index = Math.max(0, Math.min(rows.length - 1, Math.round((x - plotLeft - edgeInset) / Math.max(1, geometry.step))));
       const hoverChanged = storeTrendState.hoverIndex !== index;
       storeTrendState.hoverIndex = index;
       if (hoverChanged) {
