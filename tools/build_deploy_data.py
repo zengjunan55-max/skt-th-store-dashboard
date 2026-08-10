@@ -166,6 +166,7 @@ def build_store_and_product_payloads(wb):
     store_ws = wb["店铺基础数据"]
     inner_ws = wb["站内广告"]
     all_ws = wb["ALL_data"]
+    subsidy_ws = wb["补贴"]
 
     category_by_product = {}
     category_store_map = {}
@@ -247,6 +248,16 @@ def build_store_and_product_payloads(wb):
     product_main_rows = build_sheet(store_ws, build_product_main)
     store_inner_rows = build_sheet(inner_ws, build_store_inner)
     product_inner_rows = build_sheet(inner_ws, build_product_inner)
+    store_subsidy_rows = build_sheet(
+        subsidy_ws,
+        lambda row, idx: {
+            "date": norm(get_cell(row, idx, "时间")),
+            "store": norm(get_cell(row, idx, "Shop Name")),
+            "actual_gmv": num(get_cell(row, idx, "GMV(After Seller Discounts)")),
+            "platform_discount": num(get_cell(row, idx, "Platform Discount")),
+            "voucher_from_shopee": num(get_cell(row, idx, "Voucher from shopee")),
+        } if norm(get_cell(row, idx, "Order Status")) == "COMPLETED" and recognized(get_cell(row, idx, "时间")) and recognized(get_cell(row, idx, "Shop Name")) else None
+    )
 
     rows = all_ws.iter_rows(min_row=1, values_only=True)
     headers = next(rows)
@@ -329,6 +340,7 @@ def build_store_and_product_payloads(wb):
         "stores": sorted({row["store"] for row in store_main_rows if row.get("store")}),
         "main": store_main_rows,
         "inner": store_inner_rows,
+        "subsidy": store_subsidy_rows,
         "outer": store_outer_rows,
         "brand": store_brand_rows,
     }, {
@@ -394,6 +406,7 @@ def main():
     write_assignment(REPO_ROOT / "store-trend-data-stores.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.stores", store_payload["stores"])
     write_assignment(REPO_ROOT / "store-trend-data-main.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.main", store_payload["main"])
     write_assignment(REPO_ROOT / "store-trend-data-inner.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.inner", store_payload["inner"])
+    write_assignment(REPO_ROOT / "store-trend-data-subsidy.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.subsidy", store_payload["subsidy"])
     write_chunked_loader(REPO_ROOT / "store-trend-data-outer.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.outer", store_payload["outer"])
     write_assignment(REPO_ROOT / "store-trend-data-brand.js", "window.storeTrendData = window.storeTrendData || {};", "window.storeTrendData.brand", store_payload["brand"])
 
@@ -409,6 +422,7 @@ def main():
         {
             "store_main": summarize_dates(store_payload["main"]),
             "store_inner": summarize_dates(store_payload["inner"]),
+            "store_subsidy": summarize_dates(store_payload["subsidy"]),
             "store_outer": summarize_dates(store_payload["outer"]),
             "store_outer_parts": ["store-trend-data-outer.part1.js", "store-trend-data-outer.part2.js"],
             "store_brand": summarize_dates(store_payload["brand"]),
@@ -426,6 +440,7 @@ def main():
             {
                 "store_main": summarize_dates(store_payload["main"]),
                 "store_inner": summarize_dates(store_payload["inner"]),
+                "store_subsidy": summarize_dates(store_payload["subsidy"]),
                 "store_outer": summarize_dates(store_payload["outer"]),
                 "store_brand": summarize_dates(store_payload["brand"]),
                 "product_main": summarize_dates(product_payload["main"]),

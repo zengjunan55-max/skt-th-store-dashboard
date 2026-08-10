@@ -555,6 +555,52 @@
       border-color: #b7c6d8;
       transform: translateY(-1px);
     }
+    .receipt-card {
+      cursor: default;
+      min-height: 136px;
+    }
+    .receipt-card:hover {
+      border-color: var(--line);
+      transform: none;
+    }
+    .receipt-card b {
+      font-size: clamp(22px, 2vw, 30px);
+    }
+    .receipt-card .cmp-card-meta {
+      align-items: flex-start;
+      margin-top: 6px;
+    }
+    .receipt-card .cmp-card-meta small {
+      line-height: 1.4;
+    }
+    .receipt-progress {
+      margin-top: 12px;
+    }
+    .receipt-progress-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .receipt-progress-track {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: #e8edf2;
+      overflow: hidden;
+    }
+    .receipt-progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #d95f43 0%, #ec8a63 100%);
+    }
+    .receipt-progress-empty {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
     .trend-canvas-wrap {
       position: relative;
       margin-top: 14px;
@@ -1273,6 +1319,11 @@
           </div>
         </div>
       </div>
+      <section id="storeReceiptSection">
+        <h2>店铺实收 / 补贴监控</h2>
+        <p class="small">按查询日期与店铺筛选，监控店铺实收 GMV、平台券补和平台货补，并展示同期环比与月度目标进度。</p>
+        <div id="storeReceiptCards"></div>
+      </section>
       <section id="storeTrendSection">
         <h2>店铺趋势</h2>
         <p class="small">这一块先展示店铺基础数据卡片，并根据查询日期与环比日期自动联动计算。</p>
@@ -1603,6 +1654,7 @@
   <script src="./store-trend-data-stores.js"></script>
   <script src="./store-trend-data-main.js"></script>
   <script src="./store-trend-data-inner.js"></script>
+  <script src="./store-trend-data-subsidy.js"></script>
   <script src="./store-trend-data-outer.js"></script>
   <script src="./store-trend-data-brand.js"></script>
   <script src="./product-trend-data-main.js"></script>
@@ -1612,7 +1664,7 @@
   <script src="./sp-tt-sales-data.js"></script>
   <script>
     const data = JSON.parse(document.getElementById('embeddedData').textContent);
-    const storeTrendData = window.storeTrendData || { stores: [], main: [], inner: [], outer: [], brand: [] };
+    const storeTrendData = window.storeTrendData || { stores: [], main: [], inner: [], subsidy: [], outer: [], brand: [] };
     const productTrendData = window.productTrendData || { main: [], inner: [], outer: [], brand: [] };
     const spTtSalesData = window.spTtSalesData || { rows: [] };
     const materialMonitorAllowedAdTypes = ['图片广告', '视频广告'];
@@ -1675,6 +1727,44 @@
         activeTab: outerDimensionAnalysisState.activeTab || 'category',
         filters: Object.fromEntries(outerDimensionFilterConfigs.map(config => [config.key, getSelectedOuterDimensionFilterValues(config.key)]))
       });
+    }
+
+    function buildMonthKeysInRange(range) {
+      const keys = [];
+      const cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+      const end = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
+      while (cursor <= end) {
+        keys.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+      return keys;
+    }
+
+    function getStoreReceiptTarget(range) {
+      return buildMonthKeysInRange(range).reduce((sum, monthKey) => sum + (storeReceiptTargetByMonth[monthKey] || 0), 0);
+    }
+
+    function computeStoreReceiptMetrics(range) {
+      const cacheKey = `${getRangeCacheToken(range)}::${getSelectedStores().join('|')}`;
+      if (dashboardDataCache.storeReceiptMetrics.has(cacheKey)) {
+        return dashboardDataCache.storeReceiptMetrics.get(cacheKey);
+      }
+      const rows = filterRows(storeTrendData.subsidy || [], range)
+        .filter(row => !row.store || matchesSelectedStore(row));
+      const actualGmvThb = sumBy(rows, 'actual_gmv');
+      const voucherThb = sumBy(rows, 'voucher_from_shopee');
+      const platformDiscountThb = sumBy(rows, 'platform_discount');
+      const target = getStoreReceiptTarget(range);
+      const metrics = {
+        actualGmv: actualGmvThb / 4.8,
+        voucher: voucherThb / 4.8,
+        voucherRatio: actualGmvThb ? voucherThb / actualGmvThb : 0,
+        platformDiscount: platformDiscountThb / 4.8,
+        platformDiscountRatio: actualGmvThb ? platformDiscountThb / actualGmvThb : 0,
+        target,
+        progress: target ? (actualGmvThb / 4.8) / target : 0
+      };
+      return setCacheValue(dashboardDataCache.storeReceiptMetrics, cacheKey, metrics);
     }
 
     function computeStoreMetrics(range) {
@@ -1791,6 +1881,9 @@
       animationFrameId: null,
       baseCanvasSnapshot: null
     };
+    const storeReceiptTargetByMonth = {
+      '2026-08': 12500000
+    };
     const filterState = {
       stores: [],
       categories: [],
@@ -1853,6 +1946,7 @@
       }
     };
     const dashboardDataCache = {
+      storeReceiptMetrics: new Map(),
       storeMetrics: new Map(),
       storeMetricMaps: new Map(),
       categorySummary: new Map(),
@@ -7984,6 +8078,74 @@
       });
     }
 
+    function renderStoreReceiptCards() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentMetrics = computeStoreReceiptMetrics(queryRange);
+      const compareMetrics = computeStoreReceiptMetrics(compareRange);
+      const progressPercent = Math.max(0, Math.min(100, (currentMetrics.progress || 0) * 100));
+      const cards = [
+        {
+          key: 'actualGmv',
+          label: '实收GMV-TTL',
+          value: moneyNumber.format(currentMetrics.actualGmv || 0),
+          delta: formatDelta(currentMetrics.actualGmv || 0, compareMetrics.actualGmv || 0),
+          progress: currentMetrics.target ? {
+            percent: progressPercent,
+            text: `进度 ${(currentMetrics.progress || 0) * 100 >= 0 ? ((currentMetrics.progress || 0) * 100).toFixed(1) : '0.0'}%`,
+            target: `目标 ${moneyNumber.format(currentMetrics.target)}`
+          } : null
+        },
+        {
+          key: 'platformDiscount',
+          label: '平台货补(RMB)',
+          value: moneyNumber.format(currentMetrics.platformDiscount || 0),
+          delta: formatDelta(currentMetrics.platformDiscount || 0, compareMetrics.platformDiscount || 0)
+        },
+        {
+          key: 'platformDiscountRatio',
+          label: '货补占比%',
+          value: `${((currentMetrics.platformDiscountRatio || 0) * 100).toFixed(2)}%`,
+          delta: formatDelta(currentMetrics.platformDiscountRatio || 0, compareMetrics.platformDiscountRatio || 0)
+        },
+        {
+          key: 'voucher',
+          label: '平台券补(RMB)',
+          value: moneyNumber.format(currentMetrics.voucher || 0),
+          delta: formatDelta(currentMetrics.voucher || 0, compareMetrics.voucher || 0)
+        },
+        {
+          key: 'voucherRatio',
+          label: '券补占比%',
+          value: `${((currentMetrics.voucherRatio || 0) * 100).toFixed(2)}%`,
+          delta: formatDelta(currentMetrics.voucherRatio || 0, compareMetrics.voucherRatio || 0)
+        }
+      ];
+
+      document.getElementById('storeReceiptCards').innerHTML = `
+        <div class="cmp-cards">
+          ${cards.map(card => `
+            <div class="cmp-card receipt-card">
+              <span>${card.label}</span>
+              <b>${card.value}</b>
+              <small class="${card.delta.className || ''}">${card.delta.text}</small>
+              ${card.progress ? `
+                <div class="receipt-progress">
+                  <div class="receipt-progress-label">
+                    <span>${card.progress.text}</span>
+                    <span>${card.progress.target}</span>
+                  </div>
+                  <div class="receipt-progress-track">
+                    <div class="receipt-progress-fill" style="width:${card.progress.percent}%;"></div>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
     function buildTrendRows() {
       const queryRange = getRange('qStart', 'qEnd');
       const compareRange = getRange('cStart', 'cEnd');
@@ -8063,6 +8225,7 @@
     }
 
     function invalidateStoreTrendCache() {
+      dashboardDataCache.storeReceiptMetrics.clear();
       dashboardDataCache.storeMetrics.clear();
       dashboardDataCache.storeMetricMaps.clear();
       dashboardDataCache.categorySummary.clear();
@@ -8502,6 +8665,7 @@
     }
 
     function renderStoreTrendSection() {
+      renderStoreReceiptCards();
       renderCompareCards();
       renderTrend();
       renderCategoryAnalysisTable();
