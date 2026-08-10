@@ -3955,7 +3955,9 @@
       { key: 'videoRoi', label: '视频ROI', type: 'roi' },
       { key: 'collabConversionSpend', label: '合创转化花费', type: 'money' },
       { key: 'collabConversionRoi', label: '合创转化ROI', type: 'roi' },
-      { key: 'collabExposureSpend', label: '合创曝光花费', type: 'money' }
+      { key: 'collabExposureSpend', label: '合创曝光花费', type: 'money' },
+      { key: 'retargetingShare', label: '再营销占比', type: 'percent' },
+      { key: 'prospectingShare', label: '拉新占比', type: 'percent' }
     ];
     const outerProductStructureMetricDefinitions = [
       { key: 'gmv', label: '店铺GMV', type: 'money' },
@@ -3966,7 +3968,9 @@
       { key: 'videoRoi', label: '视频ROI', type: 'roi' },
       { key: 'collabConversionSpend', label: '合创转化花费', type: 'money' },
       { key: 'collabConversionRoi', label: '合创转化ROI', type: 'roi' },
-      { key: 'collabExposureSpend', label: '合创曝光花费', type: 'money' }
+      { key: 'collabExposureSpend', label: '合创曝光花费', type: 'money' },
+      { key: 'retargetingShare', label: '再营销占比', type: 'percent' },
+      { key: 'prospectingShare', label: '拉新占比', type: 'percent' }
     ];
     const spTtCompareMetricDefinitions = [
       { key: 'totalSales', label: '总销量', type: 'count' },
@@ -5207,9 +5211,16 @@
       return metricKey === 'imageRoi' || metricKey === 'videoRoi' || metricKey === 'collabConversionRoi';
     }
 
+    function isOuterShareMetric(metricKey) {
+      return metricKey === 'retargetingShare' || metricKey === 'prospectingShare';
+    }
+
     function formatOuterStructureMetricDelta(metricKey, currentValue, compareValue) {
       if (isOuterRoiMetric(metricKey)) {
         return formatCategoryDelta(formatOuterBreakdownValueDelta(currentValue, compareValue, value => Number(value || 0).toFixed(2)));
+      }
+      if (isOuterShareMetric(metricKey)) {
+        return formatCategoryDelta(formatOuterBreakdownShareDelta(currentValue, compareValue));
       }
       return formatCategoryDelta(formatDelta(currentValue, compareValue));
     }
@@ -5243,6 +5254,8 @@
             category,
             salesThb: 0,
             totalSpendUsd: 0,
+            retargetingSpendUsd: 0,
+            prospectingSpendUsd: 0,
             totalConversionValue: 0,
             imageSpendUsd: 0,
             imageConversionValue: 0,
@@ -5276,9 +5289,16 @@
         const conversionValue = Number(row.conversion_value) || 0;
         const adType = row.ad_type || '';
         const adForm2 = row.ad_form2 || '';
+        const acquisitionType = row.acquisition_type || '';
 
         entry.totalSpendUsd += spendUsd;
         entry.totalConversionValue += conversionValue;
+        if (acquisitionType === '再营销') {
+          entry.retargetingSpendUsd += spendUsd;
+        }
+        if (acquisitionType === '拉新') {
+          entry.prospectingSpendUsd += spendUsd;
+        }
 
         if (adType === '图片广告') {
           entry.imageSpendUsd += spendUsd;
@@ -5307,7 +5327,9 @@
         videoRoi: entry.videoSpendUsd ? entry.videoConversionValue / entry.videoSpendUsd : 0,
         collabConversionSpend: entry.collabConversionSpendUsd * 6.9,
         collabConversionRoi: entry.collabConversionSpendUsd ? entry.collabConversionValue / entry.collabConversionSpendUsd : 0,
-        collabExposureSpend: entry.collabExposureSpendUsd * 6.9
+        collabExposureSpend: entry.collabExposureSpendUsd * 6.9,
+        retargetingShare: entry.totalSpendUsd ? entry.retargetingSpendUsd / entry.totalSpendUsd : 0,
+        prospectingShare: entry.totalSpendUsd ? entry.prospectingSpendUsd / entry.totalSpendUsd : 0
       }));
       return setCacheValue(dashboardDataCache.outerStructureSummary, cacheKey, summary);
     }
@@ -5325,6 +5347,8 @@
             product,
             salesThb: 0,
             totalSpendUsd: 0,
+            retargetingSpendUsd: 0,
+            prospectingSpendUsd: 0,
             totalConversionValue: 0,
             imageSpendUsd: 0,
             imageConversionValue: 0,
@@ -5363,9 +5387,16 @@
         const conversionValue = Number(row.conversion_value) || 0;
         const adType = row.ad_type || '';
         const adForm2 = row.ad_form2 || '';
+        const acquisitionType = row.acquisition_type || '';
 
         entry.totalSpendUsd += spendUsd;
         entry.totalConversionValue += conversionValue;
+        if (acquisitionType === '再营销') {
+          entry.retargetingSpendUsd += spendUsd;
+        }
+        if (acquisitionType === '拉新') {
+          entry.prospectingSpendUsd += spendUsd;
+        }
 
         if (adType === '图片广告') {
           entry.imageSpendUsd += spendUsd;
@@ -5394,7 +5425,9 @@
         videoRoi: entry.videoSpendUsd ? entry.videoConversionValue / entry.videoSpendUsd : 0,
         collabConversionSpend: entry.collabConversionSpendUsd * 6.9,
         collabConversionRoi: entry.collabConversionSpendUsd ? entry.collabConversionValue / entry.collabConversionSpendUsd : 0,
-        collabExposureSpend: entry.collabExposureSpendUsd * 6.9
+        collabExposureSpend: entry.collabExposureSpendUsd * 6.9,
+        retargetingShare: entry.totalSpendUsd ? entry.retargetingSpendUsd / entry.totalSpendUsd : 0,
+        prospectingShare: entry.totalSpendUsd ? entry.prospectingSpendUsd / entry.totalSpendUsd : 0
       })).filter(item => item.gmv);
       return setCacheValue(dashboardDataCache.outerProductStructureSummary, cacheKey, summary);
     }
