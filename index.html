@@ -8120,6 +8120,14 @@
           } : null
         },
         {
+          key: 'totalSubsidy',
+          label: '总补贴(RMB)',
+          value: moneyNumber.format(currentMetrics.totalSubsidy || 0),
+          delta: formatDelta(currentMetrics.totalSubsidy || 0, compareMetrics.totalSubsidy || 0),
+          ratioText: formatRatioText(currentMetrics.totalSubsidyRatio || 0),
+          ratioDelta: formatAbsoluteRatioDelta(currentMetrics.totalSubsidyRatio || 0, compareMetrics.totalSubsidyRatio || 0)
+        },
+        {
           key: 'platformDiscount',
           label: '平台货补(RMB)',
           value: moneyNumber.format(currentMetrics.platformDiscount || 0),
@@ -8134,14 +8142,6 @@
           delta: formatDelta(currentMetrics.voucher || 0, compareMetrics.voucher || 0),
           ratioText: formatRatioText(currentMetrics.voucherRatio || 0),
           ratioDelta: formatAbsoluteRatioDelta(currentMetrics.voucherRatio || 0, compareMetrics.voucherRatio || 0)
-        },
-        {
-          key: 'totalSubsidy',
-          label: '总补贴(RMB)',
-          value: moneyNumber.format(currentMetrics.totalSubsidy || 0),
-          delta: formatDelta(currentMetrics.totalSubsidy || 0, compareMetrics.totalSubsidy || 0),
-          ratioText: formatRatioText(currentMetrics.totalSubsidyRatio || 0),
-          ratioDelta: formatAbsoluteRatioDelta(currentMetrics.totalSubsidyRatio || 0, compareMetrics.totalSubsidyRatio || 0)
         }
       ];
 
