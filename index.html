@@ -3643,6 +3643,21 @@
       return `费比 ${((spendValue / gmvValue) * 100).toFixed(1)}%`;
     }
 
+    const storeFilterAliasMap = {
+      '新店-本土旗舰店': ['新店-本土旗舰店', '1459654235', 'SKINTIFIC Official Store'],
+      '新店群1': ['新店群1', '1517062371', 'SKINTIFIC-THAI'],
+      '新店群2': ['新店群2', '1530004205', 'SKINTIFIC BEAUTY']
+    };
+
+    function getComparableStoreNames(storeName) {
+      const normalized = String(storeName || '').trim();
+      if (!normalized) return [];
+      const matchedEntry = Object.entries(storeFilterAliasMap).find(([, aliases]) => aliases.includes(normalized));
+      if (!matchedEntry) return [normalized];
+      const [canonicalName, aliases] = matchedEntry;
+      return [...new Set([canonicalName, ...aliases])];
+    }
+
     function matchesSelectedCategory(row) {
       const rowCategory = row?.category || '';
       if (!rowCategory) return isAllCategoriesSelected();
@@ -3650,7 +3665,10 @@
     }
 
     function matchesSelectedStore(row) {
-      return isAllStoresSelected() || getSelectedStores().includes(row.store);
+      if (isAllStoresSelected()) return true;
+      const selectedStores = new Set(getSelectedStores());
+      const comparableNames = getComparableStoreNames(row?.store);
+      return comparableNames.some(name => selectedStores.has(name));
     }
 
     function outerMatchesSelectedCategory(row) {
