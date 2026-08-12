@@ -4880,6 +4880,23 @@
       return Number(value || 0).toFixed(2);
     }
 
+    function buildOuterBreakdownFilterSummaryHtml() {
+      const chips = [];
+      getOuterSelectedCategories().forEach(value => {
+        chips.push({ label: '品类', value });
+      });
+      getOuterSelectedProducts().forEach(value => {
+        chips.push({ label: '产品', value });
+      });
+      return chips.length
+        ? `<div class="material-filter-summary"><strong>已筛选项：</strong><span class="material-filter-chip-list">${chips.map(chip => `
+            <span class="material-filter-chip">
+              <span>${chip.label}：${chip.value}</span>
+            </span>
+          `).join('')}</span></div>`
+        : '<div class="material-filter-summary"><strong>已筛选项：</strong>当前无筛选</div>';
+    }
+
     function getOuterBreakdownMetrics(entry, totalSpend) {
       const spendShare = totalSpend ? entry.spend / totalSpend : 0;
       const roi = entry.spend ? entry.gmv / entry.spend : 0;
@@ -7634,6 +7651,7 @@
             </div>
             <button class="table-export-button" type="button" data-export-outer-breakdown>导出</button>
           </div>
+          ${buildOuterBreakdownFilterSummaryHtml()}
           <div class="table-wrap">
             <table class="outer-structure-table outer-breakdown-table">
               ${buildOuterBreakdownColgroup(headers)}
