@@ -224,7 +224,11 @@ def build_store_and_product_payloads(wb):
             "date": norm(get_cell(row, idx, "date")),
             "store": norm(get_cell(row, idx, "店铺")),
             "category": norm(get_cell(row, idx, "类目")),
+            "ads_spend_thb": num(get_cell(row, idx, "Ads Spend(THB)")),
             "spend_rmb": num(get_cell(row, idx, "Spend-人民币")),
+            "clicks": num(get_cell(row, idx, "Clicks")),
+            "cpc": num(get_cell(row, idx, "CPC")),
+            "gmv_thb": num(get_cell(row, idx, "GMV")),
         }
 
     def build_product_inner(row, idx):
@@ -241,7 +245,11 @@ def build_store_and_product_payloads(wb):
             "store": store,
             "category": category,
             "product": product,
+            "ads_spend_thb": num(get_cell(row, idx, "Ads Spend(THB)")),
             "spend_rmb": num(get_cell(row, idx, "Spend-人民币")),
+            "clicks": num(get_cell(row, idx, "Clicks")),
+            "cpc": num(get_cell(row, idx, "CPC")),
+            "gmv_thb": num(get_cell(row, idx, "GMV")),
         }
 
     store_main_rows = build_sheet(store_ws, build_store_main)

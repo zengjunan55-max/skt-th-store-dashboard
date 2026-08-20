@@ -140,7 +140,11 @@ def build_payloads(source_path):
             "date": norm(row[idx.get("date")]),
             "store": norm(row[idx.get("店铺")]),
             "category": norm(row[idx.get("类目")]),
+            "ads_spend_thb": num(row[idx.get("Ads Spend(THB)")]),
             "spend_rmb": num(row[idx.get("Spend-人民币")]),
+            "clicks": num(row[idx.get("Clicks")]),
+            "cpc": num(row[idx.get("CPC")]),
+            "gmv_thb": num(row[idx.get("GMV")]),
         }
 
     def build_product_inner(row, idx):
@@ -157,7 +161,11 @@ def build_payloads(source_path):
             "store": store,
             "category": category,
             "product": product,
+            "ads_spend_thb": num(row[idx.get("Ads Spend(THB)")]),
             "spend_rmb": num(row[idx.get("Spend-人民币")]),
+            "clicks": num(row[idx.get("Clicks")]),
+            "cpc": num(row[idx.get("CPC")]),
+            "gmv_thb": num(row[idx.get("GMV")]),
         }
 
     store_main_rows = build_sheet(store_ws, build_store_main)

@@ -87,7 +87,11 @@ def main():
             "store": norm(row[idx.get("店铺")]),
             "category": category,
             "product": product,
+            "ads_spend_thb": num(row[idx.get("Ads Spend(THB)")]),
             "spend_rmb": num(row[idx.get("Spend-人民币")]),
+            "clicks": num(row[idx.get("Clicks")]),
+            "cpc": num(row[idx.get("CPC")]),
+            "gmv_thb": num(row[idx.get("GMV")]),
         }
 
     main_rows = build_sheet(store_ws, build_main)

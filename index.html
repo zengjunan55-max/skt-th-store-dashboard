@@ -2162,6 +2162,7 @@
       roi: 126,
       impressions: 132,
       cpm: 126,
+      clickCost: 126,
       ctr: 126,
       conversionRate: 126
     };
@@ -3940,10 +3941,16 @@
       { key: 'gmv', label: '店铺GMV', type: 'money' },
       { key: 'visitors', label: '访客', type: 'count' },
       { key: 'conversion', label: '转化率', type: 'percent' },
+      { key: 'totalSpend', label: '总花费', type: 'money' },
+      { key: 'totalRoi', label: '总ROI', type: 'roi' },
       { key: 'innerSpend', label: '站内花费', type: 'money' },
-      { key: 'outerTotalSpend', label: '站外总花费', type: 'money' },
-      { key: 'harvestSpend', label: '收割花费', type: 'money' },
-      { key: 'seedingSpend', label: '种草花费', type: 'money' }
+      { key: 'innerFeeRatio', label: '站内费比', type: 'percent' },
+      { key: 'innerRoi', label: '站内ROI', type: 'roi' },
+      { key: 'innerCpc', label: '站内CPC', type: 'money2' },
+      { key: 'outerSpend', label: '站外花费', type: 'money' },
+      { key: 'outerFeeRatio', label: '站外费比', type: 'percent' },
+      { key: 'outerRoi', label: '站外ROI', type: 'roi' },
+      { key: 'uvValue', label: 'UV价值', type: 'money2' }
     ];
     const categoryMetricDefinitionMap = Object.fromEntries(categoryMetricDefinitions.map(metric => [metric.key, metric]));
     const outerStructureMetricDefinitions = [
@@ -4880,27 +4887,11 @@
       return Number(value || 0).toFixed(2);
     }
 
-    function buildOuterBreakdownFilterSummaryHtml() {
-      const chips = [];
-      getOuterSelectedCategories().forEach(value => {
-        chips.push({ label: '品类', value });
-      });
-      getOuterSelectedProducts().forEach(value => {
-        chips.push({ label: '产品', value });
-      });
-      return chips.length
-        ? `<div class="material-filter-summary"><strong>已筛选项：</strong><span class="material-filter-chip-list">${chips.map(chip => `
-            <span class="material-filter-chip">
-              <span>${chip.label}：${chip.value}</span>
-            </span>
-          `).join('')}</span></div>`
-        : '<div class="material-filter-summary"><strong>已筛选项：</strong>当前无筛选</div>';
-    }
-
     function getOuterBreakdownMetrics(entry, totalSpend) {
       const spendShare = totalSpend ? entry.spend / totalSpend : 0;
       const roi = entry.spend ? entry.gmv / entry.spend : 0;
       const cpm = entry.impressions ? (entry.spend / entry.impressions) * 1000 : 0;
+      const clickCost = entry.clicks ? entry.spend / entry.clicks : 0;
       const ctr = entry.impressions ? entry.clicks / entry.impressions : 0;
       const conversionRate = entry.clicks ? entry.orders / entry.clicks : 0;
       return {
@@ -4911,6 +4902,7 @@
         roi,
         impressions: entry.impressions,
         cpm,
+        clickCost,
         ctr,
         conversionRate
       };
@@ -5036,6 +5028,7 @@
         roi: currentEntry?.roi || 0,
         impressions: currentEntry?.impressions || 0,
         cpm: currentEntry?.cpm || 0,
+        clickCost: currentEntry?.clickCost || 0,
         ctr: currentEntry?.ctr || 0,
         conversionRate: currentEntry?.conversionRate || 0
       };
@@ -5047,6 +5040,7 @@
         roi: compareEntry?.roi || 0,
         impressions: compareEntry?.impressions || 0,
         cpm: compareEntry?.cpm || 0,
+        clickCost: compareEntry?.clickCost || 0,
         ctr: compareEntry?.ctr || 0,
         conversionRate: compareEntry?.conversionRate || 0
       };
@@ -5058,6 +5052,7 @@
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.roi), formatOuterBreakdownValueDelta(currentMetrics.roi, compareMetrics.roi, value => Number(value || 0).toFixed(2)))}
         ${buildOuterBreakdownMetricCell(metricNumber.format(currentMetrics.impressions), formatDelta(currentMetrics.impressions, compareMetrics.impressions))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.cpm), formatOuterBreakdownValueDelta(currentMetrics.cpm, compareMetrics.cpm, value => Number(value || 0).toFixed(2)))}
+        ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.clickCost), formatDelta(currentMetrics.clickCost, compareMetrics.clickCost))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.ctr), formatOuterBreakdownValueDelta(currentMetrics.ctr, compareMetrics.ctr, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.conversionRate), formatOuterBreakdownValueDelta(currentMetrics.conversionRate, compareMetrics.conversionRate, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
       `;
@@ -5464,10 +5459,13 @@
             visitors: 0,
             buyers: 0,
             innerSpend: 0,
+            innerAdsSpendThb: 0,
+            innerGmvThb: 0,
+            innerClicks: 0,
+            innerCpcSum: 0,
+            innerCpcCount: 0,
             outerSpendUsd: 0,
-            brandSpendUsd: 0,
-            harvestSpendUsd: 0,
-            seedingSpendUsd: 0
+            outerConversionValue: 0
           });
         }
         return categoryMap.get(category);
@@ -5489,22 +5487,21 @@
         const entry = ensureCategory(row.category);
         if (!entry) return;
         entry.innerSpend += Number(row.spend_rmb) || 0;
+        entry.innerAdsSpendThb += Number(row.ads_spend_thb ?? row.adsSpendThb ?? row.spend_thb ?? row.spendThb) || 0;
+        entry.innerGmvThb += Number(row.gmv_thb ?? row.gmvThb ?? row.gmv) || 0;
+        entry.innerClicks += Number(row.clicks ?? row.inner_clicks ?? row.innerClicks) || 0;
+        const cpcValue = Number(row.cpc);
+        if (Number.isFinite(cpcValue) && cpcValue > 0) {
+          entry.innerCpcSum += cpcValue;
+          entry.innerCpcCount += 1;
+        }
       });
 
       filterOuterRows(storeTrendData.outer || [], range).forEach(row => {
         const entry = ensureCategory(row.category);
         if (!entry) return;
         entry.outerSpendUsd += Number(row.spend_usd) || 0;
-        if ((row.ad_form2 || '') === '收割广告') entry.harvestSpendUsd += Number(row.spend_usd) || 0;
-        if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
-      });
-
-      filterBrandRows(storeTrendData.brand || [], range).forEach(row => {
-        const entry = ensureCategory(row.category);
-        if (!entry) return;
-        entry.brandSpendUsd += Number(row.spend_usd) || 0;
-        if ((row.ad_form2 || '') === '收割广告') entry.harvestSpendUsd += Number(row.spend_usd) || 0;
-        if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
+        entry.outerConversionValue += Number(row.conversion_value ?? row.gmv ?? row.purchase_value) || 0;
       });
 
       const summary = Array.from(categoryMap.values()).map(entry => ({
@@ -5512,10 +5509,16 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
+        totalSpend: entry.innerSpend + (entry.outerSpendUsd * 6.9),
+        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * 6.9)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * 6.9)) : 0,
         innerSpend: entry.innerSpend,
-        outerTotalSpend: (entry.outerSpendUsd + entry.brandSpendUsd) * 6.9,
-        harvestSpend: entry.harvestSpendUsd * 6.9,
-        seedingSpend: entry.seedingSpendUsd * 6.9
+        innerFeeRatio: entry.salesThb ? entry.innerSpend / (entry.salesThb / 4.8) : 0,
+        innerRoi: entry.innerAdsSpendThb ? entry.innerGmvThb / entry.innerAdsSpendThb : 0,
+        innerCpc: entry.innerClicks ? entry.innerAdsSpendThb / entry.innerClicks : (entry.innerCpcCount ? entry.innerCpcSum / entry.innerCpcCount : 0),
+        outerSpend: entry.outerSpendUsd * 6.9,
+        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
+        outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
+        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors / 4.8 : 0
       }));
       return setCacheValue(dashboardDataCache.categorySummary, cacheKey, summary);
     }
@@ -5758,10 +5761,13 @@
             visitors: 0,
             buyers: 0,
             innerSpend: 0,
+            innerAdsSpendThb: 0,
+            innerGmvThb: 0,
+            innerClicks: 0,
+            innerCpcSum: 0,
+            innerCpcCount: 0,
             outerSpendUsd: 0,
-            brandSpendUsd: 0,
-            harvestSpendUsd: 0,
-            seedingSpendUsd: 0
+            outerConversionValue: 0
           });
         }
         return productMap.get(product);
@@ -5785,6 +5791,14 @@
           const entry = ensureProduct(product);
           if (!entry) return;
           entry.innerSpend += Number(row.spend_rmb) || 0;
+          entry.innerAdsSpendThb += Number(row.ads_spend_thb ?? row.adsSpendThb ?? row.spend_thb ?? row.spendThb) || 0;
+          entry.innerGmvThb += Number(row.gmv_thb ?? row.gmvThb ?? row.gmv) || 0;
+          entry.innerClicks += Number(row.clicks ?? row.inner_clicks ?? row.innerClicks) || 0;
+          const cpcValue = Number(row.cpc);
+          if (Number.isFinite(cpcValue) && cpcValue > 0) {
+            entry.innerCpcSum += cpcValue;
+            entry.innerCpcCount += 1;
+          }
         });
 
       filterRows(productTrendData.outer || [], range)
@@ -5794,19 +5808,7 @@
         const entry = ensureProduct(product);
         if (!entry) return;
         entry.outerSpendUsd += Number(row.spend_usd) || 0;
-        if ((row.ad_form2 || '') === '收割广告') entry.harvestSpendUsd += Number(row.spend_usd) || 0;
-        if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
-      });
-
-      filterRows(productTrendData.brand || [], range)
-        .filter(row => matchesSelectedCategory(row) && (isAllProductsSelected() || getSelectedProducts().includes(getRowProductLabel(row))))
-        .forEach(row => {
-        const product = getRowProductLabel(row);
-        const entry = ensureProduct(product);
-        if (!entry) return;
-        entry.brandSpendUsd += Number(row.spend_usd) || 0;
-        if ((row.ad_form2 || '') === '收割广告') entry.harvestSpendUsd += Number(row.spend_usd) || 0;
-        if ((row.ad_form2 || '') === '种草广告') entry.seedingSpendUsd += Number(row.spend_usd) || 0;
+        entry.outerConversionValue += Number(row.conversion_value ?? row.gmv ?? row.purchase_value) || 0;
       });
 
       const summary = Array.from(productMap.values()).map(entry => ({
@@ -5814,10 +5816,16 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
+        totalSpend: entry.innerSpend + (entry.outerSpendUsd * 6.9),
+        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * 6.9)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * 6.9)) : 0,
         innerSpend: entry.innerSpend,
-        outerTotalSpend: (entry.outerSpendUsd + entry.brandSpendUsd) * 6.9,
-        harvestSpend: entry.harvestSpendUsd * 6.9,
-        seedingSpend: entry.seedingSpendUsd * 6.9
+        innerFeeRatio: entry.salesThb ? entry.innerSpend / (entry.salesThb / 4.8) : 0,
+        innerRoi: entry.innerAdsSpendThb ? entry.innerGmvThb / entry.innerAdsSpendThb : 0,
+        innerCpc: entry.innerClicks ? entry.innerAdsSpendThb / entry.innerClicks : (entry.innerCpcCount ? entry.innerCpcSum / entry.innerCpcCount : 0),
+        outerSpend: entry.outerSpendUsd * 6.9,
+        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
+        outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
+        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors / 4.8 : 0
       }));
       return setCacheValue(dashboardDataCache.productSummary, cacheKey, summary);
     }
@@ -7000,7 +7008,7 @@
     }
 
     function formatStoreAnalysisMetricDelta(metricKey, currentValue, compareValue) {
-      if (metricKey === 'conversion') {
+      if (['conversion', 'innerFeeRatio', 'outerFeeRatio'].includes(metricKey)) {
         return formatCategoryDelta(
           formatOuterBreakdownValueDelta(
             currentValue,
@@ -7517,7 +7525,7 @@
       ]));
       if (!groups.length) return;
 
-      const metricHeaders = ['花费', '花费占比', 'GMV', '订单', 'ROI', '曝光', 'CPM', '点击率', '转化率'];
+      const metricHeaders = ['花费', '花费占比', 'GMV', '订单', 'ROI', '曝光', 'CPM', '点击成本', '点击率', '转化率'];
       const buildMetricTexts = (entry, compareEntry, totalSpendValue, compareTotalSpendValue) => {
         const currentMetrics = getOuterBreakdownMetrics(entry, totalSpendValue);
         const compareMetrics = getOuterBreakdownMetrics(compareEntry || { spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 }, compareTotalSpendValue);
@@ -7530,6 +7538,7 @@
             formatOuterBreakdownFixed(currentMetrics.roi),
             metricNumber.format(currentMetrics.impressions),
             formatOuterBreakdownFixed(currentMetrics.cpm),
+            formatOuterBreakdownFixed(currentMetrics.clickCost),
             formatOuterBreakdownPercent(currentMetrics.ctr),
             formatOuterBreakdownPercent(currentMetrics.conversionRate)
           ],
@@ -7541,6 +7550,7 @@
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.roi, compareMetrics.roi, value => Number(value || 0).toFixed(2))).text,
             formatCategoryDelta(formatDelta(currentMetrics.impressions, compareMetrics.impressions)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.cpm, compareMetrics.cpm, value => Number(value || 0).toFixed(2))).text,
+            formatCategoryDelta(formatDelta(currentMetrics.clickCost, compareMetrics.clickCost)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.ctr, compareMetrics.ctr, value => `${(Number(value || 0) * 100).toFixed(1)}%`)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.conversionRate, compareMetrics.conversionRate, value => `${(Number(value || 0) * 100).toFixed(1)}%`)).text
           ]
@@ -7638,6 +7648,7 @@
         { key: 'roi', label: 'ROI' },
         { key: 'impressions', label: '曝光' },
         { key: 'cpm', label: 'CPM' },
+        { key: 'clickCost', label: '点击成本' },
         { key: 'ctr', label: '点击率' },
         { key: 'conversionRate', label: '转化率' }
       ];
@@ -7651,7 +7662,6 @@
             </div>
             <button class="table-export-button" type="button" data-export-outer-breakdown>导出</button>
           </div>
-          ${buildOuterBreakdownFilterSummaryHtml()}
           <div class="table-wrap">
             <table class="outer-structure-table outer-breakdown-table">
               ${buildOuterBreakdownColgroup(headers)}
