@@ -973,6 +973,21 @@
       padding: 16px 12px 14px;
       vertical-align: middle;
     }
+    .category-table tfoot td {
+      position: sticky;
+      bottom: 0;
+      z-index: 3;
+      background: #f7fafc;
+      box-shadow: inset 0 1px 0 #d7e2ee, 0 -2px 8px rgba(15, 23, 42, 0.04);
+      font-weight: 700;
+    }
+    .category-table tfoot td:first-child {
+      z-index: 4;
+    }
+    .category-table th.group-divider,
+    .category-table td.group-divider {
+      border-left: 2px dashed #c8d7e5;
+    }
     .outer-structure-table td {
       padding: 16px 12px 14px;
       vertical-align: middle;
@@ -5518,7 +5533,18 @@
         outerSpend: entry.outerSpendUsd * 6.9,
         outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
-        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors / 4.8 : 0
+        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors / 4.8 : 0,
+        _salesThb: entry.salesThb,
+        _visitors: entry.visitors,
+        _buyers: entry.buyers,
+        _innerSpend: entry.innerSpend,
+        _innerAdsSpendThb: entry.innerAdsSpendThb,
+        _innerGmvThb: entry.innerGmvThb,
+        _innerClicks: entry.innerClicks,
+        _innerCpcSum: entry.innerCpcSum,
+        _innerCpcCount: entry.innerCpcCount,
+        _outerSpendUsd: entry.outerSpendUsd,
+        _outerConversionValue: entry.outerConversionValue
       }));
       return setCacheValue(dashboardDataCache.categorySummary, cacheKey, summary);
     }
@@ -5825,7 +5851,18 @@
         outerSpend: entry.outerSpendUsd * 6.9,
         outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
-        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors / 4.8 : 0
+        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors / 4.8 : 0,
+        _salesThb: entry.salesThb,
+        _visitors: entry.visitors,
+        _buyers: entry.buyers,
+        _innerSpend: entry.innerSpend,
+        _innerAdsSpendThb: entry.innerAdsSpendThb,
+        _innerGmvThb: entry.innerGmvThb,
+        _innerClicks: entry.innerClicks,
+        _innerCpcSum: entry.innerCpcSum,
+        _innerCpcCount: entry.innerCpcCount,
+        _outerSpendUsd: entry.outerSpendUsd,
+        _outerConversionValue: entry.outerConversionValue
       }));
       return setCacheValue(dashboardDataCache.productSummary, cacheKey, summary);
     }
@@ -5939,12 +5976,18 @@
     function renderProductAnalysisTable() {
       const queryRange = getRange('qStart', 'qEnd');
       const compareRange = getRange('cStart', 'cEnd');
-      const currentMap = Object.fromEntries(buildProductSummary(queryRange).map(item => [item.product, item]));
-      const compareMap = Object.fromEntries(buildProductSummary(compareRange).map(item => [item.product, item]));
+      const currentRows = buildProductSummary(queryRange);
+      const compareRows = buildProductSummary(compareRange);
+      const currentMap = Object.fromEntries(currentRows.map(item => [item.product, item]));
+      const compareMap = Object.fromEntries(compareRows.map(item => [item.product, item]));
       const products = sortProducts(
         [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])].filter(product => (Number(currentMap[product]?.gmv) || 0) > 0),
         currentMap
       );
+      const visibleCurrentRows = products.map(product => currentMap[product]).filter(Boolean);
+      const visibleCompareRows = products.map(product => compareMap[product]).filter(Boolean);
+      const totalCurrent = buildStoreAnalysisTotalRow(visibleCurrentRows, 'product', '总计');
+      const totalCompare = buildStoreAnalysisTotalRow(visibleCompareRows, 'product', '总计');
 
       const metricHeaders = [{ key: 'product', label: '产品' }, ...categoryMetricDefinitions];
       const tableHtml = products.length ? `
@@ -5962,8 +6005,9 @@
                   ${metricHeaders.map(header => {
                     const isActive = productTableState.sortKey === header.key;
                     const arrow = isActive ? (productTableState.sortDirection === 'desc' ? '↓' : '↑') : '↕';
+                    const thClass = isStoreAnalysisGroupStart(header.key) ? 'group-divider' : '';
                     return `
-                      <th>
+                      <th class="${thClass}">
                         <button class="category-sort-button ${isActive ? 'active' : ''}" type="button" data-product-sort="${header.key}">
                           <span>${header.label}</span>
                           <span class="sort-arrow">${arrow}</span>
@@ -5987,8 +6031,9 @@
                       ${categoryMetricDefinitions.map(metric => {
                         const value = current[metric.key] || 0;
                         const delta = formatStoreAnalysisMetricDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
+                        const tdClass = `num${isStoreAnalysisGroupStart(metric.key) ? ' group-divider' : ''}`;
                         return `
-                          <td class="num">
+                          <td class="${tdClass}">
                             <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
                             <span class="category-cell-delta ${delta.className}">${delta.text}</span>
                           </td>
@@ -5998,6 +6043,22 @@
                   `;
                 }).join('')}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td class="category-name">总计</td>
+                  ${categoryMetricDefinitions.map(metric => {
+                    const value = totalCurrent[metric.key] || 0;
+                    const delta = formatStoreAnalysisMetricDelta(metric.key, totalCurrent[metric.key] || 0, totalCompare[metric.key] || 0);
+                    const tdClass = `num${isStoreAnalysisGroupStart(metric.key) ? ' group-divider' : ''}`;
+                    return `
+                      <td class="${tdClass}">
+                        <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                        <span class="category-cell-delta ${delta.className}">${delta.text}</span>
+                      </td>
+                    `;
+                  }).join('')}
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -7267,6 +7328,58 @@
       return { text: delta.text.replace('环比 ', ''), className: delta.className };
     }
 
+    function isStoreAnalysisGroupStart(metricKey) {
+      return metricKey === 'innerSpend' || metricKey === 'outerSpend';
+    }
+
+    function buildStoreAnalysisTotalRow(rows, labelKey, labelValue) {
+      const totals = rows.reduce((acc, row) => {
+        acc.salesThb += Number(row._salesThb) || 0;
+        acc.visitors += Number(row._visitors) || 0;
+        acc.buyers += Number(row._buyers) || 0;
+        acc.innerSpend += Number(row._innerSpend) || 0;
+        acc.innerAdsSpendThb += Number(row._innerAdsSpendThb) || 0;
+        acc.innerGmvThb += Number(row._innerGmvThb) || 0;
+        acc.innerClicks += Number(row._innerClicks) || 0;
+        acc.innerCpcSum += Number(row._innerCpcSum) || 0;
+        acc.innerCpcCount += Number(row._innerCpcCount) || 0;
+        acc.outerSpendUsd += Number(row._outerSpendUsd) || 0;
+        acc.outerConversionValue += Number(row._outerConversionValue) || 0;
+        return acc;
+      }, {
+        salesThb: 0,
+        visitors: 0,
+        buyers: 0,
+        innerSpend: 0,
+        innerAdsSpendThb: 0,
+        innerGmvThb: 0,
+        innerClicks: 0,
+        innerCpcSum: 0,
+        innerCpcCount: 0,
+        outerSpendUsd: 0,
+        outerConversionValue: 0
+      });
+
+      const gmv = totals.salesThb / 4.8;
+      const outerSpend = totals.outerSpendUsd * 6.9;
+      return {
+        [labelKey]: labelValue,
+        gmv,
+        visitors: totals.visitors,
+        conversion: totals.visitors ? totals.buyers / totals.visitors : 0,
+        totalSpend: totals.innerSpend + outerSpend,
+        totalRoi: (totals.innerSpend + outerSpend) ? gmv / (totals.innerSpend + outerSpend) : 0,
+        innerSpend: totals.innerSpend,
+        innerFeeRatio: gmv ? totals.innerSpend / gmv : 0,
+        innerRoi: totals.innerAdsSpendThb ? totals.innerGmvThb / totals.innerAdsSpendThb : 0,
+        innerCpc: totals.innerClicks ? totals.innerAdsSpendThb / totals.innerClicks : (totals.innerCpcCount ? totals.innerCpcSum / totals.innerCpcCount : 0),
+        outerSpend,
+        outerFeeRatio: gmv ? outerSpend / gmv : 0,
+        outerRoi: totals.outerSpendUsd ? totals.outerConversionValue / totals.outerSpendUsd : 0,
+        uvValue: totals.visitors ? gmv / totals.visitors / 4.8 : 0
+      };
+    }
+
     function getCategorySortValue(category, currentMap, metricKey) {
       if (metricKey === 'category') return category;
       return Number(currentMap[category]?.[metricKey]) || 0;
@@ -8124,14 +8237,20 @@
     function renderCategoryAnalysisTable() {
       const queryRange = getRange('qStart', 'qEnd');
       const compareRange = getRange('cStart', 'cEnd');
-      const currentMap = Object.fromEntries(buildCategorySummary(queryRange).map(item => [item.category, item]));
-      const compareMap = Object.fromEntries(buildCategorySummary(compareRange).map(item => [item.category, item]));
+      const currentRows = buildCategorySummary(queryRange);
+      const compareRows = buildCategorySummary(compareRange);
+      const currentMap = Object.fromEntries(currentRows.map(item => [item.category, item]));
+      const compareMap = Object.fromEntries(compareRows.map(item => [item.category, item]));
       const selectedCategories = getSelectedCategories();
       const categories = sortCategories(
         [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])]
           .filter(category => !selectedCategories.length || selectedCategories.includes(category)),
         currentMap
       );
+      const visibleCurrentRows = categories.map(category => currentMap[category]).filter(Boolean);
+      const visibleCompareRows = categories.map(category => compareMap[category]).filter(Boolean);
+      const totalCurrent = buildStoreAnalysisTotalRow(visibleCurrentRows, 'category', '总计');
+      const totalCompare = buildStoreAnalysisTotalRow(visibleCompareRows, 'category', '总计');
 
       const metricHeaders = [{ key: 'category', label: '品类' }, ...categoryMetricDefinitions];
       const tableHtml = categories.length ? `
@@ -8149,8 +8268,9 @@
                   ${metricHeaders.map(header => {
                     const isActive = categoryTableState.sortKey === header.key;
                     const arrow = isActive ? (categoryTableState.sortDirection === 'desc' ? '↓' : '↑') : '↕';
+                    const thClass = isStoreAnalysisGroupStart(header.key) ? 'group-divider' : '';
                     return `
-                      <th>
+                      <th class="${thClass}">
                         <button class="category-sort-button ${isActive ? 'active' : ''}" type="button" data-category-sort="${header.key}">
                           <span>${header.label}</span>
                           <span class="sort-arrow">${arrow}</span>
@@ -8174,8 +8294,9 @@
                       ${categoryMetricDefinitions.map(metric => {
                         const value = current[metric.key] || 0;
                         const delta = formatStoreAnalysisMetricDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
+                        const tdClass = `num${isStoreAnalysisGroupStart(metric.key) ? ' group-divider' : ''}`;
                         return `
-                          <td class="num">
+                          <td class="${tdClass}">
                             <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
                             <span class="category-cell-delta ${delta.className}">${delta.text}</span>
                           </td>
@@ -8185,6 +8306,22 @@
                   `;
                 }).join('')}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td class="category-name">总计</td>
+                  ${categoryMetricDefinitions.map(metric => {
+                    const value = totalCurrent[metric.key] || 0;
+                    const delta = formatStoreAnalysisMetricDelta(metric.key, totalCurrent[metric.key] || 0, totalCompare[metric.key] || 0);
+                    const tdClass = `num${isStoreAnalysisGroupStart(metric.key) ? ' group-divider' : ''}`;
+                    return `
+                      <td class="${tdClass}">
+                        <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                        <span class="category-cell-delta ${delta.className}">${delta.text}</span>
+                      </td>
+                    `;
+                  }).join('')}
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
