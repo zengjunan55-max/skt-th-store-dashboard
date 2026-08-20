@@ -4906,7 +4906,6 @@
       const spendShare = totalSpend ? entry.spend / totalSpend : 0;
       const roi = entry.spend ? entry.gmv / entry.spend : 0;
       const cpm = entry.impressions ? (entry.spend / entry.impressions) * 1000 : 0;
-      const clickCost = entry.clicks ? entry.spend / entry.clicks : 0;
       const ctr = entry.impressions ? entry.clicks / entry.impressions : 0;
       const conversionRate = entry.clicks ? entry.orders / entry.clicks : 0;
       return {
@@ -4917,7 +4916,6 @@
         roi,
         impressions: entry.impressions,
         cpm,
-        clickCost,
         ctr,
         conversionRate
       };
@@ -5043,7 +5041,6 @@
         roi: currentEntry?.roi || 0,
         impressions: currentEntry?.impressions || 0,
         cpm: currentEntry?.cpm || 0,
-        clickCost: currentEntry?.clickCost || 0,
         ctr: currentEntry?.ctr || 0,
         conversionRate: currentEntry?.conversionRate || 0
       };
@@ -5055,7 +5052,6 @@
         roi: compareEntry?.roi || 0,
         impressions: compareEntry?.impressions || 0,
         cpm: compareEntry?.cpm || 0,
-        clickCost: compareEntry?.clickCost || 0,
         ctr: compareEntry?.ctr || 0,
         conversionRate: compareEntry?.conversionRate || 0
       };
@@ -5067,7 +5063,6 @@
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.roi), formatOuterBreakdownValueDelta(currentMetrics.roi, compareMetrics.roi, value => Number(value || 0).toFixed(2)))}
         ${buildOuterBreakdownMetricCell(metricNumber.format(currentMetrics.impressions), formatDelta(currentMetrics.impressions, compareMetrics.impressions))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.cpm), formatOuterBreakdownValueDelta(currentMetrics.cpm, compareMetrics.cpm, value => Number(value || 0).toFixed(2)))}
-        ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.clickCost), formatDelta(currentMetrics.clickCost, compareMetrics.clickCost))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.ctr), formatOuterBreakdownValueDelta(currentMetrics.ctr, compareMetrics.ctr, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.conversionRate), formatOuterBreakdownValueDelta(currentMetrics.conversionRate, compareMetrics.conversionRate, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
       `;
@@ -7638,7 +7633,7 @@
       ]));
       if (!groups.length) return;
 
-      const metricHeaders = ['花费', '花费占比', 'GMV', '订单', 'ROI', '曝光', 'CPM', '点击成本', '点击率', '转化率'];
+      const metricHeaders = ['花费', '花费占比', 'GMV', '订单', 'ROI', '曝光', 'CPM', '点击率', '转化率'];
       const buildMetricTexts = (entry, compareEntry, totalSpendValue, compareTotalSpendValue) => {
         const currentMetrics = getOuterBreakdownMetrics(entry, totalSpendValue);
         const compareMetrics = getOuterBreakdownMetrics(compareEntry || { spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 }, compareTotalSpendValue);
@@ -7651,7 +7646,6 @@
             formatOuterBreakdownFixed(currentMetrics.roi),
             metricNumber.format(currentMetrics.impressions),
             formatOuterBreakdownFixed(currentMetrics.cpm),
-            formatOuterBreakdownFixed(currentMetrics.clickCost),
             formatOuterBreakdownPercent(currentMetrics.ctr),
             formatOuterBreakdownPercent(currentMetrics.conversionRate)
           ],
@@ -7663,7 +7657,6 @@
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.roi, compareMetrics.roi, value => Number(value || 0).toFixed(2))).text,
             formatCategoryDelta(formatDelta(currentMetrics.impressions, compareMetrics.impressions)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.cpm, compareMetrics.cpm, value => Number(value || 0).toFixed(2))).text,
-            formatCategoryDelta(formatDelta(currentMetrics.clickCost, compareMetrics.clickCost)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.ctr, compareMetrics.ctr, value => `${(Number(value || 0) * 100).toFixed(1)}%`)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.conversionRate, compareMetrics.conversionRate, value => `${(Number(value || 0) * 100).toFixed(1)}%`)).text
           ]
@@ -7761,7 +7754,6 @@
         { key: 'roi', label: 'ROI' },
         { key: 'impressions', label: '曝光' },
         { key: 'cpm', label: 'CPM' },
-        { key: 'clickCost', label: '点击成本' },
         { key: 'ctr', label: '点击率' },
         { key: 'conversionRate', label: '转化率' }
       ];
