@@ -1345,7 +1345,10 @@
               </div>
             </div>
           </div>
-        </div>
+      </div>
+      </div>
+      <div class="material-filter-summary-row">
+        <div class="material-filter-summary" id="storeFilterSummary">已筛选项：当前无筛选</div>
       </div>
       <section id="storeReceiptSection">
         <h2>店铺实收 / 补贴监控</h2>
@@ -1415,7 +1418,10 @@
               </div>
             </div>
           </div>
-        </div>
+      </div>
+      </div>
+      <div class="material-filter-summary-row">
+        <div class="material-filter-summary" id="newOldFilterSummary">已筛选项：当前无筛选</div>
       </div>
       <section>
         <h2>新老客</h2>
@@ -1471,7 +1477,10 @@
               </div>
             </div>
           </div>
-        </div>
+      </div>
+      </div>
+      <div class="material-filter-summary-row">
+        <div class="material-filter-summary" id="outerFilterSummary">已筛选项：当前无筛选</div>
       </div>
       <section id="outerBreakdownSection">
         <div id="outerBreakdownTable"></div>
@@ -1674,7 +1683,10 @@
               </div>
             </div>
           </div>
-        </div>
+      </div>
+      </div>
+      <div class="material-filter-summary-row">
+        <div class="material-filter-summary" id="spTtFilterSummary">已筛选项：当前无筛选</div>
       </div>
       <section>
         <h2>SP-TT销量对比</h2>
@@ -2805,6 +2817,47 @@
       return `已选${selectedValues.length}项`;
     }
 
+    function renderBasicFilterSummary(containerId, chipDefs, clearHandlerName, removeAttrPrefix) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const chips = chipDefs.flatMap(def => def.values.map(value => ({ ...def, value })));
+      container.innerHTML = chips.length
+        ? `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;"><div><strong>已筛选项：</strong><span class="material-filter-chip-list">${chips.map(chip => `
+            <span class="material-filter-chip">
+              <span>${chip.label}：${chip.value}</span>
+              <button class="material-filter-chip-close" type="button" data-${removeAttrPrefix}-kind="${chip.kind}" data-${removeAttrPrefix}-value="${chip.value}" aria-label="关闭 ${chip.label} ${chip.value}">×</button>
+            </span>
+          `).join('')}</span></div><button type="button" class="filter-jump-button" data-${removeAttrPrefix}-clear="true">一键清除筛选</button></div>`
+        : `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><span><strong>已筛选项：</strong>当前无筛选</span><button type="button" class="filter-jump-button" data-${removeAttrPrefix}-clear="true">一键清除筛选</button></div>`;
+      container.querySelectorAll(`[data-${removeAttrPrefix}-kind]`).forEach(button => {
+        button.addEventListener('click', () => {
+          if (removeAttrPrefix === 'store-filter-remove') {
+            if ((button.dataset.storeFilterRemoveKind || '') === 'store') setSelectedStore(button.dataset.storeFilterRemoveValue || '');
+            if ((button.dataset.storeFilterRemoveKind || '') === 'category') setSelectedCategory(button.dataset.storeFilterRemoveValue || '');
+            if ((button.dataset.storeFilterRemoveKind || '') === 'product') setSelectedProduct(button.dataset.storeFilterRemoveValue || '');
+          }
+          if (removeAttrPrefix === 'outer-filter-remove') {
+            if ((button.dataset.outerFilterRemoveKind || '') === 'category') setOuterSelectedCategory(button.dataset.outerFilterRemoveValue || '');
+            if ((button.dataset.outerFilterRemoveKind || '') === 'product') setOuterSelectedProduct(button.dataset.outerFilterRemoveValue || '');
+          }
+          if (removeAttrPrefix === 'sp-tt-filter-remove') {
+            if ((button.dataset.spTtFilterRemoveKind || '') === 'category') setSpTtSelectedCategory(button.dataset.spTtFilterRemoveValue || '');
+            if ((button.dataset.spTtFilterRemoveKind || '') === 'product') setSpTtSelectedProduct(button.dataset.spTtFilterRemoveValue || '');
+          }
+          if (removeAttrPrefix === 'new-old-filter-remove') {
+            if ((button.dataset.newOldFilterRemoveKind || '') === 'category') setNewOldSelectedCategory(button.dataset.newOldFilterRemoveValue || '');
+            if ((button.dataset.newOldFilterRemoveKind || '') === 'product') setNewOldSelectedProduct(button.dataset.newOldFilterRemoveValue || '');
+          }
+        });
+      });
+      const clearButton = container.querySelector(`[data-${removeAttrPrefix}-clear]`);
+      if (clearButton && typeof window[clearHandlerName] === 'function') {
+        clearButton.addEventListener('click', () => {
+          window[clearHandlerName]();
+        });
+      }
+    }
+
     function syncFilterTriggerInput(kind) {
       const inputId = kind === 'store' ? 'storeFilterInput' : kind === 'category' ? 'categoryFilterInput' : 'productFilterInput';
       const wrapperId = kind === 'store' ? 'storeFilterWrap' : kind === 'category' ? 'categoryFilterWrap' : 'productFilterWrap';
@@ -2924,6 +2977,112 @@
       if (chip) chip.textContent = `店铺：${buildFilterSummary(getSelectedStores(), '全部店铺')}`;
     }
 
+    function renderStoreFilterSummary() {
+      renderBasicFilterSummary(
+        'storeFilterSummary',
+        [
+          { kind: 'store', label: '店铺', values: getSelectedStores() },
+          { kind: 'category', label: '品类', values: getSelectedCategories() },
+          { kind: 'product', label: '产品', values: getSelectedProducts() }
+        ],
+        'clearStoreFilters',
+        'store-filter-remove'
+      );
+    }
+
+    function clearStoreFilters() {
+      filterState.stores = [];
+      filterState.categories = [];
+      filterState.products = [];
+      filterState.storeSearch = '';
+      filterState.categorySearch = '';
+      filterState.productSearch = '';
+      populateStoreFilter();
+      populateCategoryFilter();
+      populateProductFilter();
+      renderStoreFilterSummary();
+      storeTrendState.hoverIndex = null;
+      invalidateStoreTrendCache();
+      invalidateTab('store');
+      scheduleActiveTabRender();
+    }
+
+    function renderOuterFilterSummary() {
+      renderBasicFilterSummary(
+        'outerFilterSummary',
+        [
+          { kind: 'category', label: '品类', values: getOuterSelectedCategories() },
+          { kind: 'product', label: '产品', values: getOuterSelectedProducts() }
+        ],
+        'clearOuterFilters',
+        'outer-filter-remove'
+      );
+    }
+
+    function clearOuterFilters() {
+      outerFilterState.categories = [];
+      outerFilterState.products = [];
+      outerFilterState.categorySearch = '';
+      outerFilterState.productSearch = '';
+      populateOuterCategoryFilter();
+      populateOuterProductFilter();
+      renderOuterFilterSummary();
+      invalidateOuterSummaryCaches();
+      invalidateTab('outer');
+      scheduleActiveTabRender();
+    }
+
+    function renderSpTtFilterSummary() {
+      renderBasicFilterSummary(
+        'spTtFilterSummary',
+        [
+          { kind: 'category', label: '品类', values: getSpTtSelectedCategories() },
+          { kind: 'product', label: '产品', values: getSpTtSelectedProducts() }
+        ],
+        'clearSpTtFilters',
+        'sp-tt-filter-remove'
+      );
+    }
+
+    function clearSpTtFilters() {
+      spTtFilterState.categories = [];
+      spTtFilterState.products = [];
+      spTtFilterState.categorySearch = '';
+      spTtFilterState.productSearch = '';
+      populateSpTtCategoryFilter();
+      populateSpTtProductFilter();
+      renderSpTtFilterSummary();
+      invalidateSpTtTrendCache();
+      invalidateTab('sp-tt');
+      scheduleActiveTabRender();
+    }
+
+    function renderNewOldFilterSummary() {
+      renderBasicFilterSummary(
+        'newOldFilterSummary',
+        [
+          { kind: 'category', label: '品类', values: getNewOldSelectedCategories() },
+          { kind: 'product', label: '产品', values: getNewOldSelectedProducts() }
+        ],
+        'clearNewOldFilters',
+        'new-old-filter-remove'
+      );
+    }
+
+    function clearNewOldFilters() {
+      newOldFilterState.categories = [];
+      newOldFilterState.products = [];
+      newOldFilterState.categorySearch = '';
+      newOldFilterState.productSearch = '';
+      populateNewOldCategoryFilter();
+      populateNewOldProductFilter();
+      renderNewOldFilterSummary();
+      dashboardDataCache.newOldCategorySummary.clear();
+      dashboardDataCache.newOldProductSummary.clear();
+      invalidateTab('new-old');
+      scheduleActiveTabRender();
+    }
+
     function populateCategoryFilter() {
       const container = document.getElementById('categoryFilterOptions');
       if (!container) return;
@@ -2940,6 +3099,7 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的品类</div>';
       syncFilterTriggerInput('category');
+      renderStoreFilterSummary();
     }
 
     function populateProductFilter() {
@@ -2957,6 +3117,7 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
       syncFilterTriggerInput('product');
+      renderStoreFilterSummary();
     }
 
     function populateOuterCategoryFilter() {
@@ -2974,6 +3135,7 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的品类</div>';
       syncOuterFilterTriggerInput('category');
+      renderOuterFilterSummary();
     }
 
     function populateOuterProductFilter() {
@@ -2991,6 +3153,7 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
       syncOuterFilterTriggerInput('product');
+      renderOuterFilterSummary();
     }
 
     function populateOuterDimensionFilter(kind) {
@@ -3077,6 +3240,7 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的品类</div>';
       syncSpTtFilterTriggerInput('category');
+      renderSpTtFilterSummary();
     }
 
     function populateSpTtProductFilter() {
@@ -3094,6 +3258,7 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
       syncSpTtFilterTriggerInput('product');
+      renderSpTtFilterSummary();
     }
 
     function syncNewOldFilterTriggerInput(kind) {
@@ -3122,6 +3287,7 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的品类</div>';
       syncNewOldFilterTriggerInput('category');
+      renderNewOldFilterSummary();
     }
 
     function populateNewOldProductFilter() {
@@ -3139,6 +3305,7 @@
         `;
       }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
       syncNewOldFilterTriggerInput('product');
+      renderNewOldFilterSummary();
     }
 
     function setSelectedCategory(category, shouldRender = true) {
@@ -3179,6 +3346,7 @@
       }).join('') : '<div class="filter-empty">没有匹配的店铺</div>';
       syncFilterTriggerInput('store');
       syncActiveStoreChip();
+      renderStoreFilterSummary();
     }
 
     function setSelectedStore(store, shouldRender = true) {
