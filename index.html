@@ -1278,6 +1278,7 @@
     <div class="tab-toolbar">
       <div class="tab-list" id="analysisTabs" role="tablist" aria-label="分析模块切换">
         <button class="tab-button active" id="analysis-tab-store" type="button" data-tab-target="store" role="tab" aria-selected="true">店铺分析</button>
+        <button class="tab-button" id="analysis-tab-new-old" type="button" data-tab-target="new-old" role="tab" aria-selected="false">新老客</button>
         <button class="tab-button" id="analysis-tab-outer" type="button" data-tab-target="outer" role="tab" aria-selected="false">站外分析</button>
         <button class="tab-button" id="analysis-tab-sp-tt" type="button" data-tab-target="sp-tt" role="tab" aria-selected="false">SP-TT销量对比</button>
       </div>
@@ -1373,6 +1374,60 @@
         <div id="productAnalysisTable"></div>
       </section>
 
+    </div>
+
+    <div class="tab-panel" data-tab-panel="new-old" role="tabpanel" aria-labelledby="analysis-tab-new-old" hidden>
+      <div class="filter-panel-row" id="newOldFilterPanelRow">
+        <div class="controls-filter-panel">
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>品类筛选</span>
+            </div>
+            <div class="filter-multiselect" id="newOldCategoryFilterWrap">
+              <div id="newOldCategoryFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="newOldCategoryFilterInput" class="filter-trigger-input" type="text" value="全部品类" placeholder="搜索品类" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="newOldCategoryFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="category" data-filter-scope="new-old">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="category" data-filter-scope="new-old">清空</button>
+                </div>
+                <div id="newOldCategoryFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>产品筛选</span>
+            </div>
+            <div class="filter-multiselect" id="newOldProductFilterWrap">
+              <div id="newOldProductFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="newOldProductFilterInput" class="filter-trigger-input" type="text" value="全部产品" placeholder="搜索产品" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="newOldProductFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="product" data-filter-scope="new-old">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="product" data-filter-scope="new-old">清空</button>
+                </div>
+                <div id="newOldProductFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <section>
+        <h2>新老客</h2>
+        <p class="small">按日期范围汇总店铺和产品的新老客结构，后续口径如果要改，我们再一起微调。</p>
+        <div id="newOldCategoryAnalysisTable"></div>
+        <div style="height:18px;"></div>
+        <div id="newOldProductAnalysisTable"></div>
+        <div class="tab-placeholder" style="margin-top:18px;">
+          <strong>说明</strong>
+          <p>当前仅新增两张汇总表，不影响现有店铺分析、站外分析和 SP-TT 销量对比。</p>
+        </div>
+      </section>
     </div>
 
     <div class="tab-panel" data-tab-panel="outer" role="tabpanel" aria-labelledby="analysis-tab-outer" hidden>
@@ -1869,6 +1924,20 @@
       { key: 'cvr', label: 'CVR', type: 'percent', axisGroup: 'right', chartType: 'line', currentColor: '#8e44ad', compareColor: '#cfb0e0' },
       { key: 'ctr', label: 'CTR', type: 'percent', axisGroup: 'right', chartType: 'line', currentColor: '#c2410c', compareColor: '#fdba74' }
     ];
+    const newOldMetricDefinitions = [
+      { key: 'gmv', label: '店铺GMV', type: 'money' },
+      { key: 'visitors', label: '访客', type: 'count' },
+      { key: 'totalPurchasers', label: '总购买人数', type: 'count' },
+      { key: 'newCustomers', label: '新客', type: 'count' },
+      { key: 'newCustomerShare', label: '新客占比', type: 'percent' },
+      { key: 'oldCustomers', label: '老客', type: 'count' },
+      { key: 'oldCustomerShare', label: '老客占比', type: 'percent' },
+      { key: 'innerSpend', label: '站内花费', type: 'money' },
+      { key: 'outerSpend', label: '站外总花费', type: 'money' },
+      { key: 'outerClicks', label: '站外点击', type: 'count' },
+      { key: 'clickCost', label: '点击成本', type: 'money2' },
+      { key: 'retargetingShare', label: '再营销占比', type: 'percent' }
+    ];
     const metricDefinitionMap = Object.fromEntries(metricDefinitions.map(metric => [metric.key, metric]));
     const spTtTrendMetricDefinitionMap = Object.fromEntries(spTtTrendMetricDefinitions.map(metric => [metric.key, metric]));
     const materialTrendMetricDefinitionMap = Object.fromEntries(materialTrendMetricDefinitions.map(metric => [metric.key, metric]));
@@ -1950,6 +2019,12 @@
       categorySearch: '',
       productSearch: ''
     };
+    const newOldFilterState = {
+      categories: [],
+      products: [],
+      categorySearch: '',
+      productSearch: ''
+    };
     const materialFilterState = {
       adTypes: [],
       categories: [],
@@ -1972,7 +2047,8 @@
       dirtyTabs: {
         store: true,
         outer: true,
-        'sp-tt': true
+        'sp-tt': true,
+        'new-old': true
       }
     };
     const dashboardDataCache = {
@@ -1981,6 +2057,8 @@
       storeMetricMaps: new Map(),
       categorySummary: new Map(),
       productSummary: new Map(),
+      newOldCategorySummary: new Map(),
+      newOldProductSummary: new Map(),
       outerStructureSummary: new Map(),
       outerProductStructureSummary: new Map(),
       outerDimensionSummary: new Map(),
@@ -2035,6 +2113,14 @@
       sortDirection: 'desc',
       columnWidths: {},
       resize: null
+    };
+    const newOldCategoryTableState = {
+      sortKey: 'gmv',
+      sortDirection: 'desc'
+    };
+    const newOldProductTableState = {
+      sortKey: 'gmv',
+      sortDirection: 'desc'
     };
     const materialCategoryTableState = {
       sortKey: 'spend',
@@ -2092,6 +2178,7 @@
       invalidateTab('store');
       invalidateTab('outer');
       invalidateTab('sp-tt');
+      invalidateTab('new-old');
     }
 
     function clearDashboardDataCaches() {
@@ -2136,6 +2223,9 @@
         renderSpTtTrendSection();
         renderSpTtCompareTable();
         renderSpTtProductCompareTable();
+      } else if (tabKey === 'new-old') {
+        renderNewOldCategoryAnalysisTable();
+        renderNewOldProductAnalysisTable();
       }
       dashboardRenderState.dirtyTabs[tabKey] = false;
     }
@@ -2448,6 +2538,50 @@
       return [...new Set((spTtSalesData.rows || [])
         .filter(row => spTtMatchesSelectedCategory(row))
         .map(row => row.productName)
+        .filter(isRecognizedFilterValue))]
+        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function getNewOldSelectedCategories() {
+      return newOldFilterState.categories;
+    }
+
+    function getNewOldSelectedProducts() {
+      return newOldFilterState.products;
+    }
+
+    function isAllNewOldCategoriesSelected() {
+      return !newOldFilterState.categories.length;
+    }
+
+    function isAllNewOldProductsSelected() {
+      return !newOldFilterState.products.length;
+    }
+
+    function newOldMatchesSelectedCategory(row) {
+      const rowCategory = row?.category || '';
+      if (!rowCategory) return isAllNewOldCategoriesSelected();
+      return isAllNewOldCategoriesSelected() || getNewOldSelectedCategories().includes(rowCategory);
+    }
+
+    function newOldMatchesSelectedProduct(row) {
+      const rowProduct = getRowProductLabel(row);
+      if (!rowProduct) return isAllNewOldProductsSelected();
+      return isAllNewOldProductsSelected() || getNewOldSelectedProducts().includes(rowProduct);
+    }
+
+    function getNewOldCategoryOptions() {
+      return [...new Set([
+        ...(storeTrendData.main || []).map(row => row.category),
+        ...(productTrendData.main || []).map(row => row.category)
+      ].filter(isRecognizedFilterValue))]
+        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function getNewOldProductOptions() {
+      return [...new Set((productTrendData.main || [])
+        .filter(row => newOldMatchesSelectedCategory(row))
+        .map(row => getRowProductLabel(row))
         .filter(isRecognizedFilterValue))]
         .sort((left, right) => left.localeCompare(right, 'zh-CN'));
     }
@@ -2773,6 +2907,18 @@
       return [];
     }
 
+    function getVisibleNewOldFilterOptions(kind) {
+      if (kind === 'category') {
+        return filterOptionList(getNewOldCategoryOptions(), newOldFilterState.categorySearch, '全部品类')
+          .filter(option => option !== '全部品类');
+      }
+      if (kind === 'product') {
+        return filterOptionList(getNewOldProductOptions(), newOldFilterState.productSearch, '全部产品')
+          .filter(option => option !== '全部产品');
+      }
+      return [];
+    }
+
     function syncActiveStoreChip() {
       const chip = document.getElementById('activeStoreChip');
       if (chip) chip.textContent = `店铺：${buildFilterSummary(getSelectedStores(), '全部店铺')}`;
@@ -2950,6 +3096,51 @@
       syncSpTtFilterTriggerInput('product');
     }
 
+    function syncNewOldFilterTriggerInput(kind) {
+      const input = document.getElementById(kind === 'category' ? 'newOldCategoryFilterInput' : 'newOldProductFilterInput');
+      const wrapper = document.getElementById(kind === 'category' ? 'newOldCategoryFilterWrap' : 'newOldProductFilterWrap');
+      if (!input || !wrapper) return;
+      const isOpen = wrapper.classList.contains('open');
+      const searchValue = kind === 'category' ? newOldFilterState.categorySearch : newOldFilterState.productSearch;
+      const selectedValues = kind === 'category' ? getNewOldSelectedCategories() : getNewOldSelectedProducts();
+      const allLabel = kind === 'category' ? '全部品类' : '全部产品';
+      input.value = isOpen ? searchValue : buildFilterSummary(selectedValues, allLabel);
+    }
+
+    function populateNewOldCategoryFilter() {
+      const container = document.getElementById('newOldCategoryFilterOptions');
+      if (!container) return;
+      const visibleOptions = filterOptionList(getNewOldCategoryOptions(), newOldFilterState.categorySearch, '全部品类');
+      const selectedCategories = getNewOldSelectedCategories();
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(category => {
+        const checked = category === '全部品类' ? !selectedCategories.length : selectedCategories.includes(category);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${category}" ${checked ? 'checked' : ''}>
+            <span>${category}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的品类</div>';
+      syncNewOldFilterTriggerInput('category');
+    }
+
+    function populateNewOldProductFilter() {
+      const container = document.getElementById('newOldProductFilterOptions');
+      if (!container) return;
+      const visibleOptions = filterOptionList(getNewOldProductOptions(), newOldFilterState.productSearch, '全部产品');
+      const selectedProducts = getNewOldSelectedProducts();
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(product => {
+        const checked = product === '全部产品' ? !selectedProducts.length : selectedProducts.includes(product);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${product}" ${checked ? 'checked' : ''}>
+            <span>${product}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
+      syncNewOldFilterTriggerInput('product');
+    }
+
     function setSelectedCategory(category, shouldRender = true) {
       const nextCategories = category === '全部品类'
         ? []
@@ -3026,6 +3217,51 @@
         storeTrendState.hoverIndex = null;
         invalidateStoreTrendCache();
         invalidateTab('store');
+        scheduleActiveTabRender();
+      }
+    }
+
+    function normalizeNewOldSelectedProducts() {
+      const allowed = new Set(getNewOldProductOptions());
+      newOldFilterState.products = newOldFilterState.products.filter(product => allowed.has(product));
+    }
+
+    function setNewOldSelectedCategory(category, shouldRender = true) {
+      const nextCategories = category === '全部品类'
+        ? []
+        : (() => {
+            const current = new Set(getNewOldSelectedCategories());
+            if (current.has(category)) current.delete(category);
+            else current.add(category);
+            return [...current];
+          })();
+      newOldFilterState.categories = nextCategories;
+      normalizeNewOldSelectedProducts();
+      populateNewOldCategoryFilter();
+      populateNewOldProductFilter();
+      if (shouldRender) {
+        dashboardDataCache.newOldCategorySummary.clear();
+        dashboardDataCache.newOldProductSummary.clear();
+        invalidateTab('new-old');
+        scheduleActiveTabRender();
+      }
+    }
+
+    function setNewOldSelectedProduct(product, shouldRender = true) {
+      const nextProducts = product === '全部产品'
+        ? []
+        : (() => {
+            const current = new Set(getNewOldSelectedProducts());
+            if (current.has(product)) current.delete(product);
+            else current.add(product);
+            return [...current];
+          })();
+      newOldFilterState.products = nextProducts;
+      populateNewOldProductFilter();
+      if (shouldRender) {
+        dashboardDataCache.newOldCategorySummary.clear();
+        dashboardDataCache.newOldProductSummary.clear();
+        invalidateTab('new-old');
         scheduleActiveTabRender();
       }
     }
@@ -3264,6 +3500,27 @@
       scheduleActiveTabRender();
     }
 
+    function applyNewOldFilterBulk(kind, action) {
+      if (kind === 'category') {
+        newOldFilterState.categories = action === 'select-all'
+          ? [...new Set([...(getNewOldSelectedCategories()), ...getVisibleNewOldFilterOptions('category')])]
+          : [];
+        normalizeNewOldSelectedProducts();
+        populateNewOldCategoryFilter();
+        populateNewOldProductFilter();
+      }
+      if (kind === 'product') {
+        newOldFilterState.products = action === 'select-all'
+          ? [...new Set([...(getNewOldSelectedProducts()), ...getVisibleNewOldFilterOptions('product')])]
+          : [];
+        populateNewOldProductFilter();
+      }
+      dashboardDataCache.newOldCategorySummary.clear();
+      dashboardDataCache.newOldProductSummary.clear();
+      invalidateTab('new-old');
+      scheduleActiveTabRender();
+    }
+
     function closeFilterDropdowns() {
       document.querySelectorAll('.filter-multiselect.open').forEach(node => {
         node.classList.remove('open');
@@ -3288,6 +3545,10 @@
       spTtFilterState.productSearch = '';
       populateSpTtCategoryFilter();
       populateSpTtProductFilter();
+      newOldFilterState.categorySearch = '';
+      newOldFilterState.productSearch = '';
+      populateNewOldCategoryFilter();
+      populateNewOldProductFilter();
       normalizeMaterialFilterSearches();
     }
 
@@ -3328,6 +3589,8 @@
       const outerProductTrigger = document.getElementById('outerProductFilterTrigger');
       const spTtCategoryTrigger = document.getElementById('spTtCategoryFilterTrigger');
       const spTtProductTrigger = document.getElementById('spTtProductFilterTrigger');
+      const newOldCategoryTrigger = document.getElementById('newOldCategoryFilterTrigger');
+      const newOldProductTrigger = document.getElementById('newOldProductFilterTrigger');
       const jumpButtons = document.querySelectorAll('.filter-jump-button');
       const storeOptions = document.getElementById('storeFilterOptions');
       const categoryOptions = document.getElementById('categoryFilterOptions');
@@ -3336,6 +3599,8 @@
       const outerProductOptions = document.getElementById('outerProductFilterOptions');
       const spTtCategoryOptions = document.getElementById('spTtCategoryFilterOptions');
       const spTtProductOptions = document.getElementById('spTtProductFilterOptions');
+      const newOldCategoryOptions = document.getElementById('newOldCategoryFilterOptions');
+      const newOldProductOptions = document.getElementById('newOldProductFilterOptions');
       const outerDimensionFilterEntries = outerDimensionFilterConfigs.map(config => ({
         ...config,
         trigger: document.getElementById(config.triggerId),
@@ -3355,6 +3620,8 @@
       const outerProductInput = document.getElementById('outerProductFilterInput');
       const spTtCategoryInput = document.getElementById('spTtCategoryFilterInput');
       const spTtProductInput = document.getElementById('spTtProductFilterInput');
+      const newOldCategoryInput = document.getElementById('newOldCategoryFilterInput');
+      const newOldProductInput = document.getElementById('newOldProductFilterInput');
 
       function scrollToFilterTarget(targetId) {
         const target = document.getElementById(targetId);
@@ -3416,6 +3683,18 @@
         spTtProductTrigger.addEventListener('click', event => {
           event.stopPropagation();
           toggleFilterDropdown('spTtProductFilterWrap');
+        });
+      }
+      if (newOldCategoryTrigger) {
+        newOldCategoryTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('newOldCategoryFilterWrap');
+        });
+      }
+      if (newOldProductTrigger) {
+        newOldProductTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('newOldProductFilterWrap');
         });
       }
       materialFilterEntries.forEach(entry => {
@@ -3490,6 +3769,22 @@
           setSpTtSelectedProduct(input.value);
         });
         spTtProductOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (newOldCategoryOptions) {
+        newOldCategoryOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setNewOldSelectedCategory(input.value);
+        });
+        newOldCategoryOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (newOldProductOptions) {
+        newOldProductOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setNewOldSelectedProduct(input.value);
+        });
+        newOldProductOptions.addEventListener('click', event => event.stopPropagation());
       }
       materialFilterEntries.forEach(entry => {
         if (!entry.options) return;
@@ -3605,6 +3900,32 @@
           populateSpTtProductFilter();
         });
       }
+      if (newOldCategoryInput) {
+        newOldCategoryInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        newOldCategoryInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('newOldCategoryFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('newOldCategoryFilterWrap');
+        });
+        newOldCategoryInput.addEventListener('input', event => {
+          newOldFilterState.categorySearch = event.target.value;
+          populateNewOldCategoryFilter();
+        });
+      }
+      if (newOldProductInput) {
+        newOldProductInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        newOldProductInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('newOldProductFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('newOldProductFilterWrap');
+        });
+        newOldProductInput.addEventListener('input', event => {
+          newOldFilterState.productSearch = event.target.value;
+          populateNewOldProductFilter();
+        });
+      }
       materialFilterEntries.forEach(entry => {
         if (!entry.input) return;
         entry.input.addEventListener('click', event => {
@@ -3629,6 +3950,7 @@
           if (scope === 'outer') applyOuterFilterBulk(kind, action);
           else if (scope === 'outer-dimension') applyOuterDimensionFilterBulk(kind, action);
           else if (scope === 'sp-tt') applySpTtFilterBulk(kind, action);
+          else if (scope === 'new-old') applyNewOldFilterBulk(kind, action);
           else if (scope === 'material') applyMaterialFilterBulk(kind, action);
           else applyFilterBulk(kind, action);
         });
@@ -5528,7 +5850,7 @@
         outerSpend: entry.outerSpendUsd * 6.9,
         outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
-        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors / 4.8 : 0,
+        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors : 0,
         _salesThb: entry.salesThb,
         _visitors: entry.visitors,
         _buyers: entry.buyers,
@@ -5846,7 +6168,7 @@
         outerSpend: entry.outerSpendUsd * 6.9,
         outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
-        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors / 4.8 : 0,
+        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors : 0,
         _salesThb: entry.salesThb,
         _visitors: entry.visitors,
         _buyers: entry.buyers,
@@ -5860,6 +6182,148 @@
         _outerConversionValue: entry.outerConversionValue
       }));
       return setCacheValue(dashboardDataCache.productSummary, cacheKey, summary);
+    }
+
+    function getNewOldMetricValue(row, candidates, fallback = 0) {
+      for (const key of candidates) {
+        const value = Number(row?.[key]);
+        if (Number.isFinite(value)) return value;
+      }
+      return fallback;
+    }
+
+    function buildNewOldSummary(range, sourceRows, labelKey, sourceType = 'store') {
+      const cacheKey = `${getRangeCacheToken(range)}::${labelKey}::${sourceType}`;
+      const cache = labelKey === 'category' ? dashboardDataCache.newOldCategorySummary : dashboardDataCache.newOldProductSummary;
+      if (cache.has(cacheKey)) {
+        return cache.get(cacheKey);
+      }
+      const summaryMap = new Map();
+      const ensureEntry = label => {
+        if (!label) return null;
+        if (!summaryMap.has(label)) {
+          summaryMap.set(label, {
+            label,
+            category: '',
+            salesThb: 0,
+            visitors: 0,
+            totalPurchasers: 0,
+            newCustomers: 0,
+            oldCustomers: 0,
+            innerSpend: 0,
+            outerSpendUsd: 0,
+            outerClicks: 0,
+            retargetingSpendUsd: 0
+          });
+        }
+        return summaryMap.get(label);
+      };
+
+      filterRows(sourceRows, range).forEach(row => {
+        const label = labelKey === 'category' ? (row.category || '') : getRowProductLabel(row);
+        const entry = ensureEntry(label);
+        if (!entry) return;
+        entry.category = entry.category || row.category || getRowProductCategory(row) || '';
+        entry.salesThb += Number(row.sales_thb) || 0;
+        entry.visitors += Number(row.visitors) || 0;
+        entry.totalPurchasers += getNewOldMetricValue(row, ['总购买人数', 'total_purchase_people', 'totalPurchasePeople', 'buyers'], Number(row.buyers) || 0);
+        entry.newCustomers += getNewOldMetricValue(row, ['旗舰店新客', 'new_customer', 'newCustomer', 'new_customers'], 0);
+        entry.oldCustomers += getNewOldMetricValue(row, ['旗舰店老客', 'old_customer', 'oldCustomer', 'old_customers'], 0);
+      });
+
+      const useProductSource = sourceType === 'product' || labelKey === 'product';
+      const outerRows = useProductSource
+        ? filterProductOuterRows(productTrendData.outer || [], range)
+        : filterOuterRows(storeTrendData.outer || [], range);
+      const innerRows = useProductSource
+        ? filterProductInnerRows(productTrendData.inner || [], range)
+        : filterInnerRows(storeTrendData.inner || [], range);
+
+      outerRows.forEach(row => {
+        const label = labelKey === 'category' ? (row.category || '') : getRowProductLabel(row);
+        const entry = ensureEntry(label);
+        if (!entry) return;
+        const spendUsd = Number(row.spend_usd) || 0;
+        entry.outerSpendUsd += spendUsd;
+        entry.outerClicks += Number(row.clicks) || 0;
+        if (`${row.acquisition_type || ''}`.trim() === '再营销') {
+          entry.retargetingSpendUsd += spendUsd;
+        }
+      });
+
+      innerRows.forEach(row => {
+        const label = labelKey === 'category' ? (row.category || '') : getRowProductLabel(row);
+        const entry = ensureEntry(label);
+        if (!entry) return;
+        entry.innerSpend += Number(row.spend_rmb) || 0;
+      });
+
+      const summary = Array.from(summaryMap.values()).map(entry => {
+        const gmv = entry.salesThb / 4.8;
+        const outerSpend = entry.outerSpendUsd * 6.9;
+        return {
+          [labelKey]: entry.label,
+          category: entry.category,
+          gmv,
+          visitors: entry.visitors,
+          totalPurchasers: entry.totalPurchasers,
+          newCustomers: entry.newCustomers,
+          newCustomerShare: entry.totalPurchasers ? entry.newCustomers / entry.totalPurchasers : 0,
+          oldCustomers: entry.oldCustomers,
+          oldCustomerShare: entry.totalPurchasers ? entry.oldCustomers / entry.totalPurchasers : 0,
+          innerSpend: entry.innerSpend,
+          outerSpend,
+          outerClicks: entry.outerClicks,
+          clickCost: outerSpend ? entry.outerClicks / outerSpend : 0,
+          retargetingShare: entry.outerSpendUsd ? entry.retargetingSpendUsd / entry.outerSpendUsd : 0,
+          _salesThb: entry.salesThb,
+          _visitors: entry.visitors,
+          _totalPurchasers: entry.totalPurchasers,
+          _newCustomers: entry.newCustomers,
+          _oldCustomers: entry.oldCustomers,
+          _innerSpend: entry.innerSpend,
+          _outerSpendUsd: entry.outerSpendUsd,
+          _outerClicks: entry.outerClicks,
+          _retargetingSpendUsd: entry.retargetingSpendUsd
+        };
+      });
+      cache.set(cacheKey, summary);
+      return summary;
+    }
+
+    function getNewOldSortState(labelKey) {
+      return labelKey === 'category' ? newOldCategoryTableState : newOldProductTableState;
+    }
+
+    function getNewOldSortValue(label, currentMap, metricKey, labelKey) {
+      if (metricKey === labelKey) return label;
+      return Number(currentMap[label]?.[metricKey]) || 0;
+    }
+
+    function sortNewOldLabels(labels, currentMap, labelKey) {
+      const { sortKey, sortDirection } = getNewOldSortState(labelKey);
+      const factor = sortDirection === 'asc' ? 1 : -1;
+      return [...labels].sort((left, right) => {
+        const leftValue = getNewOldSortValue(left, currentMap, sortKey, labelKey);
+        const rightValue = getNewOldSortValue(right, currentMap, sortKey, labelKey);
+        if (sortKey === labelKey) {
+          return leftValue.localeCompare(rightValue, 'zh-CN') * factor;
+        }
+        if (rightValue === leftValue) return left.localeCompare(right, 'zh-CN');
+        return (leftValue - rightValue) * factor;
+      });
+    }
+
+    function updateNewOldSort(labelKey, sortKey) {
+      const state = getNewOldSortState(labelKey);
+      if (state.sortKey === sortKey) {
+        state.sortDirection = state.sortDirection === 'desc' ? 'asc' : 'desc';
+      } else {
+        state.sortKey = sortKey;
+        state.sortDirection = sortKey === labelKey ? 'asc' : 'desc';
+      }
+      invalidateTab('new-old');
+      scheduleActiveTabRender();
     }
 
     function getProductSortValue(product, currentMap, metricKey) {
@@ -7371,7 +7835,7 @@
         outerSpend,
         outerFeeRatio: gmv ? outerSpend / gmv : 0,
         outerRoi: totals.outerSpendUsd ? totals.outerConversionValue / totals.outerSpendUsd : 0,
-        uvValue: totals.visitors ? gmv / totals.visitors / 4.8 : 0
+        uvValue: totals.visitors ? gmv / totals.visitors : 0
       };
     }
 
@@ -8224,6 +8688,155 @@
 
       document.getElementById('outerProductStructureTable').innerHTML = tableHtml;
       bindOuterProductStructureEvents();
+    }
+
+    function formatNewOldAnalysisMetricDelta(metricKey, currentValue, compareValue) {
+      if (metricKey === 'newCustomerShare' || metricKey === 'oldCustomerShare' || metricKey === 'retargetingShare') {
+        return formatCategoryDelta(formatOuterBreakdownShareDelta(currentValue, compareValue));
+      }
+      if (metricKey === 'clickCost') {
+        return formatCategoryDelta(
+          formatOuterBreakdownValueDelta(currentValue, compareValue, value => Number(value || 0).toFixed(2))
+        );
+      }
+      return formatCategoryDelta(formatDelta(currentValue, compareValue));
+    }
+
+    function renderNewOldSummaryTable(containerId, title, labelKey, currentRows, compareRows, emptyText) {
+      const currentMap = Object.fromEntries(currentRows.map(row => [row[labelKey], row]));
+      const compareMap = Object.fromEntries(compareRows.map(row => [row[labelKey], row]));
+      const labels = sortNewOldLabels(
+        [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])]
+          .filter(label => (Number(currentMap[label]?.gmv) || 0) > 0 || (Number(compareMap[label]?.gmv) || 0) > 0),
+        currentMap,
+        labelKey
+      );
+      const metricHeaders = [{ key: labelKey, label: labelKey === 'category' ? '品类' : '产品' }, ...newOldMetricDefinitions];
+      const tableHtml = labels.length ? `
+        <div class="category-summary-card">
+          <div class="category-summary-head">
+            <strong>${title}</strong>
+            <span>按${labelKey === 'category' ? '品类' : '产品'}汇总新老客指标，展示当前值与环比</span>
+          </div>
+          <div class="table-wrap">
+            <table class="${labelKey === 'category' ? 'category-table' : 'category-table product-table'}">
+              <colgroup>
+                ${metricHeaders.map(header => `<col style="width:${header.key === labelKey ? 170 : 132}px">`).join('')}
+              </colgroup>
+              <thead>
+                <tr>
+                  ${metricHeaders.map(header => {
+                    const state = getNewOldSortState(labelKey);
+                    const isActive = state.sortKey === header.key;
+                    const arrow = isActive ? (state.sortDirection === 'desc' ? '↓' : '↑') : '↕';
+                    return `
+                      <th>
+                        <button class="category-sort-button ${isActive ? 'active' : ''}" type="button" data-new-old-sort="${header.key}" data-new-old-label-key="${labelKey}">
+                          <span>${header.label}</span>
+                          <span class="sort-arrow">${arrow}</span>
+                        </button>
+                      </th>
+                    `;
+                  }).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${labels.map(label => {
+                  const current = currentMap[label] || {};
+                  const compare = compareMap[label] || {};
+                  return `
+                    <tr>
+                      <td class="category-name">${label}</td>
+                      ${newOldMetricDefinitions.map(metric => {
+                        const value = current[metric.key] || 0;
+                        const delta = formatNewOldAnalysisMetricDelta(metric.key, value, compare[metric.key] || 0);
+                        return `
+                          <td class="num">
+                            <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                            <span class="category-cell-delta ${delta.className}">${delta.text}</span>
+                          </td>
+                        `;
+                      }).join('')}
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td class="category-name">总计</td>
+                  ${newOldMetricDefinitions.map(metric => {
+                    const value = labels.reduce((sum, label) => sum + (Number(currentMap[label]?.[metric.key]) || 0), 0);
+                    const compareValue = labels.reduce((sum, label) => sum + (Number(compareMap[label]?.[metric.key]) || 0), 0);
+                    const delta = formatNewOldAnalysisMetricDelta(metric.key, value, compareValue);
+                    return `
+                      <td class="num">
+                        <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                        <span class="category-cell-delta ${delta.className}">${delta.text}</span>
+                      </td>
+                    `;
+                  }).join('')}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      ` : `<div class="note">${emptyText}</div>`;
+      document.getElementById(containerId).innerHTML = tableHtml;
+      document.getElementById(containerId).querySelectorAll('[data-new-old-sort]').forEach(button => {
+        button.addEventListener('click', () => {
+          updateNewOldSort(button.dataset.newOldLabelKey || labelKey, button.dataset.newOldSort || labelKey);
+        });
+      });
+    }
+
+    function renderNewOldCategoryAnalysisTable() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const useProductSource = !!getNewOldSelectedProducts().length;
+      const baseSourceRows = useProductSource ? (productTrendData.main || []) : (storeTrendData.main || []);
+      const sourceRows = baseSourceRows.filter(row => {
+        const matchedCategory = !getNewOldSelectedCategories().length || getNewOldSelectedCategories().includes(row.category || '');
+        const matchedProduct = !useProductSource || !getNewOldSelectedProducts().length || getNewOldSelectedProducts().includes(getRowProductLabel(row));
+        return matchedCategory && matchedProduct;
+      });
+      const sourceType = useProductSource ? 'product' : 'store';
+      const currentRows = buildNewOldSummary(queryRange, sourceRows, 'category', sourceType)
+        .filter(row => !getNewOldSelectedCategories().length || getNewOldSelectedCategories().includes(row.category));
+      const compareRows = buildNewOldSummary(compareRange, sourceRows, 'category', sourceType)
+        .filter(row => !getNewOldSelectedCategories().length || getNewOldSelectedCategories().includes(row.category));
+      renderNewOldSummaryTable(
+        'newOldCategoryAnalysisTable',
+        '品类分析',
+        'category',
+        currentRows,
+        compareRows,
+        '当前日期范围下暂无品类数据。'
+      );
+    }
+
+    function renderNewOldProductAnalysisTable() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentRows = buildNewOldSummary(queryRange, productTrendData.main || [], 'product', 'product')
+        .filter(row => {
+          const matchedCategory = !getNewOldSelectedCategories().length || getNewOldSelectedCategories().includes(row.category || '');
+          const matchedProduct = !getNewOldSelectedProducts().length || getNewOldSelectedProducts().includes(row.product);
+          return matchedCategory && matchedProduct;
+        });
+      const compareRows = buildNewOldSummary(compareRange, productTrendData.main || [], 'product', 'product')
+        .filter(row => {
+          const matchedCategory = !getNewOldSelectedCategories().length || getNewOldSelectedCategories().includes(row.category || '');
+          const matchedProduct = !getNewOldSelectedProducts().length || getNewOldSelectedProducts().includes(row.product);
+          return matchedCategory && matchedProduct;
+        });
+      renderNewOldSummaryTable(
+        'newOldProductAnalysisTable',
+        '产品分析',
+        'product',
+        currentRows,
+        compareRows,
+        '当前日期范围下暂无产品数据。'
+      );
     }
 
     function renderCategoryAnalysisTable() {
@@ -9287,6 +9900,8 @@
       populateOuterProductFilter();
       populateSpTtCategoryFilter();
       populateSpTtProductFilter();
+      populateNewOldCategoryFilter();
+      populateNewOldProductFilter();
       bindMultiSelectFilterEvents();
       bindAnalysisTabs();
       invalidateAllTabs();

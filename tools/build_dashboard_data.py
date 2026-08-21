@@ -113,6 +113,9 @@ def build_payloads(source_path):
             "visitors": num(row[idx.get("Product Visitors (Visit)")]),
             "buyers": num(row[idx.get("Buyers (Confirmed Order)")]),
             "units": num(row[idx.get("Units (Confirmed Order)")]),
+            "total_purchase_people": num(row[idx.get("总购买人数")]),
+            "new_customer": num(row[idx.get("旗舰店新客")]),
+            "old_customer": num(row[idx.get("旗舰店老客")]),
         }
 
     def build_product_main(row, idx):
@@ -133,6 +136,9 @@ def build_payloads(source_path):
             "visitors": num(row[idx.get("Product Visitors (Visit)")]),
             "buyers": num(row[idx.get("Buyers (Confirmed Order)")]),
             "units": num(row[idx.get("Units (Confirmed Order)")]),
+            "total_purchase_people": num(row[idx.get("总购买人数")]),
+            "new_customer": num(row[idx.get("旗舰店新客")]),
+            "old_customer": num(row[idx.get("旗舰店老客")]),
         }
 
     def build_store_inner(row, idx):

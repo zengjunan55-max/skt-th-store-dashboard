@@ -197,6 +197,9 @@ def build_store_and_product_payloads(wb):
             "visitors": num(get_cell(row, idx, "Product Visitors (Visit)")),
             "buyers": num(get_cell(row, idx, "Buyers (Confirmed Order)")),
             "units": num(get_cell(row, idx, "Units (Confirmed Order)")),
+            "total_purchase_people": num(get_cell(row, idx, "总购买人数")),
+            "new_customer": num(get_cell(row, idx, "旗舰店新客")),
+            "old_customer": num(get_cell(row, idx, "旗舰店老客")),
         }
 
     def build_product_main(row, idx):
@@ -217,6 +220,9 @@ def build_store_and_product_payloads(wb):
             "visitors": num(get_cell(row, idx, "Product Visitors (Visit)")),
             "buyers": num(get_cell(row, idx, "Buyers (Confirmed Order)")),
             "units": num(get_cell(row, idx, "Units (Confirmed Order)")),
+            "total_purchase_people": num(get_cell(row, idx, "总购买人数")),
+            "new_customer": num(get_cell(row, idx, "旗舰店新客")),
+            "old_customer": num(get_cell(row, idx, "旗舰店老客")),
         }
 
     def build_store_inner(row, idx):
