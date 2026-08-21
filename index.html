@@ -2056,6 +2056,8 @@
     const dashboardRenderState = {
       activeTab: 'store',
       rafId: null,
+      pendingForce: false,
+      resizeTimerId: null,
       dirtyTabs: {
         store: true,
         outer: true,
@@ -2216,10 +2218,13 @@
     }
 
     function scheduleActiveTabRender(force = false) {
+      if (force) dashboardRenderState.pendingForce = true;
       if (dashboardRenderState.rafId !== null) return;
       dashboardRenderState.rafId = scheduleFrame(() => {
+        const shouldForce = force || dashboardRenderState.pendingForce;
         dashboardRenderState.rafId = null;
-        renderActiveTab(force);
+        dashboardRenderState.pendingForce = false;
+        renderActiveTab(shouldForce);
       });
     }
 
@@ -3690,34 +3695,57 @@
     }
 
     function closeFilterDropdowns() {
-      document.querySelectorAll('.filter-multiselect.open').forEach(node => {
+      const openNodes = Array.from(document.querySelectorAll('.filter-multiselect.open'));
+      const hasStoreState = Boolean(filterState.storeSearch || filterState.categorySearch || filterState.productSearch);
+      const hasOuterState = Boolean(outerFilterState.categorySearch || outerFilterState.productSearch);
+      const hasOuterDimensionState = outerDimensionFilterConfigs.some(config => outerDimensionFilterState[config.searchKey]);
+      const hasSpTtState = Boolean(spTtFilterState.categorySearch || spTtFilterState.productSearch);
+      const hasNewOldState = Boolean(newOldFilterState.categorySearch || newOldFilterState.productSearch);
+      const hasMaterialState = materialFilterConfigs.some(config => materialFilterState[config.searchKey]);
+      if (!openNodes.length && !hasStoreState && !hasOuterState && !hasOuterDimensionState && !hasSpTtState && !hasNewOldState && !hasMaterialState) {
+        return;
+      }
+
+      openNodes.forEach(node => {
         node.classList.remove('open');
         const trigger = node.querySelector('.filter-trigger');
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
       });
-      filterState.storeSearch = '';
-      filterState.categorySearch = '';
-      filterState.productSearch = '';
-      populateStoreFilter();
-      populateCategoryFilter();
-      populateProductFilter();
-      outerFilterState.categorySearch = '';
-      outerFilterState.productSearch = '';
-      populateOuterCategoryFilter();
-      populateOuterProductFilter();
-      outerDimensionFilterConfigs.forEach(config => {
-        outerDimensionFilterState[config.searchKey] = '';
-      });
-      populateOuterDimensionFilters();
-      spTtFilterState.categorySearch = '';
-      spTtFilterState.productSearch = '';
-      populateSpTtCategoryFilter();
-      populateSpTtProductFilter();
-      newOldFilterState.categorySearch = '';
-      newOldFilterState.productSearch = '';
-      populateNewOldCategoryFilter();
-      populateNewOldProductFilter();
-      normalizeMaterialFilterSearches();
+      if (hasStoreState || openNodes.some(node => node.id === 'storeFilterWrap' || node.id === 'categoryFilterWrap' || node.id === 'productFilterWrap')) {
+        filterState.storeSearch = '';
+        filterState.categorySearch = '';
+        filterState.productSearch = '';
+        populateStoreFilter();
+        populateCategoryFilter();
+        populateProductFilter();
+      }
+      if (hasOuterState || openNodes.some(node => node.id === 'outerCategoryFilterWrap' || node.id === 'outerProductFilterWrap')) {
+        outerFilterState.categorySearch = '';
+        outerFilterState.productSearch = '';
+        populateOuterCategoryFilter();
+        populateOuterProductFilter();
+      }
+      if (hasOuterDimensionState || openNodes.some(node => node.id && node.id.startsWith('outerDimension'))) {
+        outerDimensionFilterConfigs.forEach(config => {
+          outerDimensionFilterState[config.searchKey] = '';
+        });
+        populateOuterDimensionFilters();
+      }
+      if (hasSpTtState || openNodes.some(node => node.id === 'spTtCategoryFilterWrap' || node.id === 'spTtProductFilterWrap')) {
+        spTtFilterState.categorySearch = '';
+        spTtFilterState.productSearch = '';
+        populateSpTtCategoryFilter();
+        populateSpTtProductFilter();
+      }
+      if (hasNewOldState || openNodes.some(node => node.id === 'newOldCategoryFilterWrap' || node.id === 'newOldProductFilterWrap')) {
+        newOldFilterState.categorySearch = '';
+        newOldFilterState.productSearch = '';
+        populateNewOldCategoryFilter();
+        populateNewOldProductFilter();
+      }
+      if (hasMaterialState || openNodes.some(node => node.id && node.id.startsWith('material'))) {
+        normalizeMaterialFilterSearches();
+      }
     }
 
     function toggleFilterDropdown(wrapperId) {
@@ -9794,7 +9822,13 @@
     }
 
     function scheduleActiveTabResize() {
-      scheduleActiveTabRender(true);
+      if (dashboardRenderState.resizeTimerId !== null) {
+        clearTimeout(dashboardRenderState.resizeTimerId);
+      }
+      dashboardRenderState.resizeTimerId = window.setTimeout(() => {
+        dashboardRenderState.resizeTimerId = null;
+        scheduleActiveTabRender(true);
+      }, 120);
     }
 
     function queueStoreTrendHover(clientX, clientY) {
@@ -10019,6 +10053,9 @@
     }
 
     function setActiveTab(tabKey) {
+      if (dashboardRenderState.activeTab === tabKey && !dashboardRenderState.dirtyTabs[tabKey]) {
+        return;
+      }
       dashboardRenderState.activeTab = tabKey;
       const filterRow = document.getElementById('storeFilterPanelRow');
       const spTtFilterRow = document.getElementById('spTtFilterPanelRow');
