@@ -33,6 +33,14 @@
     }
     h1 { margin: 0 0 8px; font-size: 28px; }
     h2 { margin: 0 0 14px; font-size: 20px; }
+    #weeklyStoreProductSection > h2,
+    #weeklyNewOldProductSection > h2,
+    #weeklyOuterBreakdownSection > h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      padding-left: 2ch;
+    }
     h3 { margin: 22px 0 10px; font-size: 16px; }
     p { margin: 6px 0; color: var(--muted); }
     .small { font-size: 12px; color: var(--muted); }
@@ -869,6 +877,11 @@
       gap: 6px;
       cursor: pointer;
     }
+    #weeklyStoreProductSection .category-sort-button {
+      min-height: 42px;
+      padding: 9px 20px 9px 10px;
+      line-height: 1.05;
+    }
     .category-sort-button:hover {
       background: #eef4f8;
     }
@@ -1052,6 +1065,12 @@
       color: #2b4662;
       line-height: 1.2;
       box-sizing: border-box;
+    }
+    #weeklyStoreProductSection .outer-breakdown-header-label {
+      min-height: 42px;
+      padding: 10px 18px 10px 10px;
+      font-size: 14px;
+      line-height: 1.05;
     }
     .outer-breakdown-table tr.subtotal-row td,
     .outer-breakdown-table tr.total-row td {
@@ -1279,6 +1298,7 @@
       <div class="tab-list" id="analysisTabs" role="tablist" aria-label="分析模块切换">
         <button class="tab-button active" id="analysis-tab-store" type="button" data-tab-target="store" role="tab" aria-selected="true">店铺分析</button>
         <button class="tab-button" id="analysis-tab-new-old" type="button" data-tab-target="new-old" role="tab" aria-selected="false">新老客</button>
+        <button class="tab-button" id="analysis-tab-weekly" type="button" data-tab-target="weekly" role="tab" aria-selected="false">周会拉数</button>
         <button class="tab-button" id="analysis-tab-outer" type="button" data-tab-target="outer" role="tab" aria-selected="false">站外分析</button>
         <button class="tab-button" id="analysis-tab-sp-tt" type="button" data-tab-target="sp-tt" role="tab" aria-selected="false">SP-TT销量对比</button>
       </div>
@@ -1432,6 +1452,70 @@
         <div class="tab-placeholder" style="margin-top:18px;">
           <strong>说明</strong>
           <p>当前仅新增两张汇总表，不影响现有店铺分析、站外分析和 SP-TT 销量对比。</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="tab-panel" data-tab-panel="weekly" role="tabpanel" aria-labelledby="analysis-tab-weekly" hidden>
+      <div class="filter-panel-row" id="weeklyFilterPanelRow">
+        <div class="controls-filter-panel">
+          <div class="filter-control">
+            <div class="filter-control-head">
+              <span>店铺筛选</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="weeklyStoreProductSection">跳转</button>
+            </div>
+            <div class="filter-multiselect" id="weeklyStoreFilterWrap">
+              <div id="weeklyStoreFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="weeklyStoreFilterInput" class="filter-trigger-input" type="text" value="全部店铺" placeholder="搜索店铺" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="weeklyStoreFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="store" data-filter-scope="weekly">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="store" data-filter-scope="weekly">清空</button>
+                </div>
+                <div id="weeklyStoreFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>产品筛选</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="weeklyOuterBreakdownSection">跳转</button>
+            </div>
+            <div class="filter-multiselect" id="weeklyProductFilterWrap">
+              <div id="weeklyProductFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="weeklyProductFilterInput" class="filter-trigger-input" type="text" value="全部产品" placeholder="搜索产品" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="weeklyProductFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="product" data-filter-scope="weekly">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="product" data-filter-scope="weekly">清空</button>
+                </div>
+                <div id="weeklyProductFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="material-filter-summary-row">
+        <div class="material-filter-summary" id="weeklyFilterSummary">已筛选项：当前无筛选</div>
+      </div>
+      <section id="weeklyStoreProductSection">
+        <h2>店铺基础数据</h2>
+        <div class="outer-structure-card">
+          <div id="weeklyProductAnalysisTable"></div>
+          <div style="height:8px;"></div>
+          <div id="weeklyNewOldProductSection">
+            <h2 style="margin-top:0;">新老客 - 产品分析</h2>
+            <div id="weeklyNewOldProductAnalysisTable"></div>
+          </div>
+          <div style="height:8px;"></div>
+          <div id="weeklyOuterBreakdownSection">
+            <h2 style="margin-top:0;">站外分析 - 广告结构汇总</h2>
+            <div id="weeklyOuterBreakdownTable"></div>
+          </div>
         </div>
       </section>
     </div>
@@ -2003,6 +2087,14 @@
       categorySearch: '',
       productSearch: ''
     };
+    const weeklyFilterState = {
+      stores: ['新店-本土旗舰店'],
+      categories: [],
+      products: [],
+      storeSearch: '',
+      categorySearch: '',
+      productSearch: ''
+    };
     const outerFilterState = {
       categories: [],
       products: [],
@@ -2062,7 +2154,8 @@
         store: true,
         outer: true,
         'sp-tt': true,
-        'new-old': true
+        'new-old': true,
+        weekly: true
       }
     };
     const dashboardDataCache = {
@@ -2193,6 +2286,7 @@
       invalidateTab('outer');
       invalidateTab('sp-tt');
       invalidateTab('new-old');
+      invalidateTab('weekly');
     }
 
     function clearDashboardDataCaches() {
@@ -2243,6 +2337,8 @@
       } else if (tabKey === 'new-old') {
         renderNewOldCategoryAnalysisTable();
         renderNewOldProductAnalysisTable();
+      } else if (tabKey === 'weekly') {
+        renderWeeklyMeetingTab();
       }
       dashboardRenderState.dirtyTabs[tabKey] = false;
     }
@@ -2391,6 +2487,46 @@
         .sort((left, right) => left.localeCompare(right, 'zh-CN'));
     }
 
+    function getWeeklyStoreOptions() {
+      return getStoreOptions();
+    }
+
+    function getWeeklyCategoryOptions() {
+      return [];
+    }
+
+    function getWeeklyProductOptions() {
+      const sourceRows = [
+        ...(productTrendData.main || []),
+        ...(productTrendData.inner || []),
+        ...(productTrendData.outer || []),
+        ...(productTrendData.brand || [])
+      ];
+      const gmvMap = new Map();
+      filterRows(productTrendData.main || [], getRange('qStart', 'qEnd'))
+        .filter(row => weeklyMatchesSelectedStore(row) && weeklyMatchesSelectedCategory(row))
+        .forEach(row => {
+          const product = getRowProductLabel(row);
+          if (!isRecognizedFilterValue(product)) return;
+          gmvMap.set(product, (gmvMap.get(product) || 0) + ((Number(row.sales_thb) || 0) / 4.8));
+        });
+
+      return [...new Set(sourceRows
+        .filter(row => {
+          const rowStore = row?.store || '';
+          const storeMatched = !rowStore || weeklyMatchesSelectedStore(row);
+          return storeMatched && weeklyMatchesSelectedCategory(row);
+        })
+        .map(row => getRowProductLabel(row))
+        .filter(isRecognizedFilterValue))]
+        .sort((left, right) => {
+          const rightGmv = gmvMap.get(right) || 0;
+          const leftGmv = gmvMap.get(left) || 0;
+          if (rightGmv !== leftGmv) return rightGmv - leftGmv;
+          return left.localeCompare(right, 'zh-CN');
+        });
+    }
+
     function getSelectedStores() {
       return filterState.stores;
     }
@@ -2401,6 +2537,18 @@
 
     function getSelectedProducts() {
       return filterState.products;
+    }
+
+    function getWeeklySelectedStores() {
+      return weeklyFilterState.stores;
+    }
+
+    function getWeeklySelectedCategories() {
+      return [];
+    }
+
+    function getWeeklySelectedProducts() {
+      return weeklyFilterState.products;
     }
 
     function getOuterCategoryOptions() {
@@ -2800,6 +2948,18 @@
       return !filterState.products.length;
     }
 
+    function isAllWeeklyStoresSelected() {
+      return !weeklyFilterState.stores.length;
+    }
+
+    function isAllWeeklyCategoriesSelected() {
+      return true;
+    }
+
+    function isAllWeeklyProductsSelected() {
+      return !weeklyFilterState.products.length;
+    }
+
     function isAllOuterCategoriesSelected() {
       return !outerFilterState.categories.length;
     }
@@ -2852,6 +3012,10 @@
           if (removeAttrPrefix === 'new-old-filter-remove') {
             if ((button.dataset.newOldFilterRemoveKind || '') === 'category') setNewOldSelectedCategory(button.dataset.newOldFilterRemoveValue || '');
             if ((button.dataset.newOldFilterRemoveKind || '') === 'product') setNewOldSelectedProduct(button.dataset.newOldFilterRemoveValue || '');
+          }
+          if (removeAttrPrefix === 'weekly-filter-remove') {
+            if ((button.dataset.weeklyFilterRemoveKind || '') === 'store') setWeeklySelectedStore(button.dataset.weeklyFilterRemoveValue || '');
+            if ((button.dataset.weeklyFilterRemoveKind || '') === 'product') setWeeklySelectedProduct(button.dataset.weeklyFilterRemoveValue || '');
           }
         });
       });
@@ -2995,6 +3159,18 @@
       );
     }
 
+    function renderWeeklyFilterSummary() {
+      renderBasicFilterSummary(
+        'weeklyFilterSummary',
+        [
+          { kind: 'store', label: '店铺', values: getWeeklySelectedStores() },
+          { kind: 'product', label: '产品', values: getWeeklySelectedProducts() }
+        ],
+        'clearWeeklyFilters',
+        'weekly-filter-remove'
+      );
+    }
+
     function clearStoreFilters() {
       filterState.stores = [];
       filterState.categories = [];
@@ -3009,6 +3185,20 @@
       storeTrendState.hoverIndex = null;
       invalidateStoreTrendCache();
       invalidateTab('store');
+      invalidateTab('weekly');
+      scheduleActiveTabRender();
+    }
+
+    function clearWeeklyFilters() {
+      weeklyFilterState.stores = [];
+      weeklyFilterState.categories = [];
+      weeklyFilterState.products = [];
+      weeklyFilterState.storeSearch = '';
+      weeklyFilterState.productSearch = '';
+      populateWeeklyStoreFilter();
+      populateWeeklyProductFilter();
+      renderWeeklyFilterSummary();
+      invalidateTab('weekly');
       scheduleActiveTabRender();
     }
 
@@ -3123,6 +3313,7 @@
       }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
       syncFilterTriggerInput('product');
       renderStoreFilterSummary();
+      populateWeeklyProductFilter();
     }
 
     function populateOuterCategoryFilter() {
@@ -3330,6 +3521,7 @@
         storeTrendState.hoverIndex = null;
         invalidateStoreTrendCache();
         invalidateTab('store');
+        invalidateTab('weekly');
         scheduleActiveTabRender();
       }
     }
@@ -3352,6 +3544,114 @@
       syncFilterTriggerInput('store');
       syncActiveStoreChip();
       renderStoreFilterSummary();
+      populateWeeklyStoreFilter();
+    }
+
+    function syncWeeklyFilterTriggerInput(kind) {
+      const inputIdMap = {
+        store: 'weeklyStoreFilterInput',
+        product: 'weeklyProductFilterInput'
+      };
+      const wrapIdMap = {
+        store: 'weeklyStoreFilterWrap',
+        product: 'weeklyProductFilterWrap'
+      };
+      const allLabelMap = {
+        store: '全部店铺',
+        product: '全部产品'
+      };
+      const input = document.getElementById(inputIdMap[kind]);
+      const wrapper = document.getElementById(wrapIdMap[kind]);
+      if (!input || !wrapper) return;
+      const isOpen = wrapper.classList.contains('open');
+      const searchValue = kind === 'store'
+        ? weeklyFilterState.storeSearch
+        : weeklyFilterState.productSearch;
+      const selectedValues = kind === 'store'
+        ? getWeeklySelectedStores()
+        : getWeeklySelectedProducts();
+      input.value = isOpen ? searchValue : buildFilterSummary(selectedValues, allLabelMap[kind]);
+    }
+
+    function populateWeeklyStoreFilter() {
+      const container = document.getElementById('weeklyStoreFilterOptions');
+      if (!container) return;
+      const selectedStores = getWeeklySelectedStores();
+      const visibleOptions = filterOptionList(getWeeklyStoreOptions(), weeklyFilterState.storeSearch, '全部店铺');
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(store => {
+        const checked = store === '全部店铺' ? !selectedStores.length : selectedStores.includes(store);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${store}" ${checked ? 'checked' : ''}>
+            <span>${store}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的店铺</div>';
+      syncWeeklyFilterTriggerInput('store');
+      renderWeeklyFilterSummary();
+    }
+
+    function populateWeeklyProductFilter() {
+      const container = document.getElementById('weeklyProductFilterOptions');
+      if (!container) return;
+      const selectedProducts = getWeeklySelectedProducts();
+      const visibleOptions = filterOptionList(getWeeklyProductOptions(), weeklyFilterState.productSearch, '全部产品');
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(product => {
+        const checked = product === '全部产品' ? !selectedProducts.length : selectedProducts.includes(product);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${product}" ${checked ? 'checked' : ''}>
+            <span>${product}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
+      syncWeeklyFilterTriggerInput('product');
+      renderWeeklyFilterSummary();
+    }
+
+    function normalizeWeeklySelectedProducts() {
+      const allowed = new Set(getWeeklyProductOptions());
+      weeklyFilterState.products = weeklyFilterState.products.filter(product => allowed.has(product));
+    }
+
+    function setWeeklySelectedStore(store, shouldRender = true) {
+      const nextStores = store === '全部店铺'
+        ? []
+        : (() => {
+            const current = new Set(getWeeklySelectedStores());
+            if (current.has(store)) current.delete(store);
+            else current.add(store);
+            return [...current];
+          })();
+      weeklyFilterState.stores = nextStores;
+      normalizeWeeklySelectedProducts();
+      populateWeeklyStoreFilter();
+      populateWeeklyProductFilter();
+      if (shouldRender) {
+        invalidateTab('weekly');
+        scheduleActiveTabRender();
+      }
+    }
+
+    function setWeeklySelectedCategory(category, shouldRender = true) {
+      return;
+    }
+
+    function setWeeklySelectedProduct(product, shouldRender = true) {
+      const nextProducts = product === '全部产品'
+        ? []
+        : (() => {
+            const current = new Set(getWeeklySelectedProducts());
+            if (current.has(product)) current.delete(product);
+            else current.add(product);
+            return [...current];
+          })();
+      weeklyFilterState.products = nextProducts;
+      populateWeeklyProductFilter();
+      if (shouldRender) {
+        invalidateTab('weekly');
+        scheduleActiveTabRender();
+      }
     }
 
     function setSelectedStore(store, shouldRender = true) {
@@ -3371,6 +3671,7 @@
         storeTrendState.hoverIndex = null;
         invalidateStoreTrendCache();
         invalidateTab('store');
+        invalidateTab('weekly');
         scheduleActiveTabRender();
       }
     }
@@ -3390,6 +3691,7 @@
         storeTrendState.hoverIndex = null;
         invalidateStoreTrendCache();
         invalidateTab('store');
+        invalidateTab('weekly');
         scheduleActiveTabRender();
       }
     }
@@ -3598,6 +3900,7 @@
       storeTrendState.hoverIndex = null;
       invalidateStoreTrendCache();
       invalidateTab('store');
+      invalidateTab('weekly');
       scheduleActiveTabRender();
     }
 
@@ -3694,15 +3997,47 @@
       scheduleActiveTabRender();
     }
 
+    function getVisibleWeeklyFilterOptions(kind) {
+      if (kind === 'store') {
+        return filterOptionList(getWeeklyStoreOptions(), weeklyFilterState.storeSearch, '全部店铺')
+          .filter(option => option !== '全部店铺');
+      }
+      if (kind === 'product') {
+        return filterOptionList(getWeeklyProductOptions(), weeklyFilterState.productSearch, '全部产品')
+          .filter(option => option !== '全部产品');
+      }
+      return [];
+    }
+
+    function applyWeeklyFilterBulk(kind, action) {
+      if (kind === 'store') {
+        weeklyFilterState.stores = action === 'select-all'
+          ? [...new Set([...(getWeeklySelectedStores()), ...getVisibleWeeklyFilterOptions('store')])]
+          : [];
+        normalizeWeeklySelectedProducts();
+        populateWeeklyStoreFilter();
+        populateWeeklyProductFilter();
+      }
+      if (kind === 'product') {
+        weeklyFilterState.products = action === 'select-all'
+          ? [...new Set([...(getWeeklySelectedProducts()), ...getVisibleWeeklyFilterOptions('product')])]
+          : [];
+        populateWeeklyProductFilter();
+      }
+      invalidateTab('weekly');
+      scheduleActiveTabRender();
+    }
+
     function closeFilterDropdowns() {
       const openNodes = Array.from(document.querySelectorAll('.filter-multiselect.open'));
       const hasStoreState = Boolean(filterState.storeSearch || filterState.categorySearch || filterState.productSearch);
+      const hasWeeklyState = Boolean(weeklyFilterState.storeSearch || weeklyFilterState.productSearch);
       const hasOuterState = Boolean(outerFilterState.categorySearch || outerFilterState.productSearch);
       const hasOuterDimensionState = outerDimensionFilterConfigs.some(config => outerDimensionFilterState[config.searchKey]);
       const hasSpTtState = Boolean(spTtFilterState.categorySearch || spTtFilterState.productSearch);
       const hasNewOldState = Boolean(newOldFilterState.categorySearch || newOldFilterState.productSearch);
       const hasMaterialState = materialFilterConfigs.some(config => materialFilterState[config.searchKey]);
-      if (!openNodes.length && !hasStoreState && !hasOuterState && !hasOuterDimensionState && !hasSpTtState && !hasNewOldState && !hasMaterialState) {
+      if (!openNodes.length && !hasStoreState && !hasWeeklyState && !hasOuterState && !hasOuterDimensionState && !hasSpTtState && !hasNewOldState && !hasMaterialState) {
         return;
       }
 
@@ -3711,13 +4046,19 @@
         const trigger = node.querySelector('.filter-trigger');
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
       });
-      if (hasStoreState || openNodes.some(node => node.id === 'storeFilterWrap' || node.id === 'categoryFilterWrap' || node.id === 'productFilterWrap')) {
+      if (hasStoreState || openNodes.some(node => ['storeFilterWrap', 'categoryFilterWrap', 'productFilterWrap', 'weeklyStoreFilterWrap', 'weeklyProductFilterWrap'].includes(node.id))) {
         filterState.storeSearch = '';
         filterState.categorySearch = '';
         filterState.productSearch = '';
         populateStoreFilter();
         populateCategoryFilter();
         populateProductFilter();
+      }
+      if (hasWeeklyState || openNodes.some(node => ['weeklyStoreFilterWrap', 'weeklyProductFilterWrap'].includes(node.id))) {
+        weeklyFilterState.storeSearch = '';
+        weeklyFilterState.productSearch = '';
+        populateWeeklyStoreFilter();
+        populateWeeklyProductFilter();
       }
       if (hasOuterState || openNodes.some(node => node.id === 'outerCategoryFilterWrap' || node.id === 'outerProductFilterWrap')) {
         outerFilterState.categorySearch = '';
@@ -3787,6 +4128,8 @@
       const spTtProductTrigger = document.getElementById('spTtProductFilterTrigger');
       const newOldCategoryTrigger = document.getElementById('newOldCategoryFilterTrigger');
       const newOldProductTrigger = document.getElementById('newOldProductFilterTrigger');
+      const weeklyStoreTrigger = document.getElementById('weeklyStoreFilterTrigger');
+      const weeklyProductTrigger = document.getElementById('weeklyProductFilterTrigger');
       const jumpButtons = document.querySelectorAll('.filter-jump-button');
       const storeOptions = document.getElementById('storeFilterOptions');
       const categoryOptions = document.getElementById('categoryFilterOptions');
@@ -3797,6 +4140,8 @@
       const spTtProductOptions = document.getElementById('spTtProductFilterOptions');
       const newOldCategoryOptions = document.getElementById('newOldCategoryFilterOptions');
       const newOldProductOptions = document.getElementById('newOldProductFilterOptions');
+      const weeklyStoreOptions = document.getElementById('weeklyStoreFilterOptions');
+      const weeklyProductOptions = document.getElementById('weeklyProductFilterOptions');
       const outerDimensionFilterEntries = outerDimensionFilterConfigs.map(config => ({
         ...config,
         trigger: document.getElementById(config.triggerId),
@@ -3818,6 +4163,8 @@
       const spTtProductInput = document.getElementById('spTtProductFilterInput');
       const newOldCategoryInput = document.getElementById('newOldCategoryFilterInput');
       const newOldProductInput = document.getElementById('newOldProductFilterInput');
+      const weeklyStoreInput = document.getElementById('weeklyStoreFilterInput');
+      const weeklyProductInput = document.getElementById('weeklyProductFilterInput');
 
       function scrollToFilterTarget(targetId) {
         const target = document.getElementById(targetId);
@@ -3891,6 +4238,18 @@
         newOldProductTrigger.addEventListener('click', event => {
           event.stopPropagation();
           toggleFilterDropdown('newOldProductFilterWrap');
+        });
+      }
+      if (weeklyStoreTrigger) {
+        weeklyStoreTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('weeklyStoreFilterWrap');
+        });
+      }
+      if (weeklyProductTrigger) {
+        weeklyProductTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('weeklyProductFilterWrap');
         });
       }
       materialFilterEntries.forEach(entry => {
@@ -3981,6 +4340,22 @@
           setNewOldSelectedProduct(input.value);
         });
         newOldProductOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (weeklyStoreOptions) {
+        weeklyStoreOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setWeeklySelectedStore(input.value);
+        });
+        weeklyStoreOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (weeklyProductOptions) {
+        weeklyProductOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setWeeklySelectedProduct(input.value);
+        });
+        weeklyProductOptions.addEventListener('click', event => event.stopPropagation());
       }
       materialFilterEntries.forEach(entry => {
         if (!entry.options) return;
@@ -4122,6 +4497,32 @@
           populateNewOldProductFilter();
         });
       }
+      if (weeklyStoreInput) {
+        weeklyStoreInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        weeklyStoreInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('weeklyStoreFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('weeklyStoreFilterWrap');
+        });
+        weeklyStoreInput.addEventListener('input', event => {
+          weeklyFilterState.storeSearch = event.target.value;
+          populateWeeklyStoreFilter();
+        });
+      }
+      if (weeklyProductInput) {
+        weeklyProductInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        weeklyProductInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('weeklyProductFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('weeklyProductFilterWrap');
+        });
+        weeklyProductInput.addEventListener('input', event => {
+          weeklyFilterState.productSearch = event.target.value;
+          populateWeeklyProductFilter();
+        });
+      }
       materialFilterEntries.forEach(entry => {
         if (!entry.input) return;
         entry.input.addEventListener('click', event => {
@@ -4147,6 +4548,7 @@
           else if (scope === 'outer-dimension') applyOuterDimensionFilterBulk(kind, action);
           else if (scope === 'sp-tt') applySpTtFilterBulk(kind, action);
           else if (scope === 'new-old') applyNewOldFilterBulk(kind, action);
+          else if (scope === 'weekly') applyWeeklyFilterBulk(kind, action);
           else if (scope === 'material') applyMaterialFilterBulk(kind, action);
           else applyFilterBulk(kind, action);
         });
@@ -4203,6 +4605,23 @@
       const selectedStores = new Set(getSelectedStores());
       const comparableNames = getComparableStoreNames(row?.store);
       return comparableNames.some(name => selectedStores.has(name));
+    }
+
+    function weeklyMatchesSelectedCategory(row) {
+      return true;
+    }
+
+    function weeklyMatchesSelectedStore(row) {
+      if (isAllWeeklyStoresSelected()) return true;
+      const selectedStores = new Set(getWeeklySelectedStores());
+      const comparableNames = getComparableStoreNames(row?.store);
+      return comparableNames.some(name => selectedStores.has(name));
+    }
+
+    function weeklyMatchesSelectedProduct(row) {
+      const rowProduct = getRowProductLabel(row);
+      if (!rowProduct) return isAllWeeklyProductsSelected();
+      return isAllWeeklyProductsSelected() || getWeeklySelectedProducts().includes(rowProduct);
     }
 
     function outerMatchesSelectedCategory(row) {
@@ -4545,6 +4964,10 @@
     const materialAdTypeDisplayOrder = ['图片广告', '视频广告'];
     const outerBreakdownFormOrder = ['收割广告', '种草广告'];
     const outerBreakdownTypeOrder = ['图片广告', '视频广告', '混合目录', '合创广告', '官号广告'];
+    const outerBreakdownTypeOrderByForm = {
+      '收割广告': ['图片广告', '视频广告', '合创广告', '混合目录'],
+      '种草广告': ['合创广告', '官号广告']
+    };
     const outerDimensionTabDefinitions = [
       { key: 'category', label: '品类' },
       { key: 'product', label: '产品' },
@@ -5378,9 +5801,10 @@
       const groups = outerBreakdownFormOrder
         .map(form => {
           const typeMap = formMap.get(form) || new Map();
+          const formOrder = outerBreakdownTypeOrderByForm[form] || outerBreakdownTypeOrder;
           const rows = [...typeMap.values()].sort((left, right) => {
-            const leftIndex = outerBreakdownTypeOrder.indexOf(left.adType);
-            const rightIndex = outerBreakdownTypeOrder.indexOf(right.adType);
+            const leftIndex = formOrder.indexOf(left.adType);
+            const rightIndex = formOrder.indexOf(right.adType);
             if (leftIndex !== -1 || rightIndex !== -1) {
               if (leftIndex === -1) return 1;
               if (rightIndex === -1) return -1;
@@ -6380,6 +6804,93 @@
       return setCacheValue(dashboardDataCache.productSummary, cacheKey, summary);
     }
 
+    function buildWeeklyProductSummary(range) {
+      const productMap = new Map();
+      const ensureProduct = product => {
+        if (!product) return null;
+        if (!productMap.has(product)) {
+          productMap.set(product, {
+            product,
+            salesThb: 0,
+            visitors: 0,
+            buyers: 0,
+            innerSpend: 0,
+            innerAdsSpendThb: 0,
+            innerGmvThb: 0,
+            innerClicks: 0,
+            innerCpcSum: 0,
+            innerCpcCount: 0,
+            outerSpendUsd: 0,
+            outerConversionValue: 0
+          });
+        }
+        return productMap.get(product);
+      };
+
+      filterRows(productTrendData.main || [], range)
+        .filter(row => weeklyMatchesSelectedStore(row) && weeklyMatchesSelectedCategory(row) && weeklyMatchesSelectedProduct(row))
+        .forEach(row => {
+          const entry = ensureProduct(getRowProductLabel(row));
+          if (!entry) return;
+          entry.salesThb += Number(row.sales_thb) || 0;
+          entry.visitors += Number(row.visitors) || 0;
+          entry.buyers += Number(row.buyers) || 0;
+        });
+
+      filterRows(productTrendData.inner || [], range)
+        .filter(row => weeklyMatchesSelectedStore(row) && weeklyMatchesSelectedCategory(row) && weeklyMatchesSelectedProduct(row))
+        .forEach(row => {
+          const entry = ensureProduct(getRowProductLabel(row));
+          if (!entry) return;
+          entry.innerSpend += Number(row.spend_rmb) || 0;
+          entry.innerAdsSpendThb += Number(row.ads_spend_thb ?? row.adsSpendThb ?? row.spend_thb ?? row.spendThb) || 0;
+          entry.innerGmvThb += Number(row.gmv_thb ?? row.gmvThb ?? row.gmv) || 0;
+          entry.innerClicks += Number(row.clicks ?? row.inner_clicks ?? row.innerClicks) || 0;
+          const cpcValue = Number(row.cpc);
+          if (Number.isFinite(cpcValue) && cpcValue > 0) {
+            entry.innerCpcSum += cpcValue;
+            entry.innerCpcCount += 1;
+          }
+        });
+
+      filterRows(productTrendData.outer || [], range)
+        .filter(row => weeklyMatchesSelectedCategory(row) && weeklyMatchesSelectedProduct(row))
+        .forEach(row => {
+          const entry = ensureProduct(getRowProductLabel(row));
+          if (!entry) return;
+          entry.outerSpendUsd += Number(row.spend_usd) || 0;
+          entry.outerConversionValue += Number(row.conversion_value ?? row.gmv ?? row.purchase_value) || 0;
+        });
+
+      return Array.from(productMap.values()).map(entry => ({
+        product: entry.product,
+        gmv: entry.salesThb / 4.8,
+        visitors: entry.visitors,
+        conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
+        totalSpend: entry.innerSpend + (entry.outerSpendUsd * 6.9),
+        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * 6.9)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * 6.9)) : 0,
+        innerSpend: entry.innerSpend,
+        innerFeeRatio: entry.salesThb ? entry.innerSpend / (entry.salesThb / 4.8) : 0,
+        innerRoi: entry.innerAdsSpendThb ? entry.innerGmvThb / entry.innerAdsSpendThb : 0,
+        innerCpc: entry.innerClicks ? entry.innerAdsSpendThb / entry.innerClicks : (entry.innerCpcCount ? entry.innerCpcSum / entry.innerCpcCount : 0),
+        outerSpend: entry.outerSpendUsd * 6.9,
+        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
+        outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
+        uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors : 0,
+        _salesThb: entry.salesThb,
+        _visitors: entry.visitors,
+        _buyers: entry.buyers,
+        _innerSpend: entry.innerSpend,
+        _innerAdsSpendThb: entry.innerAdsSpendThb,
+        _innerGmvThb: entry.innerGmvThb,
+        _innerClicks: entry.innerClicks,
+        _innerCpcSum: entry.innerCpcSum,
+        _innerCpcCount: entry.innerCpcCount,
+        _outerSpendUsd: entry.outerSpendUsd,
+        _outerConversionValue: entry.outerConversionValue
+      }));
+    }
+
     function getNewOldMetricValue(row, candidates, fallback = 0) {
       for (const key of candidates) {
         const value = Number(row?.[key]);
@@ -6485,6 +6996,101 @@
       });
       cache.set(cacheKey, summary);
       return summary;
+    }
+
+    function buildWeeklyNewOldSummary(range, sourceRows, labelKey, sourceType = 'store') {
+      const summaryMap = new Map();
+      const ensureEntry = label => {
+        if (!label) return null;
+        if (!summaryMap.has(label)) {
+          summaryMap.set(label, {
+            label,
+            category: '',
+            salesThb: 0,
+            visitors: 0,
+            totalPurchasers: 0,
+            newCustomers: 0,
+            oldCustomers: 0,
+            innerSpend: 0,
+            outerSpendUsd: 0,
+            outerClicks: 0,
+            retargetingSpendUsd: 0
+          });
+        }
+        return summaryMap.get(label);
+      };
+
+      filterRows(sourceRows, range)
+        .filter(row => weeklyMatchesSelectedStore(row) && weeklyMatchesSelectedCategory(row) && (labelKey === 'category' || weeklyMatchesSelectedProduct(row)))
+        .forEach(row => {
+          const label = labelKey === 'category' ? (row.category || '') : getRowProductLabel(row);
+          const entry = ensureEntry(label);
+          if (!entry) return;
+          entry.category = entry.category || row.category || getRowProductCategory(row) || '';
+          entry.salesThb += Number(row.sales_thb) || 0;
+          entry.visitors += Number(row.visitors) || 0;
+          entry.totalPurchasers += getNewOldMetricValue(row, ['总购买人数', 'total_purchase_people', 'totalPurchasePeople', 'buyers'], Number(row.buyers) || 0);
+          entry.newCustomers += getNewOldMetricValue(row, ['旗舰店新客', 'new_customer', 'newCustomer', 'new_customers'], 0);
+          entry.oldCustomers += getNewOldMetricValue(row, ['旗舰店老客', 'old_customer', 'oldCustomer', 'old_customers'], 0);
+        });
+
+      const useProductSource = sourceType === 'product' || labelKey === 'product';
+      const outerRows = [
+        ...filterRows(useProductSource ? (productTrendData.outer || []) : (storeTrendData.outer || []), range),
+        ...(useProductSource ? filterRows(productTrendData.brand || [], range) : filterRows(storeTrendData.brand || [], range))
+      ]
+        .filter(row => weeklyMatchesSelectedCategory(row) && (labelKey === 'category' || weeklyMatchesSelectedProduct(row)));
+      const innerRows = filterRows(useProductSource ? (productTrendData.inner || []) : (storeTrendData.inner || []), range)
+        .filter(row => weeklyMatchesSelectedStore(row) && weeklyMatchesSelectedCategory(row) && (labelKey === 'category' || weeklyMatchesSelectedProduct(row)));
+
+      outerRows.forEach(row => {
+        const label = labelKey === 'category' ? (row.category || '') : getRowProductLabel(row);
+        const entry = ensureEntry(label);
+        if (!entry) return;
+        const spendUsd = Number(row.spend_usd) || 0;
+        entry.outerSpendUsd += spendUsd;
+        entry.outerClicks += Number(row.clicks) || 0;
+        if (`${row.acquisition_type || ''}`.trim() === '再营销') {
+          entry.retargetingSpendUsd += spendUsd;
+        }
+      });
+
+      innerRows.forEach(row => {
+        const label = labelKey === 'category' ? (row.category || '') : getRowProductLabel(row);
+        const entry = ensureEntry(label);
+        if (!entry) return;
+        entry.innerSpend += Number(row.spend_rmb) || 0;
+      });
+
+      return Array.from(summaryMap.values()).map(entry => {
+        const gmv = entry.salesThb / 4.8;
+        const outerSpend = entry.outerSpendUsd * 6.9;
+        return {
+          [labelKey]: entry.label,
+          category: entry.category,
+          gmv,
+          visitors: entry.visitors,
+          totalPurchasers: entry.totalPurchasers,
+          newCustomers: entry.newCustomers,
+          newCustomerShare: entry.totalPurchasers ? entry.newCustomers / entry.totalPurchasers : 0,
+          oldCustomers: entry.oldCustomers,
+          oldCustomerShare: entry.totalPurchasers ? entry.oldCustomers / entry.totalPurchasers : 0,
+          innerSpend: entry.innerSpend,
+          outerSpend,
+          outerClicks: entry.outerClicks,
+          clickCost: outerSpend ? entry.outerClicks / outerSpend : 0,
+          retargetingShare: entry.outerSpendUsd ? entry.retargetingSpendUsd / entry.outerSpendUsd : 0,
+          _salesThb: entry.salesThb,
+          _visitors: entry.visitors,
+          _totalPurchasers: entry.totalPurchasers,
+          _newCustomers: entry.newCustomers,
+          _oldCustomers: entry.oldCustomers,
+          _innerSpend: entry.innerSpend,
+          _outerSpendUsd: entry.outerSpendUsd,
+          _outerClicks: entry.outerClicks,
+          _retargetingSpendUsd: entry.retargetingSpendUsd
+        };
+      });
     }
 
     function getNewOldSortState(labelKey) {
@@ -8898,7 +9504,9 @@
       return formatCategoryDelta(formatDelta(currentValue, compareValue));
     }
 
-    function renderNewOldSummaryTable(containerId, title, labelKey, currentRows, compareRows, emptyText) {
+    function renderNewOldSummaryTable(containerId, title, labelKey, currentRows, compareRows, emptyText, options = {}) {
+      const showTotal = options.showTotal !== false;
+      const showHead = options.showHead !== false;
       const currentMap = Object.fromEntries(currentRows.map(row => [row[labelKey], row]));
       const compareMap = Object.fromEntries(compareRows.map(row => [row[labelKey], row]));
       const labels = sortNewOldLabels(
@@ -8910,10 +9518,12 @@
       const metricHeaders = [{ key: labelKey, label: labelKey === 'category' ? '品类' : '产品' }, ...newOldMetricDefinitions];
       const tableHtml = labels.length ? `
         <div class="category-summary-card">
-          <div class="category-summary-head">
-            <strong>${title}</strong>
-            <span>按${labelKey === 'category' ? '品类' : '产品'}汇总新老客指标，展示当前值与环比</span>
-          </div>
+          ${showHead ? `
+            <div class="category-summary-head">
+              <strong>${title}</strong>
+              <span>按${labelKey === 'category' ? '品类' : '产品'}汇总新老客指标，展示当前值与环比</span>
+            </div>
+          ` : ''}
           <div class="table-wrap">
             <table class="${labelKey === 'category' ? 'category-table' : 'category-table product-table'}">
               <colgroup>
@@ -8957,22 +9567,24 @@
                   `;
                 }).join('')}
               </tbody>
-              <tfoot>
-                <tr>
-                  <td class="category-name">总计</td>
-                  ${newOldMetricDefinitions.map(metric => {
-                    const value = labels.reduce((sum, label) => sum + (Number(currentMap[label]?.[metric.key]) || 0), 0);
-                    const compareValue = labels.reduce((sum, label) => sum + (Number(compareMap[label]?.[metric.key]) || 0), 0);
-                    const delta = formatNewOldAnalysisMetricDelta(metric.key, value, compareValue);
-                    return `
-                      <td class="num">
-                        <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
-                        <span class="category-cell-delta ${delta.className}">${delta.text}</span>
-                      </td>
-                    `;
-                  }).join('')}
-                </tr>
-              </tfoot>
+              ${showTotal ? `
+                <tfoot>
+                  <tr>
+                    <td class="category-name">总计</td>
+                    ${newOldMetricDefinitions.map(metric => {
+                      const value = labels.reduce((sum, label) => sum + (Number(currentMap[label]?.[metric.key]) || 0), 0);
+                      const compareValue = labels.reduce((sum, label) => sum + (Number(compareMap[label]?.[metric.key]) || 0), 0);
+                      const delta = formatNewOldAnalysisMetricDelta(metric.key, value, compareValue);
+                      return `
+                        <td class="num">
+                          <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                          <span class="category-cell-delta ${delta.className}">${delta.text}</span>
+                        </td>
+                      `;
+                    }).join('')}
+                  </tr>
+                </tfoot>
+              ` : ''}
             </table>
           </div>
         </div>
@@ -9787,6 +10399,226 @@
       renderProductAnalysisTable();
     }
 
+    function renderWeeklyProductAnalysisTable() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const currentRows = buildWeeklyProductSummary(queryRange);
+      const compareRows = buildWeeklyProductSummary(compareRange);
+      const currentMap = Object.fromEntries(currentRows.map(item => [item.product, item]));
+      const compareMap = Object.fromEntries(compareRows.map(item => [item.product, item]));
+      const products = sortProducts(
+        [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])].filter(product => (Number(currentMap[product]?.gmv) || 0) > 0),
+        currentMap
+      );
+      const metricHeaders = [{ key: 'product', label: '产品' }, ...categoryMetricDefinitions];
+      const tableHtml = products.length ? `
+        <div class="category-summary-card">
+          <div class="table-wrap">
+            <table class="category-table product-table">
+              ${buildProductColgroup(metricHeaders)}
+              <thead>
+                <tr>
+                  ${metricHeaders.map(header => {
+                    const isActive = productTableState.sortKey === header.key;
+                    const arrow = isActive ? (productTableState.sortDirection === 'desc' ? '↓' : '↑') : '↕';
+                    const thClass = isStoreAnalysisGroupStart(header.key) ? 'group-divider' : '';
+                    return `
+                      <th class="${thClass}">
+                        <button class="category-sort-button ${isActive ? 'active' : ''}" type="button" data-weekly-product-sort="${header.key}">
+                          <span>${header.label}</span>
+                          <span class="sort-arrow">${arrow}</span>
+                        </button>
+                      </th>
+                    `;
+                  }).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${products.map(product => {
+                  const current = currentMap[product] || {};
+                  const compare = compareMap[product] || {};
+                  return `
+                    <tr>
+                      <td class="category-name">${product}</td>
+                      ${categoryMetricDefinitions.map(metric => {
+                        const value = current[metric.key] || 0;
+                        const delta = formatStoreAnalysisMetricDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
+                        const tdClass = `num${isStoreAnalysisGroupStart(metric.key) ? ' group-divider' : ''}`;
+                        return `
+                          <td class="${tdClass}">
+                            <span class="category-cell-main">${formatMetricValue({ ...metric, value })}</span>
+                            <span class="category-cell-delta ${delta.className}">${delta.text}</span>
+                          </td>
+                        `;
+                      }).join('')}
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : '<div class="note">当前筛选条件下暂无店铺产品分析数据。</div>';
+      document.getElementById('weeklyProductAnalysisTable').innerHTML = tableHtml;
+      document.getElementById('weeklyProductAnalysisTable').querySelectorAll('[data-weekly-product-sort]').forEach(button => {
+        button.addEventListener('click', () => {
+          updateProductSort(button.dataset.weeklyProductSort);
+          invalidateTab('weekly');
+          scheduleActiveTabRender();
+        });
+      });
+    }
+
+    function renderWeeklyOuterBreakdownTable() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const weeklyBreakdownTemplate = [
+        {
+          form: '收割广告',
+          rows: ['图片广告', '视频广告', '合创广告'],
+          subtotalLabel: '收割广告小计'
+        },
+        {
+          form: '种草广告',
+          rows: ['合创广告', '官号广告'],
+          subtotalLabel: '种草广告小计'
+        }
+      ];
+      const buildSummary = range => {
+        const groupMap = new Map();
+        const ensureGroup = form => {
+          if (!groupMap.has(form)) {
+            groupMap.set(form, { form, rows: new Map(), subtotal: { spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 } });
+          }
+          return groupMap.get(form);
+        };
+        [
+          ...filterRows(productTrendData.outer || [], range),
+          ...filterRows(productTrendData.brand || [], range)
+        ]
+          .filter(row =>
+            outerBreakdownFormOrder.includes(row.ad_form2 || '') &&
+            weeklyMatchesSelectedCategory(row) &&
+            weeklyMatchesSelectedProduct(row)
+          )
+          .forEach(row => {
+            const form = row.ad_form2 || '未分类';
+            const adType = row.ad_type || '未分类';
+            const spend = (Number(row.spend_usd) || 0) * 6.9;
+            const gmv = (Number(row.conversion_value) || 0) * 6.9;
+            const orders = Number(row.orders) || 0;
+            const impressions = Number(row.impressions) || 0;
+            const clicks = Number(row.clicks) || 0;
+            const group = ensureGroup(form);
+            if (!group.rows.has(adType)) group.rows.set(adType, { adType, spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 });
+            const entry = group.rows.get(adType);
+            entry.spend += spend;
+            entry.gmv += gmv;
+            entry.orders += orders;
+            entry.impressions += impressions;
+            entry.clicks += clicks;
+            group.subtotal.spend += spend;
+            group.subtotal.gmv += gmv;
+            group.subtotal.orders += orders;
+            group.subtotal.impressions += impressions;
+            group.subtotal.clicks += clicks;
+          });
+        const groups = weeklyBreakdownTemplate.map(template => {
+          const sourceGroup = groupMap.get(template.form);
+          const rowMap = sourceGroup?.rows || new Map();
+          const rows = template.rows.map(adType => (
+            rowMap.get(adType) || { adType, spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 }
+          ));
+          const subtotal = rows.reduce((acc, row) => {
+            acc.spend += row.spend;
+            acc.gmv += row.gmv;
+            acc.orders += row.orders;
+            acc.impressions += row.impressions;
+            acc.clicks += row.clicks;
+            return acc;
+          }, { spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 });
+          return {
+            form: template.form,
+            rows,
+            subtotal,
+            subtotalLabel: template.subtotalLabel
+          };
+        });
+        const grandTotal = groups.reduce((acc, group) => {
+          acc.spend += group.subtotal.spend;
+          acc.gmv += group.subtotal.gmv;
+          acc.orders += group.subtotal.orders;
+          acc.impressions += group.subtotal.impressions;
+          acc.clicks += group.subtotal.clicks;
+          return acc;
+        }, { spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 });
+        return { groups, totalSpend: grandTotal.spend, grandTotal };
+      };
+      const { groups, totalSpend, grandTotal } = buildSummary(queryRange);
+      const compareSummary = buildSummary(compareRange);
+      const compareGroupMap = new Map(compareSummary.groups.map(group => [group.form, { rows: new Map(group.rows.map(row => [row.adType, row])), subtotal: group.subtotal }]));
+      const headers = [
+        { key: 'form', label: '广告形式' },
+        { key: 'adType', label: '广告类型' },
+        { key: 'spend', label: '花费' },
+        { key: 'spendShare', label: '花费占比' },
+        { key: 'gmv', label: 'GMV' },
+        { key: 'orders', label: '订单' },
+        { key: 'roi', label: 'ROI' },
+        { key: 'impressions', label: '曝光' },
+        { key: 'cpm', label: 'CPM' },
+        { key: 'ctr', label: '点击率' },
+        { key: 'conversionRate', label: '转化率' }
+      ];
+      const tableHtml = `
+        <div class="outer-structure-card">
+          <div class="table-wrap">
+            <table class="outer-structure-table outer-breakdown-table">
+              ${buildOuterBreakdownColgroup(headers)}
+              <thead><tr>${headers.map(header => `<th><span class="outer-breakdown-header-label">${header.label}</span></th>`).join('')}</tr></thead>
+              <tbody>
+                ${groups.map(group => group.rows.map((row, index) => `
+                  <tr>
+                    ${index === 0 ? `<td class="group-name" rowspan="${group.rows.length + 1}">${group.form}</td>` : ''}
+                    <td class="category-name">${row.adType}</td>
+                    ${buildOuterBreakdownMetricCells(row, compareGroupMap.get(group.form)?.rows.get(row.adType), totalSpend, compareSummary.totalSpend)}
+                  </tr>
+                `).join('') + `
+                  <tr class="subtotal-row">
+                    <td class="subtotal-name">${group.subtotalLabel}</td>
+                    ${buildOuterBreakdownMetricCells(group.subtotal, compareGroupMap.get(group.form)?.subtotal, totalSpend, compareSummary.totalSpend)}
+                  </tr>
+                `).join('')}
+                <tr class="total-row">
+                  <td class="group-name">总计</td>
+                  <td class="total-name">总计</td>
+                  ${buildOuterBreakdownMetricCells(grandTotal, compareSummary.grandTotal, totalSpend, compareSummary.totalSpend)}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      document.getElementById('weeklyOuterBreakdownTable').innerHTML = tableHtml;
+    }
+
+    function renderWeeklyMeetingTab() {
+      const queryRange = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      renderWeeklyProductAnalysisTable();
+      renderNewOldSummaryTable(
+        'weeklyNewOldProductAnalysisTable',
+        '产品分析',
+        'product',
+        buildWeeklyNewOldSummary(queryRange, productTrendData.main || [], 'product', 'product'),
+        buildWeeklyNewOldSummary(compareRange, productTrendData.main || [], 'product', 'product'),
+        '当前筛选条件下暂无新老客产品分析数据。',
+        { showTotal: false, showHead: false }
+      );
+      renderWeeklyOuterBreakdownTable();
+      renderWeeklyFilterSummary();
+    }
+
     function redrawStoreTrendHoverGuide() {
       const geometry = storeTrendState.geometry;
       const rows = storeTrendState.activeRows;
@@ -9817,6 +10649,9 @@
       invalidateStoreTrendCache();
       invalidateSpTtTrendCache();
       materialTrendState.baseCanvasSnapshot = null;
+      normalizeWeeklySelectedProducts();
+      populateWeeklyStoreFilter();
+      populateWeeklyProductFilter();
       invalidateAllTabs();
       scheduleActiveTabRender(true);
     }
@@ -10107,6 +10942,8 @@
       populateSpTtProductFilter();
       populateNewOldCategoryFilter();
       populateNewOldProductFilter();
+      populateWeeklyStoreFilter();
+      populateWeeklyProductFilter();
       bindMultiSelectFilterEvents();
       bindAnalysisTabs();
       invalidateAllTabs();
