@@ -1204,6 +1204,34 @@
     #outerDimensionFilterPanelRow .filter-trigger-input {
       min-width: 0;
     }
+    #storeShareFilterPanelRow .controls-filter-panel {
+      width: 100%;
+      flex-wrap: nowrap;
+      gap: 10px;
+      align-items: stretch;
+      overflow-x: visible;
+      overflow-y: visible;
+      padding-bottom: 0;
+      justify-content: flex-start;
+    }
+    #storeShareFilterPanelRow .filter-control,
+    #storeShareFilterPanelRow .filter-summary-control {
+      width: 228px;
+      min-width: 228px;
+      padding: 8px 10px;
+      flex: 0 0 228px;
+    }
+    #storeShareFilterPanelRow .filter-trigger-input {
+      min-width: 0;
+    }
+    #storeShareSection .category-table thead th {
+      padding: 13px 12px;
+      height: 50px;
+      color: #2b4662;
+      font-weight: 700;
+      text-align: center;
+      vertical-align: middle;
+    }
     .category-cell-main {
       display: block;
       color: #102a43;
@@ -1395,6 +1423,59 @@
         <h2>产品分析</h2>
         <p class="small">按产品名称汇总店铺GMV、访客、转化率、站内花费、站外花费和品牌花费，并展示对应环比。</p>
         <div id="productAnalysisTable"></div>
+      </section>
+
+      <section id="storeShareSection" class="subtab-block">
+        <h2>占比拆解</h2>
+        <p class="small">按品类 / 产品拆解店铺 GMV、流量、搜索流量、站内花费、站外花费和品牌花费占比，并展示当前值与环比。</p>
+        <div class="material-filter-summary-row">
+          <div class="material-filter-summary" id="storeShareFilterSummary">已筛选项：当前无筛选</div>
+        </div>
+        <div class="filter-panel-row" id="storeShareFilterPanelRow">
+          <div class="controls-filter-panel">
+            <div class="filter-control filter-summary-control">
+              <div class="filter-control-head">
+                <span>品类筛选</span>
+              </div>
+              <div class="filter-multiselect" id="storeShareCategoryFilterWrap">
+                <div id="storeShareCategoryFilterTrigger" class="filter-trigger" aria-expanded="false">
+                  <input id="storeShareCategoryFilterInput" class="filter-trigger-input" type="text" value="全部品类" placeholder="搜索品类" autocomplete="off">
+                  <span class="filter-trigger-arrow">▼</span>
+                </div>
+                <div id="storeShareCategoryFilterPanel" class="filter-panel">
+                  <div class="filter-panel-actions">
+                    <button type="button" data-filter-action="select-all" data-filter-kind="category" data-filter-scope="store-share">全选</button>
+                    <button type="button" data-filter-action="clear" data-filter-kind="category" data-filter-scope="store-share">清空</button>
+                  </div>
+                  <div id="storeShareCategoryFilterOptions" class="filter-options"></div>
+                </div>
+              </div>
+            </div>
+            <div class="filter-control filter-summary-control">
+              <div class="filter-control-head">
+                <span>产品筛选</span>
+              </div>
+              <div class="filter-multiselect" id="storeShareProductFilterWrap">
+                <div id="storeShareProductFilterTrigger" class="filter-trigger" aria-expanded="false">
+                  <input id="storeShareProductFilterInput" class="filter-trigger-input" type="text" value="全部产品" placeholder="搜索产品" autocomplete="off">
+                  <span class="filter-trigger-arrow">▼</span>
+                </div>
+                <div id="storeShareProductFilterPanel" class="filter-panel">
+                  <div class="filter-panel-actions">
+                    <button type="button" data-filter-action="select-all" data-filter-kind="product" data-filter-scope="store-share">全选</button>
+                    <button type="button" data-filter-action="clear" data-filter-kind="product" data-filter-scope="store-share">清空</button>
+                  </div>
+                  <div id="storeShareProductFilterOptions" class="filter-options"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="subtab-toolbar" role="tablist" aria-label="店铺分析占比拆解切换">
+          <button class="subtab-button active" type="button" data-store-share-tab="category" role="tab" aria-selected="true">品类</button>
+          <button class="subtab-button" type="button" data-store-share-tab="product" role="tab" aria-selected="false">产品</button>
+        </div>
+        <div id="storeShareAnalysisTable"></div>
       </section>
 
     </div>
@@ -2079,6 +2160,15 @@
     const storeReceiptTargetByMonth = {
       '2026-08': 12500000
     };
+    const storeShareTabState = {
+      activeTab: 'category'
+    };
+    const storeShareFilterState = {
+      categories: [],
+      products: [],
+      categorySearch: '',
+      productSearch: ''
+    };
     const filterState = {
       stores: [],
       categories: [],
@@ -2164,6 +2254,7 @@
       storeMetricMaps: new Map(),
       categorySummary: new Map(),
       productSummary: new Map(),
+      storeShareSummary: new Map(),
       newOldCategorySummary: new Map(),
       newOldProductSummary: new Map(),
       outerStructureSummary: new Map(),
@@ -2976,6 +3067,215 @@
       return !outerDimensionFilterState.products.length;
     }
 
+    function isAllStoreShareCategoriesSelected() {
+      return !storeShareFilterState.categories.length;
+    }
+
+    function isAllStoreShareProductsSelected() {
+      return !storeShareFilterState.products.length;
+    }
+
+    function getStoreShareSelectedCategories() {
+      return storeShareFilterState.categories;
+    }
+
+    function getStoreShareSelectedProducts() {
+      return storeShareFilterState.products;
+    }
+
+    function getStoreShareMainRows() {
+      return [
+        ...(storeTrendData.main || []),
+        ...(productTrendData.main || [])
+      ];
+    }
+
+    function storeShareMatchesSelectedCategory(row) {
+      const rowCategory = row?.category || '';
+      if (!rowCategory) return isAllStoreShareCategoriesSelected();
+      return isAllStoreShareCategoriesSelected() || getStoreShareSelectedCategories().includes(rowCategory);
+    }
+
+    function storeShareMatchesSelectedProduct(row) {
+      const rowProduct = getRowProductLabel(row);
+      if (!rowProduct) return isAllStoreShareProductsSelected();
+      return isAllStoreShareProductsSelected() || getStoreShareSelectedProducts().includes(rowProduct);
+    }
+
+    function getStoreShareFilterRows(kind) {
+      return getStoreShareMainRows().filter(row => {
+        if (kind !== 'category' && !storeShareMatchesSelectedCategory(row)) return false;
+        if (kind !== 'product' && !storeShareMatchesSelectedProduct(row)) return false;
+        return true;
+      });
+    }
+
+    function getStoreShareCategoryOptions() {
+      return [...new Set(getStoreShareFilterRows('category')
+        .map(row => row.category)
+        .filter(isRecognizedFilterValue))]
+        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function getStoreShareProductOptions() {
+      return [...new Set(getStoreShareFilterRows('product')
+        .map(row => getRowProductLabel(row))
+        .filter(isRecognizedFilterValue))]
+        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function getVisibleStoreShareFilterOptions(kind) {
+      if (kind === 'category') {
+        return filterOptionList(getStoreShareCategoryOptions(), storeShareFilterState.categorySearch, '全部品类')
+          .filter(option => option !== '全部品类');
+      }
+      if (kind === 'product') {
+        return filterOptionList(getStoreShareProductOptions(), storeShareFilterState.productSearch, '全部产品')
+          .filter(option => option !== '全部产品');
+      }
+      return [];
+    }
+
+    function normalizeStoreShareSelectedCategories() {
+      const allowed = new Set(getStoreShareCategoryOptions());
+      storeShareFilterState.categories = storeShareFilterState.categories.filter(category => allowed.has(category));
+    }
+
+    function normalizeStoreShareSelectedProducts() {
+      const allowed = new Set(getStoreShareProductOptions());
+      storeShareFilterState.products = storeShareFilterState.products.filter(product => allowed.has(product));
+    }
+
+    function getStoreShareSelectionCacheToken() {
+      return JSON.stringify({
+        categories: getStoreShareSelectedCategories(),
+        products: getStoreShareSelectedProducts(),
+        activeTab: storeShareTabState.activeTab || 'category'
+      });
+    }
+
+    function syncStoreShareFilterTriggerInput(kind) {
+      const inputId = kind === 'category' ? 'storeShareCategoryFilterInput' : 'storeShareProductFilterInput';
+      const wrapperId = kind === 'category' ? 'storeShareCategoryFilterWrap' : 'storeShareProductFilterWrap';
+      const input = document.getElementById(inputId);
+      const wrapper = document.getElementById(wrapperId);
+      if (!input || !wrapper) return;
+      const isOpen = wrapper.classList.contains('open');
+      const searchValue = kind === 'category' ? storeShareFilterState.categorySearch : storeShareFilterState.productSearch;
+      const summary = kind === 'category'
+        ? buildFilterSummary(getStoreShareSelectedCategories(), '全部品类')
+        : buildFilterSummary(getStoreShareSelectedProducts(), '全部产品');
+      input.value = isOpen ? searchValue : summary;
+    }
+
+    function populateStoreShareCategoryFilter() {
+      const container = document.getElementById('storeShareCategoryFilterOptions');
+      if (!container) return;
+      const selectedCategories = getStoreShareSelectedCategories();
+      const visibleOptions = filterOptionList(getStoreShareCategoryOptions(), storeShareFilterState.categorySearch, '全部品类');
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(category => {
+        const checked = category === '全部品类' ? !selectedCategories.length : selectedCategories.includes(category);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${category}" ${checked ? 'checked' : ''}>
+            <span>${category}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的品类</div>';
+      syncStoreShareFilterTriggerInput('category');
+      renderStoreShareFilterSummary();
+    }
+
+    function populateStoreShareProductFilter() {
+      const container = document.getElementById('storeShareProductFilterOptions');
+      if (!container) return;
+      const selectedProducts = getStoreShareSelectedProducts();
+      const visibleOptions = filterOptionList(getStoreShareProductOptions(), storeShareFilterState.productSearch, '全部产品');
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(product => {
+        const checked = product === '全部产品' ? !selectedProducts.length : selectedProducts.includes(product);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${product}" ${checked ? 'checked' : ''}>
+            <span>${product}</span>
+          </label>
+        `;
+      }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
+      syncStoreShareFilterTriggerInput('product');
+      renderStoreShareFilterSummary();
+    }
+
+    function populateStoreShareFilters() {
+      populateStoreShareCategoryFilter();
+      populateStoreShareProductFilter();
+    }
+
+    function renderStoreShareFilterSummary() {
+      renderBasicFilterSummary(
+        'storeShareFilterSummary',
+        [
+          { kind: 'category', label: '品类', values: getStoreShareSelectedCategories() },
+          { kind: 'product', label: '产品', values: getStoreShareSelectedProducts() }
+        ],
+        'clearStoreShareFilters',
+        'store-share-filter-remove'
+      );
+    }
+
+    function clearStoreShareFilters() {
+      storeShareFilterState.categories = [];
+      storeShareFilterState.products = [];
+      storeShareFilterState.categorySearch = '';
+      storeShareFilterState.productSearch = '';
+      populateStoreShareFilters();
+      renderStoreShareAnalysisTable();
+    }
+
+    function setStoreShareSelectedCategory(category, shouldRender = true) {
+      const nextCategories = category === '全部品类'
+        ? []
+        : (() => {
+            const current = new Set(getStoreShareSelectedCategories());
+            if (current.has(category)) current.delete(category);
+            else current.add(category);
+            return [...current];
+          })();
+      storeShareFilterState.categories = nextCategories;
+      normalizeStoreShareSelectedProducts();
+      populateStoreShareFilters();
+      if (shouldRender) renderStoreShareAnalysisTable();
+    }
+
+    function setStoreShareSelectedProduct(product, shouldRender = true) {
+      const nextProducts = product === '全部产品'
+        ? []
+        : (() => {
+            const current = new Set(getStoreShareSelectedProducts());
+            if (current.has(product)) current.delete(product);
+            else current.add(product);
+            return [...current];
+      })();
+      storeShareFilterState.products = nextProducts;
+      normalizeStoreShareSelectedCategories();
+      populateStoreShareFilters();
+      if (shouldRender) renderStoreShareAnalysisTable();
+    }
+
+    function applyStoreShareFilterBulk(kind, action) {
+      if (kind === 'category') {
+        const options = action === 'select-all' ? getVisibleStoreShareFilterOptions('category') : [];
+        storeShareFilterState.categories = action === 'clear' ? [] : options;
+        populateStoreShareCategoryFilter();
+        renderStoreShareAnalysisTable();
+        return;
+      }
+      if (kind === 'product') {
+        const options = action === 'select-all' ? getVisibleStoreShareFilterOptions('product') : [];
+        storeShareFilterState.products = action === 'clear' ? [] : options;
+        populateStoreShareProductFilter();
+        renderStoreShareAnalysisTable();
+      }
+    }
+
     function buildFilterSummary(selectedValues, allLabel) {
       if (!selectedValues.length) return allLabel;
       if (selectedValues.length === 1) return selectedValues[0];
@@ -3012,6 +3312,10 @@
           if (removeAttrPrefix === 'new-old-filter-remove') {
             if ((button.dataset.newOldFilterRemoveKind || '') === 'category') setNewOldSelectedCategory(button.dataset.newOldFilterRemoveValue || '');
             if ((button.dataset.newOldFilterRemoveKind || '') === 'product') setNewOldSelectedProduct(button.dataset.newOldFilterRemoveValue || '');
+          }
+          if (removeAttrPrefix === 'store-share-filter-remove') {
+            if ((button.dataset.storeShareFilterRemoveKind || '') === 'category') setStoreShareSelectedCategory(button.dataset.storeShareFilterRemoveValue || '');
+            if ((button.dataset.storeShareFilterRemoveKind || '') === 'product') setStoreShareSelectedProduct(button.dataset.storeShareFilterRemoveValue || '');
           }
           if (removeAttrPrefix === 'weekly-filter-remove') {
             if ((button.dataset.weeklyFilterRemoveKind || '') === 'store') setWeeklySelectedStore(button.dataset.weeklyFilterRemoveValue || '');
@@ -4036,8 +4340,9 @@
       const hasOuterDimensionState = outerDimensionFilterConfigs.some(config => outerDimensionFilterState[config.searchKey]);
       const hasSpTtState = Boolean(spTtFilterState.categorySearch || spTtFilterState.productSearch);
       const hasNewOldState = Boolean(newOldFilterState.categorySearch || newOldFilterState.productSearch);
+      const hasStoreShareState = Boolean(storeShareFilterState.categorySearch || storeShareFilterState.productSearch);
       const hasMaterialState = materialFilterConfigs.some(config => materialFilterState[config.searchKey]);
-      if (!openNodes.length && !hasStoreState && !hasWeeklyState && !hasOuterState && !hasOuterDimensionState && !hasSpTtState && !hasNewOldState && !hasMaterialState) {
+      if (!openNodes.length && !hasStoreState && !hasWeeklyState && !hasOuterState && !hasOuterDimensionState && !hasSpTtState && !hasNewOldState && !hasStoreShareState && !hasMaterialState) {
         return;
       }
 
@@ -4084,6 +4389,12 @@
         populateNewOldCategoryFilter();
         populateNewOldProductFilter();
       }
+      if (hasStoreShareState || openNodes.some(node => node.id === 'storeShareCategoryFilterWrap' || node.id === 'storeShareProductFilterWrap')) {
+        storeShareFilterState.categorySearch = '';
+        storeShareFilterState.productSearch = '';
+        populateStoreShareCategoryFilter();
+        populateStoreShareProductFilter();
+      }
       if (hasMaterialState || openNodes.some(node => node.id && node.id.startsWith('material'))) {
         normalizeMaterialFilterSearches();
       }
@@ -4128,6 +4439,8 @@
       const spTtProductTrigger = document.getElementById('spTtProductFilterTrigger');
       const newOldCategoryTrigger = document.getElementById('newOldCategoryFilterTrigger');
       const newOldProductTrigger = document.getElementById('newOldProductFilterTrigger');
+      const storeShareCategoryTrigger = document.getElementById('storeShareCategoryFilterTrigger');
+      const storeShareProductTrigger = document.getElementById('storeShareProductFilterTrigger');
       const weeklyStoreTrigger = document.getElementById('weeklyStoreFilterTrigger');
       const weeklyProductTrigger = document.getElementById('weeklyProductFilterTrigger');
       const jumpButtons = document.querySelectorAll('.filter-jump-button');
@@ -4140,6 +4453,8 @@
       const spTtProductOptions = document.getElementById('spTtProductFilterOptions');
       const newOldCategoryOptions = document.getElementById('newOldCategoryFilterOptions');
       const newOldProductOptions = document.getElementById('newOldProductFilterOptions');
+      const storeShareCategoryOptions = document.getElementById('storeShareCategoryFilterOptions');
+      const storeShareProductOptions = document.getElementById('storeShareProductFilterOptions');
       const weeklyStoreOptions = document.getElementById('weeklyStoreFilterOptions');
       const weeklyProductOptions = document.getElementById('weeklyProductFilterOptions');
       const outerDimensionFilterEntries = outerDimensionFilterConfigs.map(config => ({
@@ -4163,6 +4478,8 @@
       const spTtProductInput = document.getElementById('spTtProductFilterInput');
       const newOldCategoryInput = document.getElementById('newOldCategoryFilterInput');
       const newOldProductInput = document.getElementById('newOldProductFilterInput');
+      const storeShareCategoryInput = document.getElementById('storeShareCategoryFilterInput');
+      const storeShareProductInput = document.getElementById('storeShareProductFilterInput');
       const weeklyStoreInput = document.getElementById('weeklyStoreFilterInput');
       const weeklyProductInput = document.getElementById('weeklyProductFilterInput');
 
@@ -4238,6 +4555,18 @@
         newOldProductTrigger.addEventListener('click', event => {
           event.stopPropagation();
           toggleFilterDropdown('newOldProductFilterWrap');
+        });
+      }
+      if (storeShareCategoryTrigger) {
+        storeShareCategoryTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('storeShareCategoryFilterWrap');
+        });
+      }
+      if (storeShareProductTrigger) {
+        storeShareProductTrigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown('storeShareProductFilterWrap');
         });
       }
       if (weeklyStoreTrigger) {
@@ -4340,6 +4669,22 @@
           setNewOldSelectedProduct(input.value);
         });
         newOldProductOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (storeShareCategoryOptions) {
+        storeShareCategoryOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setStoreShareSelectedCategory(input.value);
+        });
+        storeShareCategoryOptions.addEventListener('click', event => event.stopPropagation());
+      }
+      if (storeShareProductOptions) {
+        storeShareProductOptions.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setStoreShareSelectedProduct(input.value);
+        });
+        storeShareProductOptions.addEventListener('click', event => event.stopPropagation());
       }
       if (weeklyStoreOptions) {
         weeklyStoreOptions.addEventListener('change', event => {
@@ -4497,6 +4842,32 @@
           populateNewOldProductFilter();
         });
       }
+      if (storeShareCategoryInput) {
+        storeShareCategoryInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        storeShareCategoryInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('storeShareCategoryFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('storeShareCategoryFilterWrap');
+        });
+        storeShareCategoryInput.addEventListener('input', event => {
+          storeShareFilterState.categorySearch = event.target.value;
+          populateStoreShareCategoryFilter();
+        });
+      }
+      if (storeShareProductInput) {
+        storeShareProductInput.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        storeShareProductInput.addEventListener('focus', () => {
+          const wrapper = document.getElementById('storeShareProductFilterWrap');
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown('storeShareProductFilterWrap');
+        });
+        storeShareProductInput.addEventListener('input', event => {
+          storeShareFilterState.productSearch = event.target.value;
+          populateStoreShareProductFilter();
+        });
+      }
       if (weeklyStoreInput) {
         weeklyStoreInput.addEventListener('click', event => {
           event.stopPropagation();
@@ -4546,6 +4917,7 @@
           if (!action || !kind) return;
           if (scope === 'outer') applyOuterFilterBulk(kind, action);
           else if (scope === 'outer-dimension') applyOuterDimensionFilterBulk(kind, action);
+          else if (scope === 'store-share') applyStoreShareFilterBulk(kind, action);
           else if (scope === 'sp-tt') applySpTtFilterBulk(kind, action);
           else if (scope === 'new-old') applyNewOldFilterBulk(kind, action);
           else if (scope === 'weekly') applyWeeklyFilterBulk(kind, action);
@@ -4905,6 +5277,20 @@
       { key: 'uvValue', label: 'UV价值', type: 'money2' }
     ];
     const categoryMetricDefinitionMap = Object.fromEntries(categoryMetricDefinitions.map(metric => [metric.key, metric]));
+    const storeShareMetricDefinitions = [
+      { key: 'gmv', label: 'GMV', type: 'money' },
+      { key: 'gmvShare', label: '占比', type: 'percent' },
+      { key: 'visitors', label: '流量', type: 'count' },
+      { key: 'visitorsShare', label: '占比', type: 'percent' },
+      { key: 'searchClicks', label: '搜索流量', type: 'count' },
+      { key: 'searchClicksShare', label: '占比', type: 'percent' },
+      { key: 'innerSpend', label: '站内花费', type: 'money' },
+      { key: 'innerSpendShare', label: '占比', type: 'percent' },
+      { key: 'outerSpend', label: '站外花费', type: 'money' },
+      { key: 'outerSpendShare', label: '占比', type: 'percent' },
+      { key: 'brandSpend', label: '品牌花费', type: 'money' },
+      { key: 'brandSpendShare', label: '占比', type: 'percent' }
+    ];
     const outerStructureMetricDefinitions = [
       { key: 'gmv', label: '店铺GMV', type: 'money' },
       { key: 'totalSpend', label: '站外总花费', type: 'money' },
@@ -7327,6 +7713,234 @@
 
       document.getElementById('productAnalysisTable').innerHTML = tableHtml;
       bindProductAnalysisEvents();
+    }
+
+    function buildStoreShareSummary(range, labelKey, sourceType = 'store') {
+      const cacheKey = `${getRangeCacheToken(range)}::${labelKey}::${sourceType}::${getStoreShareSelectionCacheToken()}`;
+      if (dashboardDataCache.storeShareSummary.has(cacheKey)) {
+        return dashboardDataCache.storeShareSummary.get(cacheKey);
+      }
+
+      const isProductSource = sourceType === 'product' || labelKey === 'product';
+      const summaryMap = new Map();
+      const ensureEntry = label => {
+        if (!label) return null;
+        if (!summaryMap.has(label)) {
+          summaryMap.set(label, {
+            label,
+            gmv: 0,
+            visitors: 0,
+            searchClicks: 0,
+            innerSpend: 0,
+            outerSpend: 0,
+            brandSpend: 0
+          });
+        }
+        return summaryMap.get(label);
+      };
+      const getLabel = row => (labelKey === 'category' ? (row.category || '') : getRowProductLabel(row));
+      const selectedCategories = getStoreShareSelectedCategories();
+      const selectedProducts = getStoreShareSelectedProducts();
+      const matchesCategorySelection = row => !selectedCategories.length || selectedCategories.includes(row.category || '');
+      const matchesLabelSelection = row => {
+        if (labelKey === 'category') {
+          return matchesCategorySelection(row);
+        }
+        return !selectedProducts.length || selectedProducts.includes(getRowProductLabel(row));
+      };
+      const matchesMainSelection = row => {
+        const productMatched = !isProductSource || !selectedProducts.length || selectedProducts.includes(getRowProductLabel(row));
+        return matchesCategorySelection(row) && productMatched && matchesLabelSelection(row);
+      };
+      const matchesOuterSelection = row => {
+        const productMatched = !isProductSource || !selectedProducts.length || selectedProducts.includes(getRowProductLabel(row));
+        return matchesCategorySelection(row) && productMatched && matchesLabelSelection(row);
+      };
+      const mainRows = filterRows(isProductSource ? (productTrendData.main || []) : (storeTrendData.main || []), range).filter(matchesMainSelection);
+      const innerRows = filterRows(isProductSource ? (productTrendData.inner || []) : (storeTrendData.inner || []), range).filter(matchesMainSelection);
+      const outerRows = filterRows(isProductSource ? (productTrendData.outer || []) : (storeTrendData.outer || []), range).filter(matchesOuterSelection);
+      const brandRows = filterRows(isProductSource ? (productTrendData.brand || []) : (storeTrendData.brand || []), range).filter(matchesOuterSelection);
+
+      mainRows.forEach(row => {
+        const entry = ensureEntry(getLabel(row));
+        if (!entry) return;
+        entry.gmv += Number(row.sales_thb) || 0;
+        entry.visitors += Number(row.visitors) || 0;
+        entry.searchClicks += Number(row.search_clicks) || 0;
+      });
+
+      innerRows.forEach(row => {
+        const entry = ensureEntry(getLabel(row));
+        if (!entry) return;
+        entry.innerSpend += Number(row.spend_rmb) || 0;
+      });
+
+      outerRows.forEach(row => {
+        const entry = ensureEntry(getLabel(row));
+        if (!entry) return;
+        entry.outerSpend += (Number(row.spend_usd) || 0) * 6.9;
+      });
+
+      brandRows.forEach(row => {
+        const entry = ensureEntry(getLabel(row));
+        if (!entry) return;
+        entry.brandSpend += (Number(row.spend_usd) || 0) * 6.9;
+      });
+
+      const summary = Array.from(summaryMap.values())
+        .filter(entry => entry.gmv || entry.visitors || entry.searchClicks || entry.innerSpend || entry.outerSpend || entry.brandSpend)
+        .sort((left, right) => {
+          if (right.gmv !== left.gmv) return right.gmv - left.gmv;
+          return left.label.localeCompare(right.label, 'zh-CN');
+        });
+      return setCacheValue(dashboardDataCache.storeShareSummary, cacheKey, summary);
+    }
+
+    function renderStoreShareSummaryTable(labelKey, rows, compareRows = []) {
+      const labelLabel = labelKey === 'category' ? '品类' : '产品';
+      const compareMap = new Map(compareRows.map(row => [row.label, row]));
+      const totals = rows.reduce((acc, row) => {
+        acc.gmv += Number(row.gmv) || 0;
+        acc.visitors += Number(row.visitors) || 0;
+        acc.searchClicks += Number(row.searchClicks) || 0;
+        acc.innerSpend += Number(row.innerSpend) || 0;
+        acc.outerSpend += Number(row.outerSpend) || 0;
+        acc.brandSpend += Number(row.brandSpend) || 0;
+        return acc;
+      }, {
+        gmv: 0,
+        visitors: 0,
+        searchClicks: 0,
+        innerSpend: 0,
+        outerSpend: 0,
+        brandSpend: 0
+      });
+      const compareTotals = compareRows.reduce((acc, row) => {
+        acc.gmv += Number(row.gmv) || 0;
+        acc.visitors += Number(row.visitors) || 0;
+        acc.searchClicks += Number(row.searchClicks) || 0;
+        acc.innerSpend += Number(row.innerSpend) || 0;
+        acc.outerSpend += Number(row.outerSpend) || 0;
+        acc.brandSpend += Number(row.brandSpend) || 0;
+        return acc;
+      }, {
+        gmv: 0,
+        visitors: 0,
+        searchClicks: 0,
+        innerSpend: 0,
+        outerSpend: 0,
+        brandSpend: 0
+      });
+      const metrics = [
+        { key: 'gmv', label: 'GMV', type: 'money' },
+        { key: 'visitors', label: '流量', type: 'count' },
+        { key: 'searchClicks', label: '搜索流量', type: 'count' },
+        { key: 'innerSpend', label: '站内花费', type: 'money' },
+        { key: 'outerSpend', label: '站外花费', type: 'money' },
+        { key: 'brandSpend', label: '品牌花费', type: 'money' }
+      ];
+      const buildMetricCell = (currentValue, compareValue, type) => {
+        const delta = formatCategoryDelta(formatDelta(currentValue, compareValue));
+        return `
+          <td class="num">
+            <span class="category-cell-main">${formatMetricValue({ type, value: currentValue })}</span>
+            <span class="category-cell-delta ${delta.className}">${delta.text}</span>
+          </td>
+        `;
+      };
+      const buildShareCell = (currentValue, compareValue, totalValue, compareTotalValue) => {
+        const share = totalValue ? currentValue / totalValue : 0;
+        const compareShare = compareTotalValue ? compareValue / compareTotalValue : 0;
+        const delta = formatCategoryDelta(formatOuterBreakdownShareDelta(share, compareShare));
+        return `
+          <td class="num">
+            <span class="category-cell-main">${totalValue ? formatOuterBreakdownPercent(share) : '/'}</span>
+            <span class="category-cell-delta ${delta.className}">${delta.text}</span>
+          </td>
+        `;
+      };
+      const tableRows = rows.map(row => {
+        const compareRow = compareMap.get(row.label) || {};
+        return `
+          <tr>
+            <td class="category-name">${row.label}</td>
+            ${metrics.map(metric => {
+              const currentValue = Number(row[metric.key]) || 0;
+              const compareValue = Number(compareRow[metric.key]) || 0;
+              return `
+                ${buildMetricCell(currentValue, compareValue, metric.type)}
+                ${buildShareCell(currentValue, compareValue, totals[metric.key], compareTotals[metric.key])}
+              `;
+            }).join('')}
+          </tr>
+        `;
+      }).join('');
+      const totalRow = `
+        <tr>
+          <td class="category-name">总计</td>
+          ${metrics.map(metric => {
+            const currentValue = Number(totals[metric.key]) || 0;
+            const compareValue = Number(compareTotals[metric.key]) || 0;
+            return `
+              ${buildMetricCell(currentValue, compareValue, metric.type)}
+              ${buildShareCell(currentValue, compareValue, currentValue, compareValue)}
+            `;
+          }).join('')}
+        </tr>
+      `;
+
+      return rows.length ? `
+        <div class="category-summary-card">
+          <div class="category-summary-head">
+            <strong>${labelLabel}占比拆解</strong>
+            <span>按${labelLabel}拆解 GMV、流量、搜索流量、站内花费、站外花费和品牌花费占比，并展示环比</span>
+          </div>
+          <div class="table-wrap">
+            <table class="${labelKey === 'category' ? 'category-table' : 'category-table product-table'}">
+              <colgroup>
+                <col style="width:170px">
+                ${metrics.map(() => '<col style="width:128px"><col style="width:108px">').join('')}
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>${labelLabel}</th>
+                  ${metrics.map(metric => `<th>${metric.label}</th><th>占比</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+              <tfoot>
+                ${totalRow}
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      ` : '<div class="note">当前筛选条件下暂无占比拆解数据。</div>';
+    }
+
+    function renderStoreShareAnalysisTable() {
+      const activeTab = storeShareTabState.activeTab || 'category';
+      const range = getRange('qStart', 'qEnd');
+      const compareRange = getRange('cStart', 'cEnd');
+      const sourceType = activeTab === 'product' ? 'product' : 'store';
+      const rows = buildStoreShareSummary(range, activeTab, sourceType);
+      const compareRows = buildStoreShareSummary(compareRange, activeTab, sourceType);
+      const root = document.getElementById('storeShareAnalysisTable');
+      if (root) {
+        root.innerHTML = renderStoreShareSummaryTable(activeTab, rows, compareRows);
+      }
+    }
+
+    function switchStoreShareTab(tabKey) {
+      if (storeShareTabState.activeTab === tabKey) return;
+      storeShareTabState.activeTab = tabKey;
+      document.querySelectorAll('[data-store-share-tab]').forEach(button => {
+        const isActive = button.dataset.storeShareTab === tabKey;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      renderStoreShareAnalysisTable();
     }
 
     function stopMaterialColumnResize(dimensionKey) {
@@ -10397,6 +11011,7 @@
       renderTrend();
       renderCategoryAnalysisTable();
       renderProductAnalysisTable();
+      renderStoreShareAnalysisTable();
     }
 
     function renderWeeklyProductAnalysisTable() {
@@ -10946,6 +11561,13 @@
       populateWeeklyProductFilter();
       bindMultiSelectFilterEvents();
       bindAnalysisTabs();
+      document.querySelectorAll('[data-store-share-tab]').forEach(button => {
+        button.addEventListener('click', () => {
+          switchStoreShareTab(button.dataset.storeShareTab || 'category');
+          invalidateTab('store');
+          scheduleActiveTabRender();
+        });
+      });
       invalidateAllTabs();
       renderActiveTab(true);
       renderProducts();
