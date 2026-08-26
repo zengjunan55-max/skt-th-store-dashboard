@@ -3121,7 +3121,10 @@
     function storeShareMatchesSelectedStore(row) {
       if (isAllStoreShareStoresSelected()) return true;
       const selectedStores = new Set(getStoreShareSelectedStores());
-      const comparableNames = getComparableStoreNames(row?.store);
+      const rowStore = String(row?.store || '').trim();
+      const comparableNames = rowStore
+        ? getComparableStoreNames(rowStore)
+        : getComparableStoreNames('新店-本土旗舰店');
       return comparableNames.some(name => selectedStores.has(name));
     }
 
