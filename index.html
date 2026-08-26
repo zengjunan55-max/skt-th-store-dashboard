@@ -2260,6 +2260,13 @@
       rafId: null,
       pendingForce: false,
       resizeTimerId: null,
+      initializedTabs: {
+        store: false,
+        outer: false,
+        'sp-tt': false,
+        'new-old': false,
+        weekly: false
+      },
       dirtyTabs: {
         store: true,
         outer: true,
@@ -2433,6 +2440,33 @@
       });
     }
 
+    function refreshTabFilters(tabKey) {
+      if (tabKey === 'store') {
+        populateStoreFilter();
+        populateCategoryFilter();
+        populateProductFilter();
+      } else if (tabKey === 'outer') {
+        populateOuterCategoryFilter();
+        populateOuterProductFilter();
+        populateOuterDimensionFilters();
+      } else if (tabKey === 'sp-tt') {
+        populateSpTtCategoryFilter();
+        populateSpTtProductFilter();
+      } else if (tabKey === 'new-old') {
+        populateNewOldCategoryFilter();
+        populateNewOldProductFilter();
+      } else if (tabKey === 'weekly') {
+        populateWeeklyStoreFilter();
+        populateWeeklyProductFilter();
+      }
+    }
+
+    function ensureTabInitialized(tabKey) {
+      if (dashboardRenderState.initializedTabs[tabKey]) return;
+      refreshTabFilters(tabKey);
+      dashboardRenderState.initializedTabs[tabKey] = true;
+    }
+
     function renderTabContent(tabKey) {
       if (tabKey === 'store') {
         renderStoreTrendSection();
@@ -2565,6 +2599,25 @@
       return Boolean(normalized) && normalized !== '#N/A';
     }
 
+    function sortLabelsByGmvDesc(labels, gmvMap) {
+      return [...new Set(labels)].sort((left, right) => {
+        const rightGmv = Number(gmvMap.get(right) || 0);
+        const leftGmv = Number(gmvMap.get(left) || 0);
+        if (rightGmv !== leftGmv) return rightGmv - leftGmv;
+        return left.localeCompare(right, 'zh-CN');
+      });
+    }
+
+    function buildGmvMap(rows, labelGetter, valueGetter = row => (Number(row?.sales_thb) || 0) / 4.8) {
+      const map = new Map();
+      (rows || []).forEach(row => {
+        const label = labelGetter(row);
+        if (!isRecognizedFilterValue(label)) return;
+        map.set(label, (map.get(label) || 0) + (Number(valueGetter(row)) || 0));
+      });
+      return map;
+    }
+
     function getStoreOptions() {
       const fromData = Array.isArray(storeTrendData.stores) ? storeTrendData.stores : [];
       if (fromData.length) return fromData.filter(isRecognizedFilterValue);
@@ -2572,12 +2625,22 @@
     }
 
     function getCategoryOptions() {
-      return [...new Set([
+      const labels = [
         ...(storeTrendData.main || []).map(row => row.category),
         ...(storeTrendData.inner || []).map(row => row.category),
         ...(storeTrendData.outer || []).map(row => row.category),
         ...(storeTrendData.brand || []).map(row => row.category)
-      ].filter(isRecognizedFilterValue))].sort((left, right) => left.localeCompare(right, 'zh-CN'));
+      ].filter(isRecognizedFilterValue);
+      const gmvMap = buildGmvMap(
+        [
+          ...(storeTrendData.main || []),
+          ...(storeTrendData.inner || []),
+          ...(storeTrendData.outer || []),
+          ...(storeTrendData.brand || [])
+        ],
+        row => row.category
+      );
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getProductOptions() {
@@ -2587,15 +2650,21 @@
         ...(productTrendData.outer || []),
         ...(productTrendData.brand || [])
       ];
-      return [...new Set(sourceRows
+      const labels = [...new Set(sourceRows
         .filter(row => {
           const rowStore = row?.store || '';
           const storeMatched = !rowStore || matchesSelectedStore(row);
           return storeMatched && matchesSelectedCategory(row);
         })
         .map(row => getRowProductLabel(row))
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      const gmvRows = filterRows(sourceRows, getRange('qStart', 'qEnd')).filter(row => {
+        const rowStore = row?.store || '';
+        const storeMatched = !rowStore || matchesSelectedStore(row);
+        return storeMatched && matchesSelectedCategory(row);
+      });
+      const gmvMap = buildGmvMap(gmvRows, row => getRowProductLabel(row));
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getWeeklyStoreOptions() {
@@ -2663,14 +2732,26 @@
     }
 
     function getOuterCategoryOptions() {
-      return [...new Set([
+      const labels = [
         ...(productTrendData.main || []).map(row => getRowProductCategory(row)),
         ...(productTrendData.outer || []).map(row => getRowProductCategory(row)),
         ...(productTrendData.brand || []).map(row => getRowProductCategory(row)),
         ...(storeTrendData.main || []).map(row => row.category),
+        ...(storeTrendData.inner || []).map(row => row.category),
         ...(storeTrendData.outer || []).map(row => row.category),
         ...(storeTrendData.brand || []).map(row => row.category)
-      ].filter(isRecognizedFilterValue))].sort((left, right) => left.localeCompare(right, 'zh-CN'));
+      ].filter(isRecognizedFilterValue);
+      const gmvRows = [
+        ...filterRows(productTrendData.main || [], getRange('qStart', 'qEnd')),
+        ...filterRows(productTrendData.outer || [], getRange('qStart', 'qEnd')),
+        ...filterRows(productTrendData.brand || [], getRange('qStart', 'qEnd')),
+        ...filterRows(storeTrendData.main || [], getRange('qStart', 'qEnd')),
+        ...filterRows(storeTrendData.inner || [], getRange('qStart', 'qEnd')),
+        ...filterRows(storeTrendData.outer || [], getRange('qStart', 'qEnd')),
+        ...filterRows(storeTrendData.brand || [], getRange('qStart', 'qEnd'))
+      ];
+      const gmvMap = buildGmvMap(gmvRows, row => getRowProductCategory(row) || row.category || '');
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getOuterSelectedCategories() {
@@ -2728,11 +2809,15 @@
         ...(productTrendData.outer || []),
         ...(productTrendData.brand || [])
       ];
-      return [...new Set(sourceRows
+      const labels = [...new Set(sourceRows
         .filter(row => outerMatchesSelectedCategory(row))
         .map(row => getRowProductLabel(row))
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      const gmvMap = buildGmvMap(
+        filterRows(sourceRows, getRange('qStart', 'qEnd')).filter(row => outerMatchesSelectedCategory(row)),
+        row => getRowProductLabel(row)
+      );
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getOuterDimensionSourceRows() {
@@ -2769,10 +2854,17 @@
     function getOuterDimensionFilterOptions(kind) {
       const config = getOuterDimensionFilterConfig(kind);
       if (!config) return [];
-      return [...new Set(getOuterDimensionFilterRows(kind)
+      const labels = [...new Set(getOuterDimensionFilterRows(kind)
         .map(config.rowValue)
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      if (kind === 'category' || kind === 'product') {
+        const gmvMap = buildGmvMap(
+          filterRows(getOuterDimensionFilterRows(kind), getRange('qStart', 'qEnd')),
+          row => config.rowValue(row)
+        );
+        return sortLabelsByGmvDesc(labels, gmvMap);
+      }
+      return labels.sort((left, right) => left.localeCompare(right, 'zh-CN'));
     }
 
     function getSpTtSelectedCategories() {
@@ -2804,18 +2896,36 @@
     }
 
     function getSpTtCategoryOptions() {
-      return [...new Set((spTtSalesData.rows || [])
+      const labels = [...new Set((spTtSalesData.rows || [])
         .map(row => row.category)
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      const gmvMap = buildGmvMap(
+        filterRows([
+          ...(storeTrendData.main || []),
+          ...(storeTrendData.inner || []),
+          ...(storeTrendData.outer || []),
+          ...(storeTrendData.brand || [])
+        ], getRange('qStart', 'qEnd')),
+        row => row.category
+      );
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getSpTtProductOptions() {
-      return [...new Set((spTtSalesData.rows || [])
+      const labels = [...new Set((spTtSalesData.rows || [])
         .filter(row => spTtMatchesSelectedCategory(row))
         .map(row => row.productName)
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      const gmvMap = buildGmvMap(
+        filterRows([
+          ...(productTrendData.main || []),
+          ...(productTrendData.inner || []),
+          ...(productTrendData.outer || []),
+          ...(productTrendData.brand || [])
+        ], getRange('qStart', 'qEnd')).filter(row => spTtMatchesSelectedCategory(row)),
+        row => getRowProductLabel(row)
+      );
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getNewOldSelectedCategories() {
@@ -2847,19 +2957,43 @@
     }
 
     function getNewOldCategoryOptions() {
-      return [...new Set([
+      const labels = [
         ...(storeTrendData.main || []).map(row => row.category),
-        ...(productTrendData.main || []).map(row => row.category)
-      ].filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        ...(storeTrendData.inner || []).map(row => row.category),
+        ...(storeTrendData.outer || []).map(row => row.category),
+        ...(storeTrendData.brand || []).map(row => row.category),
+        ...(productTrendData.main || []).map(row => row.category),
+        ...(productTrendData.inner || []).map(row => row.category),
+        ...(productTrendData.outer || []).map(row => row.category),
+        ...(productTrendData.brand || []).map(row => row.category)
+      ].filter(isRecognizedFilterValue);
+      const gmvMap = buildGmvMap(
+        [
+          ...filterRows(storeTrendData.main || [], getRange('qStart', 'qEnd')),
+          ...filterRows(storeTrendData.inner || [], getRange('qStart', 'qEnd')),
+          ...filterRows(storeTrendData.outer || [], getRange('qStart', 'qEnd')),
+          ...filterRows(storeTrendData.brand || [], getRange('qStart', 'qEnd'))
+        ],
+        row => row.category
+      );
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getNewOldProductOptions() {
-      return [...new Set((productTrendData.main || [])
+      const labels = [...new Set((productTrendData.main || [])
         .filter(row => newOldMatchesSelectedCategory(row))
         .map(row => getRowProductLabel(row))
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      const gmvMap = buildGmvMap(
+        filterRows([
+          ...(productTrendData.main || []),
+          ...(productTrendData.inner || []),
+          ...(productTrendData.outer || []),
+          ...(productTrendData.brand || [])
+        ], getRange('qStart', 'qEnd')).filter(row => newOldMatchesSelectedCategory(row)),
+        row => getRowProductLabel(row)
+      );
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     const materialFilterConfigs = [
@@ -2911,10 +3045,17 @@
     function getMaterialFilterOptions(kind) {
       const config = getMaterialFilterConfig(kind);
       if (!config) return [];
-      return [...new Set(getMaterialFilterRows(kind)
+      const labels = [...new Set(getMaterialFilterRows(kind)
         .map(config.rowValue)
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      if (kind === 'category' || kind === 'product') {
+        const gmvMap = buildGmvMap(
+          filterRows(getMaterialFilterRows(kind), getRange('qStart', 'qEnd')),
+          row => config.rowValue(row)
+        );
+        return sortLabelsByGmvDesc(labels, gmvMap);
+      }
+      return labels.sort((left, right) => left.localeCompare(right, 'zh-CN'));
     }
 
     function getVisibleMaterialFilterOptions(kind) {
@@ -3164,17 +3305,25 @@
     }
 
     function getStoreShareCategoryOptions() {
-      return [...new Set(getStoreShareFilterRows('category')
+      const labels = [...new Set(getStoreShareFilterRows('category')
         .map(row => row.category)
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      const gmvMap = buildGmvMap(
+        filterRows(getStoreShareFilterRows('category'), getRange('qStart', 'qEnd')),
+        row => row.category
+      );
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getStoreShareProductOptions() {
-      return [...new Set(getStoreShareFilterRows('product')
+      const labels = [...new Set(getStoreShareFilterRows('product')
         .map(row => getRowProductLabel(row))
-        .filter(isRecognizedFilterValue))]
-        .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+        .filter(isRecognizedFilterValue))];
+      const gmvMap = buildGmvMap(
+        filterRows(getStoreShareFilterRows('product'), getRange('qStart', 'qEnd')),
+        row => getRowProductLabel(row)
+      );
+      return sortLabelsByGmvDesc(labels, gmvMap);
     }
 
     function getVisibleStoreShareFilterOptions(kind) {
@@ -11424,9 +11573,8 @@
       invalidateSpTtTrendCache();
       materialTrendState.baseCanvasSnapshot = null;
       normalizeWeeklySelectedProducts();
-      populateWeeklyStoreFilter();
-      populateWeeklyProductFilter();
       invalidateAllTabs();
+      refreshTabFilters(dashboardRenderState.activeTab || 'store');
       scheduleActiveTabRender(true);
     }
 
@@ -11666,6 +11814,7 @@
         return;
       }
       dashboardRenderState.activeTab = tabKey;
+      ensureTabInitialized(tabKey);
       const filterRow = document.getElementById('storeFilterPanelRow');
       const spTtFilterRow = document.getElementById('spTtFilterPanelRow');
       document.querySelectorAll('#analysisTabs .tab-button').forEach(button => {
@@ -11707,17 +11856,6 @@
       }
 
       setDefaultRefreshDateRange();
-      populateStoreFilter();
-      populateCategoryFilter();
-      populateProductFilter();
-      populateOuterCategoryFilter();
-      populateOuterProductFilter();
-      populateSpTtCategoryFilter();
-      populateSpTtProductFilter();
-      populateNewOldCategoryFilter();
-      populateNewOldProductFilter();
-      populateWeeklyStoreFilter();
-      populateWeeklyProductFilter();
       bindMultiSelectFilterEvents();
       bindAnalysisTabs();
       document.querySelectorAll('[data-store-share-tab]').forEach(button => {
