@@ -10426,11 +10426,55 @@
       return formatCategoryDelta(formatDelta(currentValue, compareValue));
     }
 
+    function buildNewOldTotalRow(rows, labelKey) {
+      const totals = rows.reduce((accumulator, row) => {
+        accumulator.gmv += Number(row?._salesThb ?? ((Number(row?.gmv) || 0) * 4.8)) || 0;
+        accumulator.visitors += Number(row?._visitors ?? row?.visitors) || 0;
+        accumulator.totalPurchasers += Number(row?._totalPurchasers ?? row?.totalPurchasers) || 0;
+        accumulator.newCustomers += Number(row?._newCustomers ?? row?.newCustomers) || 0;
+        accumulator.oldCustomers += Number(row?._oldCustomers ?? row?.oldCustomers) || 0;
+        accumulator.innerSpend += Number(row?._innerSpend ?? row?.innerSpend) || 0;
+        accumulator.outerSpendUsd += Number(row?._outerSpendUsd ?? (((Number(row?.outerSpend) || 0) / 6.9) || 0)) || 0;
+        accumulator.outerClicks += Number(row?._outerClicks ?? row?.outerClicks) || 0;
+        accumulator.retargetingSpendUsd += Number(row?._retargetingSpendUsd ?? 0) || 0;
+        return accumulator;
+      }, {
+        gmv: 0,
+        visitors: 0,
+        totalPurchasers: 0,
+        newCustomers: 0,
+        oldCustomers: 0,
+        innerSpend: 0,
+        outerSpendUsd: 0,
+        outerClicks: 0,
+        retargetingSpendUsd: 0
+      });
+
+      const outerSpend = totals.outerSpendUsd * 6.9;
+      return {
+        [labelKey]: '总计',
+        gmv: totals.gmv / 4.8,
+        visitors: totals.visitors,
+        totalPurchasers: totals.totalPurchasers,
+        newCustomers: totals.newCustomers,
+        newCustomerShare: totals.totalPurchasers ? totals.newCustomers / totals.totalPurchasers : 0,
+        oldCustomers: totals.oldCustomers,
+        oldCustomerShare: totals.totalPurchasers ? totals.oldCustomers / totals.totalPurchasers : 0,
+        innerSpend: totals.innerSpend,
+        outerSpend,
+        outerClicks: totals.outerClicks,
+        clickCost: outerSpend ? totals.outerClicks / outerSpend : 0,
+        retargetingShare: totals.outerSpendUsd ? totals.retargetingSpendUsd / totals.outerSpendUsd : 0
+      };
+    }
+
     function renderNewOldSummaryTable(containerId, title, labelKey, currentRows, compareRows, emptyText, options = {}) {
       const showTotal = options.showTotal !== false;
       const showHead = options.showHead !== false;
       const currentMap = Object.fromEntries(currentRows.map(row => [row[labelKey], row]));
       const compareMap = Object.fromEntries(compareRows.map(row => [row[labelKey], row]));
+      const totalCurrentRow = buildNewOldTotalRow(currentRows, labelKey);
+      const totalCompareRow = buildNewOldTotalRow(compareRows, labelKey);
       const labels = sortNewOldLabels(
         [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])]
           .filter(label => (Number(currentMap[label]?.gmv) || 0) > 0 || (Number(compareMap[label]?.gmv) || 0) > 0),
@@ -10494,8 +10538,8 @@
                   <tr>
                     <td class="category-name">总计</td>
                     ${newOldMetricDefinitions.map(metric => {
-                      const value = labels.reduce((sum, label) => sum + (Number(currentMap[label]?.[metric.key]) || 0), 0);
-                      const compareValue = labels.reduce((sum, label) => sum + (Number(compareMap[label]?.[metric.key]) || 0), 0);
+                      const value = Number(totalCurrentRow?.[metric.key]) || 0;
+                      const compareValue = Number(totalCompareRow?.[metric.key]) || 0;
                       const delta = formatNewOldAnalysisMetricDelta(metric.key, value, compareValue);
                       return `
                         <td class="num">
