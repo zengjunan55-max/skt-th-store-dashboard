@@ -15,7 +15,7 @@
     "max": "2026-09-13"
   },
   "store_outer": {
-    "count": 119542,
+    "count": 119586,
     "min": "2026-01-01",
     "max": "2026-09-14"
   },
@@ -24,7 +24,7 @@
     "store-trend-data-outer.part2.js"
   ],
   "store_brand": {
-    "count": 30268,
+    "count": 30299,
     "min": "2026-01-01",
     "max": "2026-09-14"
   },
@@ -39,7 +39,7 @@
     "max": "2026-09-13"
   },
   "product_outer": {
-    "count": 119542,
+    "count": 119586,
     "min": "2026-01-01",
     "max": "2026-09-14"
   },
@@ -48,7 +48,7 @@
     "product-trend-data-outer.part2.js"
   ],
   "product_brand": {
-    "count": 30268,
+    "count": 30299,
     "min": "2026-01-01",
     "max": "2026-09-14"
   },
