@@ -5657,7 +5657,7 @@
     const outerBreakdownFormOrder = ['收割广告', '种草广告'];
     const outerBreakdownTypeOrder = ['图片广告', '视频广告', '混合目录', '合创广告', '官号广告'];
     const outerBreakdownTypeOrderByForm = {
-      '收割广告': ['图片广告', '视频广告', '合创广告', '混合目录'],
+      '收割广告': ['图片广告', '视频广告', '合创有目录', '合创无目录', '混合目录'],
       '种草广告': ['合创广告', '官号广告']
     };
     const outerDimensionTabDefinitions = [
@@ -6458,6 +6458,14 @@
       );
     }
 
+    function getOuterBreakdownAdType(row) {
+      if (row.ad_form2 === '收割广告' && row.ad_type === '合创广告') {
+        if (row.ad_form === '目录') return '合创有目录';
+        if (row.ad_form === '无目录') return '合创无目录';
+      }
+      return row.ad_type || '未识别';
+    }
+
     function buildOuterBreakdownSummary(range) {
       const rows = getOuterBreakdownRows(range);
       const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
@@ -6470,7 +6478,7 @@
 
       rows.forEach(row => {
         const form = row.ad_form2 || '';
-        const adType = row.ad_type || '未识别';
+        const adType = getOuterBreakdownAdType(row);
         const typeMap = ensureForm(form);
         if (!typeMap.has(adType)) {
           typeMap.set(adType, {
