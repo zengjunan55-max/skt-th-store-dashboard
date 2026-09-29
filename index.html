@@ -1660,6 +1660,44 @@
               </div>
             </div>
           </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>广告形式筛选</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="outerBreakdownSection">跳转</button>
+            </div>
+            <div class="filter-multiselect" id="outerAdFormFilterWrap">
+              <div id="outerAdFormFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="outerAdFormFilterInput" class="filter-trigger-input" type="text" value="全部广告形式" placeholder="搜索广告形式" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="outerAdFormFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="adForm" data-filter-scope="outer">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="adForm" data-filter-scope="outer">清空</button>
+                </div>
+                <div id="outerAdFormFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-control filter-summary-control">
+            <div class="filter-control-head">
+              <span>广告类型筛选</span>
+              <button class="filter-jump-button" type="button" data-scroll-target="outerBreakdownSection">跳转</button>
+            </div>
+            <div class="filter-multiselect" id="outerAdTypeFilterWrap">
+              <div id="outerAdTypeFilterTrigger" class="filter-trigger" aria-expanded="false">
+                <input id="outerAdTypeFilterInput" class="filter-trigger-input" type="text" value="全部广告类型" placeholder="搜索广告类型" autocomplete="off">
+                <span class="filter-trigger-arrow">▼</span>
+              </div>
+              <div id="outerAdTypeFilterPanel" class="filter-panel">
+                <div class="filter-panel-actions">
+                  <button type="button" data-filter-action="select-all" data-filter-kind="adType" data-filter-scope="outer">全选</button>
+                  <button type="button" data-filter-action="clear" data-filter-kind="adType" data-filter-scope="outer">清空</button>
+                </div>
+                <div id="outerAdTypeFilterOptions" class="filter-options"></div>
+              </div>
+            </div>
+          </div>
       </div>
       </div>
       <div class="material-filter-summary-row">
@@ -2004,7 +2042,9 @@
     function getOuterSelectionCacheToken() {
       return JSON.stringify({
         categories: getOuterSelectedCategories(),
-        products: getOuterSelectedProducts()
+        products: getOuterSelectedProducts(),
+        adForms: getSelectedOuterAdFilterValues('adForm'),
+        adTypes: getSelectedOuterAdFilterValues('adType')
       });
     }
 
@@ -2220,8 +2260,12 @@
     const outerFilterState = {
       categories: [],
       products: [],
+      adForms: [],
+      adTypes: [],
       categorySearch: '',
-      productSearch: ''
+      productSearch: '',
+      adFormSearch: '',
+      adTypeSearch: ''
     };
     const outerDimensionFilterState = {
       categories: [],
@@ -2461,6 +2505,7 @@
       } else if (tabKey === 'outer') {
         populateOuterCategoryFilter();
         populateOuterProductFilter();
+        populateOuterAdFilters();
         populateOuterDimensionFilters();
       } else if (tabKey === 'sp-tt') {
         populateSpTtCategoryFilter();
@@ -2776,6 +2821,19 @@
       return outerFilterState.products;
     }
 
+    function getOuterAdFilterConfig(kind) {
+      return outerAdFilterConfigs.find(config => config.key === kind) || null;
+    }
+
+    function getSelectedOuterAdFilterValues(kind) {
+      const config = getOuterAdFilterConfig(kind);
+      return config ? outerFilterState[config.stateKey] : [];
+    }
+
+    function isAllOuterAdFilterSelected(kind) {
+      return !getSelectedOuterAdFilterValues(kind).length;
+    }
+
     function getOuterDimensionFilterConfig(kind) {
       return outerDimensionFilterConfigs.find(config => config.key === kind) || null;
     }
@@ -2832,6 +2890,46 @@
         row => getRowProductLabel(row)
       );
       return sortLabelsByGmvDesc(labels, gmvMap);
+    }
+
+    function outerAdRowMatchesFilter(row, kind, ignoreKind = '') {
+      const config = getOuterAdFilterConfig(kind);
+      if (!config || kind === ignoreKind) return true;
+      const selectedValues = outerFilterState[config.stateKey];
+      return !selectedValues.length || selectedValues.includes(config.rowValue(row));
+    }
+
+    function getOuterAdFilterRows(ignoreKind = '') {
+      return [
+        ...(productTrendData.outer || []),
+        ...(productTrendData.brand || [])
+      ].filter(row =>
+        outerBreakdownFormOrder.includes(row.ad_form2 || '') &&
+        outerMatchesSelectedCategory(row) &&
+        outerMatchesSelectedProduct(row) &&
+        outerAdFilterConfigs.every(config => outerAdRowMatchesFilter(row, config.key, ignoreKind))
+      );
+    }
+
+    function getOuterAdFilterOptions(kind) {
+      const config = getOuterAdFilterConfig(kind);
+      if (!config) return [];
+      const labels = [...new Set(getOuterAdFilterRows(kind)
+        .map(config.rowValue)
+        .filter(isRecognizedFilterValue))];
+      const preferredOrder = kind === 'adForm'
+        ? outerBreakdownFormOrder
+        : ['图片广告', '视频广告', '合创有目录', '合创无目录', '混合目录', '合创广告', '官号广告'];
+      return labels.sort((left, right) => {
+        const leftIndex = preferredOrder.indexOf(left);
+        const rightIndex = preferredOrder.indexOf(right);
+        if (leftIndex !== -1 || rightIndex !== -1) {
+          if (leftIndex === -1) return 1;
+          if (rightIndex === -1) return -1;
+          if (leftIndex !== rightIndex) return leftIndex - rightIndex;
+        }
+        return left.localeCompare(right, 'zh-CN');
+      });
     }
 
     function getOuterDimensionSourceRows() {
@@ -3591,6 +3689,8 @@
           if (removeAttrPrefix === 'outer-filter-remove') {
             if ((button.dataset.outerFilterRemoveKind || '') === 'category') setOuterSelectedCategory(button.dataset.outerFilterRemoveValue || '');
             if ((button.dataset.outerFilterRemoveKind || '') === 'product') setOuterSelectedProduct(button.dataset.outerFilterRemoveValue || '');
+            if ((button.dataset.outerFilterRemoveKind || '') === 'adForm') setSelectedOuterAdFilter('adForm', button.dataset.outerFilterRemoveValue || '');
+            if ((button.dataset.outerFilterRemoveKind || '') === 'adType') setSelectedOuterAdFilter('adType', button.dataset.outerFilterRemoveValue || '');
           }
           if (removeAttrPrefix === 'sp-tt-filter-remove') {
             if ((button.dataset.spTtFilterRemoveKind || '') === 'category') setSpTtSelectedCategory(button.dataset.spTtFilterRemoveValue || '');
@@ -3651,6 +3751,17 @@
         ? buildFilterSummary(getOuterSelectedCategories(), '全部品类')
         : buildFilterSummary(getOuterSelectedProducts(), '全部产品');
       input.value = isOpen ? searchValue : summary;
+    }
+
+    function syncOuterAdFilterTriggerInput(kind) {
+      const config = getOuterAdFilterConfig(kind);
+      if (!config) return;
+      const input = document.getElementById(config.inputId);
+      const wrapper = document.getElementById(config.wrapperId);
+      if (!input || !wrapper) return;
+      const isOpen = wrapper.classList.contains('open');
+      const summary = buildFilterSummary(getSelectedOuterAdFilterValues(kind), config.allLabel);
+      input.value = isOpen ? outerFilterState[config.searchKey] : summary;
     }
 
     function syncOuterDimensionFilterTriggerInput(kind) {
@@ -3799,7 +3910,9 @@
         'outerFilterSummary',
         [
           { kind: 'category', label: '品类', values: getOuterSelectedCategories() },
-          { kind: 'product', label: '产品', values: getOuterSelectedProducts() }
+          { kind: 'product', label: '产品', values: getOuterSelectedProducts() },
+          { kind: 'adForm', label: '广告形式', values: getSelectedOuterAdFilterValues('adForm') },
+          { kind: 'adType', label: '广告类型', values: getSelectedOuterAdFilterValues('adType') }
         ],
         'clearOuterFilters',
         'outer-filter-remove'
@@ -3809,10 +3922,15 @@
     function clearOuterFilters() {
       outerFilterState.categories = [];
       outerFilterState.products = [];
+      outerFilterState.adForms = [];
+      outerFilterState.adTypes = [];
       outerFilterState.categorySearch = '';
       outerFilterState.productSearch = '';
+      outerFilterState.adFormSearch = '';
+      outerFilterState.adTypeSearch = '';
       populateOuterCategoryFilter();
       populateOuterProductFilter();
+      populateOuterAdFilters();
       renderOuterFilterSummary();
       invalidateOuterSummaryCaches();
       invalidateTab('outer');
@@ -3942,6 +4060,30 @@
       }).join('') : '<div class="filter-empty">没有匹配的产品</div>';
       syncOuterFilterTriggerInput('product');
       renderOuterFilterSummary();
+    }
+
+    function populateOuterAdFilter(kind) {
+      const config = getOuterAdFilterConfig(kind);
+      if (!config) return;
+      const container = document.getElementById(config.optionsId);
+      if (!container) return;
+      const selectedValues = getSelectedOuterAdFilterValues(kind);
+      const visibleOptions = filterOptionList(getOuterAdFilterOptions(kind), outerFilterState[config.searchKey], config.allLabel);
+      container.innerHTML = visibleOptions.length ? visibleOptions.map(option => {
+        const checked = option === config.allLabel ? !selectedValues.length : selectedValues.includes(option);
+        return `
+          <label class="filter-option">
+            <input type="checkbox" value="${option}" ${checked ? 'checked' : ''}>
+            <span>${option}</span>
+          </label>
+        `;
+      }).join('') : `<div class="filter-empty">没有匹配的${config.allLabel.replace('全部', '')}</div>`;
+      syncOuterAdFilterTriggerInput(kind);
+      renderOuterFilterSummary();
+    }
+
+    function populateOuterAdFilters() {
+      outerAdFilterConfigs.forEach(config => populateOuterAdFilter(config.key));
     }
 
     function populateOuterDimensionFilter(kind) {
@@ -4338,6 +4480,13 @@
       outerFilterState.products = outerFilterState.products.filter(product => allowed.has(product));
     }
 
+    function normalizeSelectedOuterAdFilters() {
+      outerAdFilterConfigs.forEach(config => {
+        const allowed = new Set(getOuterAdFilterOptions(config.key));
+        outerFilterState[config.stateKey] = outerFilterState[config.stateKey].filter(value => allowed.has(value));
+      });
+    }
+
     function normalizeOuterDimensionSelectedProducts() {
       const allowed = new Set(getOuterDimensionFilterOptions('product'));
       outerDimensionFilterState.products = outerDimensionFilterState.products.filter(product => allowed.has(product));
@@ -4361,8 +4510,10 @@
           })();
       outerFilterState.categories = nextCategories;
       normalizeOuterSelectedProducts();
+      normalizeSelectedOuterAdFilters();
       populateOuterCategoryFilter();
       populateOuterProductFilter();
+      populateOuterAdFilters();
       if (shouldRender) {
         invalidateOuterSummaryCaches();
         invalidateTab('outer');
@@ -4380,7 +4531,30 @@
             return [...current];
           })();
       outerFilterState.products = nextProducts;
+      normalizeSelectedOuterAdFilters();
       populateOuterProductFilter();
+      populateOuterAdFilters();
+      if (shouldRender) {
+        invalidateOuterSummaryCaches();
+        invalidateTab('outer');
+        scheduleActiveTabRender();
+      }
+    }
+
+    function setSelectedOuterAdFilter(kind, value, shouldRender = true) {
+      const config = getOuterAdFilterConfig(kind);
+      if (!config) return;
+      const nextValues = value === config.allLabel
+        ? []
+        : (() => {
+            const current = new Set(getSelectedOuterAdFilterValues(kind));
+            if (current.has(value)) current.delete(value);
+            else current.add(value);
+            return [...current];
+          })();
+      outerFilterState[config.stateKey] = nextValues;
+      normalizeSelectedOuterAdFilters();
+      populateOuterAdFilters();
       if (shouldRender) {
         invalidateOuterSummaryCaches();
         invalidateTab('outer');
@@ -4505,6 +4679,11 @@
         return filterOptionList(getOuterProductOptions(), outerFilterState.productSearch, '全部产品')
           .filter(option => option !== '全部产品');
       }
+      const adConfig = getOuterAdFilterConfig(kind);
+      if (adConfig) {
+        return filterOptionList(getOuterAdFilterOptions(kind), outerFilterState[adConfig.searchKey], adConfig.allLabel)
+          .filter(option => option !== adConfig.allLabel);
+      }
       return [];
     }
 
@@ -4516,19 +4695,31 @@
     }
 
     function applyOuterFilterBulk(kind, action) {
+      const adConfig = getOuterAdFilterConfig(kind);
+      if (adConfig) {
+        outerFilterState[adConfig.stateKey] = action === 'select-all'
+          ? [...new Set([...(getSelectedOuterAdFilterValues(kind)), ...getVisibleOuterFilterOptions(kind)])]
+          : [];
+        normalizeSelectedOuterAdFilters();
+        populateOuterAdFilters();
+      }
       if (kind === 'category') {
         outerFilterState.categories = action === 'select-all'
           ? [...new Set([...(getOuterSelectedCategories()), ...getVisibleOuterFilterOptions('category')])]
           : [];
         normalizeOuterSelectedProducts();
+        normalizeSelectedOuterAdFilters();
         populateOuterCategoryFilter();
         populateOuterProductFilter();
+        populateOuterAdFilters();
       }
       if (kind === 'product') {
         outerFilterState.products = action === 'select-all'
           ? [...new Set([...(getOuterSelectedProducts()), ...getVisibleOuterFilterOptions('product')])]
           : [];
+        normalizeSelectedOuterAdFilters();
         populateOuterProductFilter();
+        populateOuterAdFilters();
       }
       invalidateOuterSummaryCaches();
       invalidateTab('outer');
@@ -4624,7 +4815,7 @@
       const openNodes = Array.from(document.querySelectorAll('.filter-multiselect.open'));
       const hasStoreState = Boolean(filterState.storeSearch || filterState.categorySearch || filterState.productSearch);
       const hasWeeklyState = Boolean(weeklyFilterState.storeSearch || weeklyFilterState.productSearch);
-      const hasOuterState = Boolean(outerFilterState.categorySearch || outerFilterState.productSearch);
+      const hasOuterState = Boolean(outerFilterState.categorySearch || outerFilterState.productSearch || outerFilterState.adFormSearch || outerFilterState.adTypeSearch);
       const hasOuterDimensionState = outerDimensionFilterConfigs.some(config => outerDimensionFilterState[config.searchKey]);
       const hasSpTtState = Boolean(spTtFilterState.categorySearch || spTtFilterState.productSearch);
       const hasNewOldState = Boolean(newOldFilterState.categorySearch || newOldFilterState.productSearch);
@@ -4653,11 +4844,14 @@
         populateWeeklyStoreFilter();
         populateWeeklyProductFilter();
       }
-      if (hasOuterState || openNodes.some(node => node.id === 'outerCategoryFilterWrap' || node.id === 'outerProductFilterWrap')) {
+      if (hasOuterState || openNodes.some(node => ['outerCategoryFilterWrap', 'outerProductFilterWrap', 'outerAdFormFilterWrap', 'outerAdTypeFilterWrap'].includes(node.id))) {
         outerFilterState.categorySearch = '';
         outerFilterState.productSearch = '';
+        outerFilterState.adFormSearch = '';
+        outerFilterState.adTypeSearch = '';
         populateOuterCategoryFilter();
         populateOuterProductFilter();
+        populateOuterAdFilters();
       }
       if (hasOuterDimensionState || openNodes.some(node => node.id && node.id.startsWith('outerDimension'))) {
         outerDimensionFilterConfigs.forEach(config => {
@@ -4725,6 +4919,12 @@
       const productTrigger = document.getElementById('productFilterTrigger');
       const outerCategoryTrigger = document.getElementById('outerCategoryFilterTrigger');
       const outerProductTrigger = document.getElementById('outerProductFilterTrigger');
+      const outerAdFilterEntries = outerAdFilterConfigs.map(config => ({
+        ...config,
+        trigger: document.getElementById(config.triggerId),
+        options: document.getElementById(config.optionsId),
+        input: document.getElementById(config.inputId)
+      }));
       const spTtCategoryTrigger = document.getElementById('spTtCategoryFilterTrigger');
       const spTtProductTrigger = document.getElementById('spTtProductFilterTrigger');
       const newOldCategoryTrigger = document.getElementById('newOldCategoryFilterTrigger');
@@ -4819,6 +5019,13 @@
           toggleFilterDropdown('outerProductFilterWrap');
         });
       }
+      outerAdFilterEntries.forEach(entry => {
+        if (!entry.trigger) return;
+        entry.trigger.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleFilterDropdown(entry.wrapperId);
+        });
+      });
       outerDimensionFilterEntries.forEach(entry => {
         if (!entry.trigger) return;
         entry.trigger.addEventListener('click', event => {
@@ -4928,6 +5135,15 @@
         });
         outerProductOptions.addEventListener('click', event => event.stopPropagation());
       }
+      outerAdFilterEntries.forEach(entry => {
+        if (!entry.options) return;
+        entry.options.addEventListener('change', event => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement)) return;
+          setSelectedOuterAdFilter(entry.key, input.value);
+        });
+        entry.options.addEventListener('click', event => event.stopPropagation());
+      });
       outerDimensionFilterEntries.forEach(entry => {
         if (!entry.options) return;
         entry.options.addEventListener('change', event => {
@@ -5083,6 +5299,20 @@
           populateOuterProductFilter();
         });
       }
+      outerAdFilterEntries.forEach(entry => {
+        if (!entry.input) return;
+        entry.input.addEventListener('click', event => {
+          event.stopPropagation();
+        });
+        entry.input.addEventListener('focus', () => {
+          const wrapper = document.getElementById(entry.wrapperId);
+          if (wrapper && !wrapper.classList.contains('open')) toggleFilterDropdown(entry.wrapperId);
+        });
+        entry.input.addEventListener('input', event => {
+          outerFilterState[entry.searchKey] = event.target.value;
+          populateOuterAdFilter(entry.key);
+        });
+      });
       outerDimensionFilterEntries.forEach(entry => {
         if (!entry.input) return;
         entry.input.addEventListener('click', event => {
@@ -5326,6 +5556,10 @@
       const rowProduct = getRowProductLabel(row);
       if (!rowProduct) return isAllOuterProductsSelected();
       return isAllOuterProductsSelected() || getOuterSelectedProducts().includes(rowProduct);
+    }
+
+    function outerMatchesSelectedAdFilters(row) {
+      return outerAdFilterConfigs.every(config => outerAdRowMatchesFilter(row, config.key));
     }
 
     function outerDimensionMatchesSelectedCategory(row) {
@@ -5674,6 +5908,10 @@
       '收割广告': ['图片广告', '视频广告', '合创有目录', '合创无目录', '混合目录'],
       '种草广告': ['合创广告', '官号广告']
     };
+    const outerAdFilterConfigs = [
+      { key: 'adForm', stateKey: 'adForms', searchKey: 'adFormSearch', allLabel: '全部广告形式', wrapperId: 'outerAdFormFilterWrap', triggerId: 'outerAdFormFilterTrigger', inputId: 'outerAdFormFilterInput', optionsId: 'outerAdFormFilterOptions', rowValue: row => row?.ad_form2 || '' },
+      { key: 'adType', stateKey: 'adTypes', searchKey: 'adTypeSearch', allLabel: '全部广告类型', wrapperId: 'outerAdTypeFilterWrap', triggerId: 'outerAdTypeFilterTrigger', inputId: 'outerAdTypeFilterInput', optionsId: 'outerAdTypeFilterOptions', rowValue: row => getOuterBreakdownAdType(row) }
+    ];
     const outerDimensionTabDefinitions = [
       { key: 'category', label: '品类' },
       { key: 'product', label: '产品' },
@@ -6486,7 +6724,8 @@
       ].filter(row =>
         outerBreakdownFormOrder.includes(row.ad_form2 || '') &&
         outerMatchesSelectedCategory(row) &&
-        outerMatchesSelectedProduct(row)
+        outerMatchesSelectedProduct(row) &&
+        outerMatchesSelectedAdFilters(row)
       );
     }
 
@@ -6976,7 +7215,11 @@
       const outerRows = [
         ...filterRows(productTrendData.outer || [], range),
         ...filterRows(productTrendData.brand || [], range)
-      ].filter(row => outerMatchesSelectedCategory(row) && outerMatchesSelectedProduct(row));
+      ].filter(row =>
+        outerMatchesSelectedCategory(row) &&
+        outerMatchesSelectedProduct(row) &&
+        outerMatchesSelectedAdFilters(row)
+      );
 
       outerRows.forEach(row => {
         const entry = ensureCategory(getRowProductCategory(row) || row.category);
@@ -7072,7 +7315,8 @@
         ...filterRows(productTrendData.brand || [], range)
       ].filter(row =>
         outerMatchesSelectedCategory(row) &&
-        outerMatchesSelectedProduct(row)
+        outerMatchesSelectedProduct(row) &&
+        outerMatchesSelectedAdFilters(row)
       );
 
       outerRows.forEach(row => {
