@@ -761,6 +761,15 @@
       overflow: hidden;
       background: #ffffff;
     }
+    .tab-panel > section {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 720px;
+    }
+    #outerProductStructureSection,
+    #spTtProductCompareSection,
+    #newOldProductAnalysisTable {
+      min-height: 1px;
+    }
     .outer-structure-card .table-wrap { max-height: 720px; }
     .outer-structure-card {
       border: 1px solid var(--line);
@@ -2315,6 +2324,9 @@
       activeTab: 'store',
       rafId: null,
       pendingForce: false,
+      renderGeneration: 0,
+      renderingTab: null,
+      regionRafIds: {},
       resizeTimerId: null,
       initializedTabs: {
         store: false,
@@ -2344,10 +2356,19 @@
       outerProductStructureSummary: new Map(),
       outerTrendMetricMaps: new Map(),
       outerDimensionSummary: new Map(),
+      filterOptions: new Map(),
       spTtMetrics: new Map(),
       spTtMetricMaps: new Map(),
       spTtCompareSummary: new Map(),
       spTtProductCompareSummary: new Map()
+    };
+    const lazySectionRenderState = {
+      'store-product': { tabKey: 'store', elementId: 'productAnalysisSection', dirty: true, hasRendered: false, render: () => renderProductAnalysisTable() },
+      'store-share': { tabKey: 'store', elementId: 'storeShareSection', dirty: true, hasRendered: false, render: () => renderStoreShareAnalysisTable() },
+      'outer-product': { tabKey: 'outer', elementId: 'outerProductStructureSection', dirty: true, hasRendered: false, render: () => renderOuterProductStructureTable() },
+      'outer-dimension': { tabKey: 'outer', elementId: 'outerDimensionSection', dirty: true, hasRendered: false, render: () => renderOuterDimensionTable() },
+      'sp-tt-product': { tabKey: 'sp-tt', elementId: 'spTtProductCompareSection', dirty: true, hasRendered: false, render: () => renderSpTtProductCompareTable() },
+      'new-old-product': { tabKey: 'new-old', elementId: 'newOldProductAnalysisTable', dirty: true, hasRendered: false, render: () => renderNewOldProductAnalysisTable() }
     };
     const categoryTableState = {
       sortKey: 'gmv',
@@ -2490,10 +2511,66 @@
       if (force) dashboardRenderState.pendingForce = true;
       if (dashboardRenderState.rafId !== null) return;
       dashboardRenderState.rafId = scheduleFrame(() => {
-        const shouldForce = force || dashboardRenderState.pendingForce;
+        const shouldForce = dashboardRenderState.pendingForce;
         dashboardRenderState.rafId = null;
         dashboardRenderState.pendingForce = false;
         renderActiveTab(shouldForce);
+      });
+    }
+
+    function scheduleTabRegionRender(tabKey, regionKey, callback) {
+      const pendingId = dashboardRenderState.regionRafIds[regionKey];
+      if (pendingId !== undefined) cancelAnimationFrame(pendingId);
+      dashboardRenderState.regionRafIds[regionKey] = scheduleFrame(() => {
+        delete dashboardRenderState.regionRafIds[regionKey];
+        if (dashboardRenderState.activeTab !== tabKey) {
+          invalidateTab(tabKey);
+          return;
+        }
+        callback();
+      });
+    }
+
+    function isElementNearViewport(element) {
+      const rect = element.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
+      return rect.bottom >= -80 && rect.top <= viewportHeight + 80;
+    }
+
+    function renderLazySectionIfNeeded(sectionKey) {
+      const sectionState = lazySectionRenderState[sectionKey];
+      if (!sectionState || !sectionState.dirty || dashboardRenderState.activeTab !== sectionState.tabKey) return;
+      const element = document.getElementById(sectionState.elementId);
+      if (!element || !isElementNearViewport(element)) return;
+      sectionState.dirty = false;
+      sectionState.render();
+      sectionState.hasRendered = true;
+    }
+
+    function markLazySectionsDirty(tabKey) {
+      Object.entries(lazySectionRenderState).forEach(([sectionKey, sectionState]) => {
+        if (sectionState.tabKey !== tabKey) return;
+        sectionState.dirty = true;
+        if (!sectionState.hasRendered) return;
+        scheduleTabRegionRender(tabKey, `lazy-${sectionKey}`, () => renderLazySectionIfNeeded(sectionKey));
+      });
+    }
+
+    function initializeLazySectionRendering() {
+      if (typeof IntersectionObserver !== 'function') return;
+      const sectionKeyByElement = new Map();
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const sectionKey = sectionKeyByElement.get(entry.target);
+          if (sectionKey) renderLazySectionIfNeeded(sectionKey);
+        });
+      }, { rootMargin: '80px 0px' });
+      Object.entries(lazySectionRenderState).forEach(([sectionKey, sectionState]) => {
+        const element = document.getElementById(sectionState.elementId);
+        if (!element) return;
+        sectionKeyByElement.set(element, sectionKey);
+        observer.observe(element);
       });
     }
 
@@ -2501,21 +2578,25 @@
       if (tabKey === 'store') {
         populateStoreFilter();
         populateCategoryFilter();
-        populateProductFilter();
+        syncFilterTriggerInput('product');
+        renderStoreFilterSummary();
       } else if (tabKey === 'outer') {
         populateOuterCategoryFilter();
-        populateOuterProductFilter();
-        populateOuterAdFilters();
-        populateOuterDimensionFilters();
+        syncOuterFilterTriggerInput('product');
+        outerAdFilterConfigs.forEach(config => syncOuterAdFilterTriggerInput(config.key));
+        renderOuterFilterSummary();
       } else if (tabKey === 'sp-tt') {
         populateSpTtCategoryFilter();
-        populateSpTtProductFilter();
+        syncSpTtFilterTriggerInput('product');
+        renderSpTtFilterSummary();
       } else if (tabKey === 'new-old') {
         populateNewOldCategoryFilter();
-        populateNewOldProductFilter();
+        syncNewOldFilterTriggerInput('product');
+        renderNewOldFilterSummary();
       } else if (tabKey === 'weekly') {
         populateWeeklyStoreFilter();
-        populateWeeklyProductFilter();
+        syncWeeklyFilterTriggerInput('product');
+        renderWeeklyFilterSummary();
       }
     }
 
@@ -2525,26 +2606,64 @@
       dashboardRenderState.initializedTabs[tabKey] = true;
     }
 
-    function renderTabContent(tabKey) {
+    function getTabRenderTasks(tabKey) {
       if (tabKey === 'store') {
-        renderStoreTrendSection();
-      } else if (tabKey === 'outer') {
-        renderMaterialTrendSection();
-        renderOuterBreakdownTable();
-        renderOuterStructureTable();
-        renderOuterProductStructureTable();
-        renderOuterDimensionTable();
-      } else if (tabKey === 'sp-tt') {
-        renderSpTtTrendSection();
-        renderSpTtCompareTable();
-        renderSpTtProductCompareTable();
-      } else if (tabKey === 'new-old') {
-        renderNewOldCategoryAnalysisTable();
-        renderNewOldProductAnalysisTable();
-      } else if (tabKey === 'weekly') {
-        renderWeeklyMeetingTab();
+        return [
+          renderStoreReceiptCards,
+          renderCompareCards,
+          renderTrend,
+          renderCategoryAnalysisTable
+        ];
       }
+      if (tabKey === 'outer') {
+        return [
+          renderMaterialCompareCards,
+          renderMaterialTrend,
+          renderOuterBreakdownTable,
+          renderOuterStructureTable
+        ];
+      }
+      if (tabKey === 'sp-tt') {
+        return [renderSpTtCompareCards, renderSpTtTrend, renderSpTtCompareTable];
+      }
+      if (tabKey === 'new-old') {
+        return [renderNewOldCategoryAnalysisTable];
+      }
+      if (tabKey === 'weekly') {
+        return [renderWeeklyMeetingTab];
+      }
+      return [];
+    }
+
+    function renderTabContent(tabKey) {
+      const renderTasks = getTabRenderTasks(tabKey);
+      const generation = dashboardRenderState.renderGeneration + 1;
+      dashboardRenderState.renderGeneration = generation;
+      dashboardRenderState.renderingTab = tabKey;
       dashboardRenderState.dirtyTabs[tabKey] = false;
+      markLazySectionsDirty(tabKey);
+
+      function runTask(index) {
+        if (generation !== dashboardRenderState.renderGeneration) return;
+        if (dashboardRenderState.activeTab !== tabKey) {
+          dashboardRenderState.dirtyTabs[tabKey] = true;
+          dashboardRenderState.renderingTab = null;
+          return;
+        }
+        const task = renderTasks[index];
+        if (!task) {
+          dashboardRenderState.renderingTab = null;
+          return;
+        }
+        task();
+        if (index + 1 < renderTasks.length) {
+          scheduleFrame(() => runTask(index + 1));
+        } else {
+          dashboardRenderState.renderingTab = null;
+        }
+      }
+
+      runTask(0);
     }
 
     function renderActiveTab(force = false) {
@@ -2684,6 +2803,8 @@
     }
 
     function getCategoryOptions() {
+      const cacheKey = `store-category::${getRangeCacheToken(getRange('qStart', 'qEnd'))}`;
+      if (dashboardDataCache.filterOptions.has(cacheKey)) return dashboardDataCache.filterOptions.get(cacheKey);
       const labels = [
         ...(storeTrendData.main || []).map(row => row.category),
         ...(storeTrendData.inner || []).map(row => row.category),
@@ -2699,10 +2820,12 @@
         ],
         row => row.category
       );
-      return sortLabelsByGmvDesc(labels, gmvMap);
+      return setCacheValue(dashboardDataCache.filterOptions, cacheKey, sortLabelsByGmvDesc(labels, gmvMap), 120);
     }
 
     function getProductOptions() {
+      const cacheKey = `store-product::${getRangeCacheToken(getRange('qStart', 'qEnd'))}::${getSelectedStores().join('|')}::${getSelectedCategories().join('|')}`;
+      if (dashboardDataCache.filterOptions.has(cacheKey)) return dashboardDataCache.filterOptions.get(cacheKey);
       const sourceRows = [
         ...(productTrendData.main || []),
         ...(productTrendData.inner || []),
@@ -2723,7 +2846,7 @@
         return storeMatched && matchesSelectedCategory(row);
       });
       const gmvMap = buildGmvMap(gmvRows, row => getRowProductLabel(row));
-      return sortLabelsByGmvDesc(labels, gmvMap);
+      return setCacheValue(dashboardDataCache.filterOptions, cacheKey, sortLabelsByGmvDesc(labels, gmvMap), 120);
     }
 
     function getWeeklyStoreOptions() {
@@ -2791,6 +2914,8 @@
     }
 
     function getOuterCategoryOptions() {
+      const cacheKey = `outer-category::${getRangeCacheToken(getRange('qStart', 'qEnd'))}`;
+      if (dashboardDataCache.filterOptions.has(cacheKey)) return dashboardDataCache.filterOptions.get(cacheKey);
       const labels = [
         ...(productTrendData.main || []).map(row => getRowProductCategory(row)),
         ...(productTrendData.outer || []).map(row => getRowProductCategory(row)),
@@ -2810,7 +2935,7 @@
         ...filterRows(storeTrendData.brand || [], getRange('qStart', 'qEnd'))
       ];
       const gmvMap = buildGmvMap(gmvRows, row => getRowProductCategory(row) || row.category || '');
-      return sortLabelsByGmvDesc(labels, gmvMap);
+      return setCacheValue(dashboardDataCache.filterOptions, cacheKey, sortLabelsByGmvDesc(labels, gmvMap), 120);
     }
 
     function getOuterSelectedCategories() {
@@ -2876,6 +3001,8 @@
     }
 
     function getOuterProductOptions() {
+      const cacheKey = `outer-product::${getRangeCacheToken(getRange('qStart', 'qEnd'))}::${getOuterSelectedCategories().join('|')}`;
+      if (dashboardDataCache.filterOptions.has(cacheKey)) return dashboardDataCache.filterOptions.get(cacheKey);
       const sourceRows = [
         ...(productTrendData.main || []),
         ...(productTrendData.outer || []),
@@ -2889,7 +3016,7 @@
         filterRows(sourceRows, getRange('qStart', 'qEnd')).filter(row => outerMatchesSelectedCategory(row)),
         row => getRowProductLabel(row)
       );
-      return sortLabelsByGmvDesc(labels, gmvMap);
+      return setCacheValue(dashboardDataCache.filterOptions, cacheKey, sortLabelsByGmvDesc(labels, gmvMap), 120);
     }
 
     function outerAdRowMatchesFilter(row, kind, ignoreKind = '') {
@@ -2914,13 +3041,15 @@
     function getOuterAdFilterOptions(kind) {
       const config = getOuterAdFilterConfig(kind);
       if (!config) return [];
+      const cacheKey = `outer-ad-${kind}::${getOuterSelectionCacheToken()}`;
+      if (dashboardDataCache.filterOptions.has(cacheKey)) return dashboardDataCache.filterOptions.get(cacheKey);
       const labels = [...new Set(getOuterAdFilterRows(kind)
         .map(config.rowValue)
         .filter(isRecognizedFilterValue))];
       const preferredOrder = kind === 'adForm'
         ? outerBreakdownFormOrder
         : ['图片广告', '视频广告', '合创有目录', '合创无目录', '混合目录', '合创广告', '官号广告'];
-      return labels.sort((left, right) => {
+      const sortedLabels = labels.sort((left, right) => {
         const leftIndex = preferredOrder.indexOf(left);
         const rightIndex = preferredOrder.indexOf(right);
         if (leftIndex !== -1 || rightIndex !== -1) {
@@ -2930,6 +3059,7 @@
         }
         return left.localeCompare(right, 'zh-CN');
       });
+      return setCacheValue(dashboardDataCache.filterOptions, cacheKey, sortedLabels, 120);
     }
 
     function getOuterDimensionSourceRows() {
@@ -4150,8 +4280,7 @@
       populateOuterDimensionFilters();
       if (shouldRender) {
         dashboardDataCache.outerDimensionSummary.clear();
-        invalidateTab('outer');
-        scheduleActiveTabRender();
+        scheduleTabRegionRender('outer', 'outer-dimension', renderOuterDimensionTable);
       }
     }
 
@@ -4476,12 +4605,14 @@
     }
 
     function normalizeOuterSelectedProducts() {
+      if (!outerFilterState.products.length) return;
       const allowed = new Set(getOuterProductOptions());
       outerFilterState.products = outerFilterState.products.filter(product => allowed.has(product));
     }
 
     function normalizeSelectedOuterAdFilters() {
       outerAdFilterConfigs.forEach(config => {
+        if (!outerFilterState[config.stateKey].length) return;
         const allowed = new Set(getOuterAdFilterOptions(config.key));
         outerFilterState[config.stateKey] = outerFilterState[config.stateKey].filter(value => allowed.has(value));
       });
@@ -4512,8 +4643,9 @@
       normalizeOuterSelectedProducts();
       normalizeSelectedOuterAdFilters();
       populateOuterCategoryFilter();
-      populateOuterProductFilter();
-      populateOuterAdFilters();
+      syncOuterFilterTriggerInput('product');
+      outerAdFilterConfigs.forEach(config => syncOuterAdFilterTriggerInput(config.key));
+      renderOuterFilterSummary();
       if (shouldRender) {
         invalidateOuterSummaryCaches();
         invalidateTab('outer');
@@ -4533,7 +4665,8 @@
       outerFilterState.products = nextProducts;
       normalizeSelectedOuterAdFilters();
       populateOuterProductFilter();
-      populateOuterAdFilters();
+      outerAdFilterConfigs.forEach(config => syncOuterAdFilterTriggerInput(config.key));
+      renderOuterFilterSummary();
       if (shouldRender) {
         invalidateOuterSummaryCaches();
         invalidateTab('outer');
@@ -4554,7 +4687,9 @@
           })();
       outerFilterState[config.stateKey] = nextValues;
       normalizeSelectedOuterAdFilters();
-      populateOuterAdFilters();
+      populateOuterAdFilter(kind);
+      outerAdFilterConfigs.forEach(filterConfig => syncOuterAdFilterTriggerInput(filterConfig.key));
+      renderOuterFilterSummary();
       if (shouldRender) {
         invalidateOuterSummaryCaches();
         invalidateTab('outer');
@@ -4576,8 +4711,7 @@
       populateOuterDimensionFilters();
       if (shouldRender) {
         dashboardDataCache.outerDimensionSummary.clear();
-        invalidateTab('outer');
-        scheduleActiveTabRender();
+        scheduleTabRegionRender('outer', 'outer-dimension', renderOuterDimensionTable);
       }
     }
 
@@ -4601,8 +4735,7 @@
       populateOuterDimensionFilters();
       if (shouldRender) {
         dashboardDataCache.outerDimensionSummary.clear();
-        invalidateTab('outer');
-        scheduleActiveTabRender();
+        scheduleTabRegionRender('outer', 'outer-dimension', renderOuterDimensionTable);
       }
     }
 
@@ -4735,8 +4868,7 @@
       normalizeSelectedOuterDimensionFilters();
       populateOuterDimensionFilters();
       dashboardDataCache.outerDimensionSummary.clear();
-      invalidateTab('outer');
-      scheduleActiveTabRender();
+      scheduleTabRegionRender('outer', 'outer-dimension', renderOuterDimensionTable);
     }
 
     function applySpTtFilterBulk(kind, action) {
@@ -4830,54 +4962,53 @@
         const trigger = node.querySelector('.filter-trigger');
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
       });
-      if (hasStoreState || openNodes.some(node => ['storeFilterWrap', 'categoryFilterWrap', 'productFilterWrap', 'weeklyStoreFilterWrap', 'weeklyProductFilterWrap'].includes(node.id))) {
+      if (hasStoreState || openNodes.some(node => ['storeFilterWrap', 'categoryFilterWrap', 'productFilterWrap'].includes(node.id))) {
         filterState.storeSearch = '';
         filterState.categorySearch = '';
         filterState.productSearch = '';
-        populateStoreFilter();
-        populateCategoryFilter();
-        populateProductFilter();
+        ['store', 'category', 'product'].forEach(syncFilterTriggerInput);
+        renderStoreFilterSummary();
       }
       if (hasWeeklyState || openNodes.some(node => ['weeklyStoreFilterWrap', 'weeklyProductFilterWrap'].includes(node.id))) {
         weeklyFilterState.storeSearch = '';
         weeklyFilterState.productSearch = '';
-        populateWeeklyStoreFilter();
-        populateWeeklyProductFilter();
+        ['store', 'product'].forEach(syncWeeklyFilterTriggerInput);
+        renderWeeklyFilterSummary();
       }
       if (hasOuterState || openNodes.some(node => ['outerCategoryFilterWrap', 'outerProductFilterWrap', 'outerAdFormFilterWrap', 'outerAdTypeFilterWrap'].includes(node.id))) {
         outerFilterState.categorySearch = '';
         outerFilterState.productSearch = '';
         outerFilterState.adFormSearch = '';
         outerFilterState.adTypeSearch = '';
-        populateOuterCategoryFilter();
-        populateOuterProductFilter();
-        populateOuterAdFilters();
+        ['category', 'product'].forEach(syncOuterFilterTriggerInput);
+        outerAdFilterConfigs.forEach(config => syncOuterAdFilterTriggerInput(config.key));
+        renderOuterFilterSummary();
       }
       if (hasOuterDimensionState || openNodes.some(node => node.id && node.id.startsWith('outerDimension'))) {
         outerDimensionFilterConfigs.forEach(config => {
           outerDimensionFilterState[config.searchKey] = '';
+          syncOuterDimensionFilterTriggerInput(config.key);
         });
-        populateOuterDimensionFilters();
+        renderOuterDimensionFilterSummary();
       }
       if (hasSpTtState || openNodes.some(node => node.id === 'spTtCategoryFilterWrap' || node.id === 'spTtProductFilterWrap')) {
         spTtFilterState.categorySearch = '';
         spTtFilterState.productSearch = '';
-        populateSpTtCategoryFilter();
-        populateSpTtProductFilter();
+        ['category', 'product'].forEach(syncSpTtFilterTriggerInput);
+        renderSpTtFilterSummary();
       }
       if (hasNewOldState || openNodes.some(node => node.id === 'newOldCategoryFilterWrap' || node.id === 'newOldProductFilterWrap')) {
         newOldFilterState.categorySearch = '';
         newOldFilterState.productSearch = '';
-        populateNewOldCategoryFilter();
-        populateNewOldProductFilter();
+        ['category', 'product'].forEach(syncNewOldFilterTriggerInput);
+        renderNewOldFilterSummary();
       }
       if (hasStoreShareState || openNodes.some(node => ['storeShareStoreFilterWrap', 'storeShareCategoryFilterWrap', 'storeShareProductFilterWrap'].includes(node.id))) {
         storeShareFilterState.storeSearch = '';
         storeShareFilterState.categorySearch = '';
         storeShareFilterState.productSearch = '';
-        populateStoreShareStoreFilter();
-        populateStoreShareCategoryFilter();
-        populateStoreShareProductFilter();
+        ['store', 'category', 'product'].forEach(syncStoreShareFilterTriggerInput);
+        renderStoreShareFilterSummary();
       }
       if (hasMaterialState || openNodes.some(node => node.id && node.id.startsWith('material'))) {
         normalizeMaterialFilterSearches();
@@ -4890,6 +5021,24 @@
       const willOpen = !wrapper.classList.contains('open');
       closeFilterDropdowns();
       if (willOpen) {
+        if (wrapperId === 'storeFilterWrap') populateStoreFilter();
+        if (wrapperId === 'categoryFilterWrap') populateCategoryFilter();
+        if (wrapperId === 'productFilterWrap') populateProductFilter();
+        if (wrapperId === 'outerCategoryFilterWrap') populateOuterCategoryFilter();
+        if (wrapperId === 'outerProductFilterWrap') populateOuterProductFilter();
+        const outerAdConfig = outerAdFilterConfigs.find(config => config.wrapperId === wrapperId);
+        if (outerAdConfig) populateOuterAdFilter(outerAdConfig.key);
+        const outerDimensionConfig = outerDimensionFilterConfigs.find(config => config.wrapperId === wrapperId);
+        if (outerDimensionConfig) populateOuterDimensionFilter(outerDimensionConfig.key);
+        if (wrapperId === 'spTtCategoryFilterWrap') populateSpTtCategoryFilter();
+        if (wrapperId === 'spTtProductFilterWrap') populateSpTtProductFilter();
+        if (wrapperId === 'newOldCategoryFilterWrap') populateNewOldCategoryFilter();
+        if (wrapperId === 'newOldProductFilterWrap') populateNewOldProductFilter();
+        if (wrapperId === 'weeklyStoreFilterWrap') populateWeeklyStoreFilter();
+        if (wrapperId === 'weeklyProductFilterWrap') populateWeeklyProductFilter();
+        if (wrapperId === 'storeShareStoreFilterWrap') populateStoreShareStoreFilter();
+        if (wrapperId === 'storeShareCategoryFilterWrap') populateStoreShareCategoryFilter();
+        if (wrapperId === 'storeShareProductFilterWrap') populateStoreShareProductFilter();
         wrapper.classList.add('open');
         const trigger = wrapper.querySelector('.filter-trigger');
         if (trigger) trigger.setAttribute('aria-expanded', 'true');
@@ -6591,12 +6740,34 @@
       const finalLegendLayout = renderLegend();
       materialTrendState.legendItems = finalLegendLayout.items;
 
+      if (materialTrendState.hoverIndex === null) {
+        materialTrendState.baseCanvasSnapshot = cloneCanvasSnapshot(ctx.canvas);
+      }
+
       if (Object.keys(materialTrendState.revealAnimations).length) scheduleMaterialTrendAnimationFrame();
     }
 
     function renderMaterialTrendSection() {
       renderMaterialCompareCards();
       renderMaterialTrend();
+    }
+
+    function redrawMaterialTrendHoverGuide() {
+      const geometry = materialTrendState.geometry;
+      const rows = materialTrendState.activeRows;
+      const snapshot = materialTrendState.baseCanvasSnapshot;
+      const hoverIndex = materialTrendState.hoverIndex;
+      if (!geometry || !rows.length) return;
+      const { ctx, width, height } = prepareMaterialTrendCanvas();
+      const restored = restoreCanvasSnapshot(ctx, snapshot, width, height);
+      if (!restored || hoverIndex === null || !rows[hoverIndex]) return;
+      const hoverX = geometry.getX(hoverIndex);
+      ctx.strokeStyle = 'rgba(23, 107, 135, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hoverX, geometry.padding.top);
+      ctx.lineTo(hoverX, geometry.padding.top + geometry.plotH);
+      ctx.stroke();
     }
 
     function updateMaterialTrendTooltip(clientX, clientY) {
@@ -6615,32 +6786,37 @@
       const plotBottom = geometry.padding.top + geometry.plotH;
 
       if (x < plotLeft || x > plotRight || y < plotTop || y > plotBottom) {
-        materialTrendState.hoverIndex = null;
-        tooltip.style.display = 'none';
-        renderMaterialTrend();
+        if (materialTrendState.hoverIndex !== null) {
+          materialTrendState.hoverIndex = null;
+          tooltip.style.display = 'none';
+          redrawMaterialTrendHoverGuide();
+        }
         return;
       }
 
       const index = Math.max(0, Math.min(rows.length - 1, Math.round((x - plotLeft) / Math.max(1, geometry.step))));
+      const hoverChanged = materialTrendState.hoverIndex !== index;
       materialTrendState.hoverIndex = index;
-      renderMaterialTrend();
 
       const row = rows[index];
       const selectedMetrics = materialTrendMetricDefinitions.filter(metric => materialTrendState.selectedMetricKeys.includes(metric.key));
-      tooltip.innerHTML = `
-        <strong>本期 ${row.currentDate || '-'}</strong>
-        <span>环比 ${row.compareDate || '-'}</span>
-        ${selectedMetrics.map(metric => {
-          const currentValue = row.currentValues[metric.key];
-          const compareValue = row.compareValues[metric.key];
-          const currentText = currentValue === null || currentValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: currentValue });
-          const compareText = compareValue === null || compareValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: compareValue });
-          const parts = [];
-          if (isMaterialTrendSeriesVisible(metric.key, 'currentValues')) parts.push(`<span style="color:${metric.currentColor}">${metric.label} 本期: ${currentText}</span>`);
-          if (isMaterialTrendSeriesVisible(metric.key, 'compareValues')) parts.push(`<span style="color:${metric.compareColor}">${metric.label} 环比: ${compareText}</span>`);
-          return parts.join('');
-        }).join('')}
-      `;
+      if (hoverChanged) {
+        redrawMaterialTrendHoverGuide();
+        tooltip.innerHTML = `
+          <strong>本期 ${row.currentDate || '-'}</strong>
+          <span>环比 ${row.compareDate || '-'}</span>
+          ${selectedMetrics.map(metric => {
+            const currentValue = row.currentValues[metric.key];
+            const compareValue = row.compareValues[metric.key];
+            const currentText = currentValue === null || currentValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: currentValue });
+            const compareText = compareValue === null || compareValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: compareValue });
+            const parts = [];
+            if (isMaterialTrendSeriesVisible(metric.key, 'currentValues')) parts.push(`<span style="color:${metric.currentColor}">${metric.label} 本期: ${currentText}</span>`);
+            if (isMaterialTrendSeriesVisible(metric.key, 'compareValues')) parts.push(`<span style="color:${metric.compareColor}">${metric.label} 环比: ${compareText}</span>`);
+            return parts.join('');
+          }).join('')}
+        `;
+      }
 
       const wrapRect = canvas.parentElement.getBoundingClientRect();
       tooltip.style.display = 'block';
@@ -6651,10 +6827,11 @@
     }
 
     function hideMaterialTrendTooltip() {
+      if (materialTrendState.hoverIndex === null) return;
       materialTrendState.hoverIndex = null;
       materialTrendState.lastPointer = null;
       document.getElementById('materialTrendTooltip').style.display = 'none';
-      renderMaterialTrend();
+      redrawMaterialTrendHoverGuide();
     }
 
     function handleMaterialTrendCanvasClick(clientX, clientY) {
@@ -6990,7 +7167,7 @@
         button.setAttribute('aria-selected', isActive ? 'true' : 'false');
         button.onclick = () => {
           outerDimensionAnalysisState.activeTab = button.dataset.outerDimensionTab || 'categoryGroup';
-          renderOuterDimensionTable();
+          scheduleTabRegionRender('outer', 'outer-dimension', renderOuterDimensionTable);
         };
       });
     }
@@ -9387,20 +9564,22 @@
       spTtTrendState.hoverIndex = index;
       const row = rows[index];
       const selectedMetrics = spTtTrendMetricDefinitions.filter(metric => spTtTrendState.selectedMetricKeys.includes(metric.key));
-      tooltip.innerHTML = `
-        <strong>本期 ${row.currentDate || '-'}</strong>
-        <span>环比 ${row.compareDate || '-'}</span>
-        ${selectedMetrics.map(metric => {
-          const currentValue = row.currentValues[metric.key];
-          const compareValue = row.compareValues[metric.key];
-          const currentText = currentValue === null || currentValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: currentValue });
-          const compareText = compareValue === null || compareValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: compareValue });
-          const parts = [];
-          if (isSpTtSeriesVisible(metric.key, 'currentValues')) parts.push(`<span style="color:${metric.currentColor}">${metric.label} 本期: ${currentText}</span>`);
-          if (isSpTtSeriesVisible(metric.key, 'compareValues')) parts.push(`<span style="color:${metric.compareColor}">${metric.label} 环比: ${compareText}</span>`);
-          return parts.join('');
-        }).join('')}
-      `;
+      if (hoverChanged) {
+        tooltip.innerHTML = `
+          <strong>本期 ${row.currentDate || '-'}</strong>
+          <span>环比 ${row.compareDate || '-'}</span>
+          ${selectedMetrics.map(metric => {
+            const currentValue = row.currentValues[metric.key];
+            const compareValue = row.compareValues[metric.key];
+            const currentText = currentValue === null || currentValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: currentValue });
+            const compareText = compareValue === null || compareValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: compareValue });
+            const parts = [];
+            if (isSpTtSeriesVisible(metric.key, 'currentValues')) parts.push(`<span style="color:${metric.currentColor}">${metric.label} 本期: ${currentText}</span>`);
+            if (isSpTtSeriesVisible(metric.key, 'compareValues')) parts.push(`<span style="color:${metric.compareColor}">${metric.label} 环比: ${compareText}</span>`);
+            return parts.join('');
+          }).join('')}
+        `;
+      }
 
       const wrapRect = canvas.parentElement.getBoundingClientRect();
       tooltip.style.display = 'block';
@@ -11982,20 +12161,22 @@
 
       const row = rows[index];
       const selectedMetrics = metricDefinitions.filter(metric => storeTrendState.selectedMetricKeys.includes(metric.key));
-      tooltip.innerHTML = `
-        <strong>本期 ${row.currentDate || '-'}</strong>
-        <span>环比 ${row.compareDate || '-'}</span>
-        ${selectedMetrics.map(metric => {
-          const currentValue = row.currentValues[metric.key];
-          const compareValue = row.compareValues[metric.key];
-          const currentText = currentValue === null || currentValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: currentValue });
-          const compareText = compareValue === null || compareValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: compareValue });
-          const parts = [];
-          if (isSeriesVisible(metric.key, 'currentValues')) parts.push(`<span style="color:${metric.currentColor}">${metric.label} 本期: ${currentText}</span>`);
-          if (isSeriesVisible(metric.key, 'compareValues')) parts.push(`<span style="color:${metric.compareColor}">${metric.label} 环比: ${compareText}</span>`);
-          return parts.join('');
-        }).join('')}
-      `;
+      if (hoverChanged) {
+        tooltip.innerHTML = `
+          <strong>本期 ${row.currentDate || '-'}</strong>
+          <span>环比 ${row.compareDate || '-'}</span>
+          ${selectedMetrics.map(metric => {
+            const currentValue = row.currentValues[metric.key];
+            const compareValue = row.compareValues[metric.key];
+            const currentText = currentValue === null || currentValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: currentValue });
+            const compareText = compareValue === null || compareValue === undefined ? '无数据' : formatMetricValue({ ...metric, value: compareValue });
+            const parts = [];
+            if (isSeriesVisible(metric.key, 'currentValues')) parts.push(`<span style="color:${metric.currentColor}">${metric.label} 本期: ${currentText}</span>`);
+            if (isSeriesVisible(metric.key, 'compareValues')) parts.push(`<span style="color:${metric.compareColor}">${metric.label} 环比: ${compareText}</span>`);
+            return parts.join('');
+          }).join('')}
+        `;
+      }
 
       const wrapRect = canvas.parentElement.getBoundingClientRect();
       tooltip.style.display = 'block';
@@ -12153,6 +12334,9 @@
       if (dashboardRenderState.activeTab === tabKey && !dashboardRenderState.dirtyTabs[tabKey]) {
         return;
       }
+      if (dashboardRenderState.renderingTab && dashboardRenderState.renderingTab !== tabKey) {
+        dashboardRenderState.dirtyTabs[dashboardRenderState.renderingTab] = true;
+      }
       dashboardRenderState.activeTab = tabKey;
       ensureTabInitialized(tabKey);
       const filterRow = document.getElementById('storeFilterPanelRow');
@@ -12173,7 +12357,6 @@
       if (spTtFilterRow) {
         spTtFilterRow.classList.toggle('is-hidden', tabKey !== 'sp-tt');
       }
-      invalidateTab(tabKey);
       scheduleActiveTabRender();
     }
 
@@ -12201,12 +12384,11 @@
       document.querySelectorAll('[data-store-share-tab]').forEach(button => {
         button.addEventListener('click', () => {
           switchStoreShareTab(button.dataset.storeShareTab || 'category');
-          invalidateTab('store');
-          scheduleActiveTabRender();
         });
       });
       invalidateAllTabs();
-      renderActiveTab(true);
+      scheduleActiveTabRender(true);
+      window.setTimeout(initializeLazySectionRendering, 600);
       renderProducts();
       renderAudit();
 
