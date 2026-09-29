@@ -1665,6 +1665,15 @@
       <div class="material-filter-summary-row">
         <div class="material-filter-summary" id="outerFilterSummary">已筛选项：当前无筛选</div>
       </div>
+      <section id="outerTrendSection">
+        <h2>站外趋势</h2>
+        <p class="small">按天展示当前站外筛选条件下的投放波动，卡片可多选，并同步展示本期与环比趋势。</p>
+        <div id="materialCompareCards"></div>
+        <div class="trend-canvas-wrap">
+          <canvas id="materialTrendChart" width="1280" height="420"></canvas>
+          <div id="materialTrendTooltip" class="trend-tooltip"></div>
+        </div>
+      </section>
       <section id="outerBreakdownSection">
         <div id="outerBreakdownTable"></div>
       </section>
@@ -2111,13 +2120,14 @@
       { key: 'ratio', label: '倍差', type: 'multiple', axisGroup: 'ratio', chartType: 'line', currentColor: '#d95f43', compareColor: '#f0b3a5' }
     ];
     const materialTrendMetricDefinitions = [
-      { key: 'spend', label: '花费', type: 'money2', axisGroup: 'left', chartType: 'line', currentColor: '#1e6f8c', compareColor: '#8fc4d2' },
-      { key: 'gmv', label: 'GMV', type: 'money2', axisGroup: 'left', chartType: 'line', currentColor: '#2f6fdd', compareColor: '#a8c4f4' },
-      { key: 'clicks', label: '点击', type: 'count', axisGroup: 'left', chartType: 'line', currentColor: '#3f8f56', compareColor: '#a9d6b4' },
+      { key: 'spend', label: '站外花费', type: 'money', axisGroup: 'left', chartType: 'line', currentColor: '#1e6f8c', compareColor: '#8fc4d2' },
+      { key: 'gmv', label: '站外GMV', type: 'money', axisGroup: 'left', chartType: 'line', currentColor: '#2f6fdd', compareColor: '#a8c4f4' },
+      { key: 'orders', label: '订单', type: 'count', axisGroup: 'orders', chartType: 'line', currentColor: '#3f8f56', compareColor: '#a9d6b4' },
       { key: 'roi', label: 'ROI', type: 'roi', axisGroup: 'right', chartType: 'line', currentColor: '#d95f43', compareColor: '#f0b3a5' },
+      { key: 'impressions', label: '曝光', type: 'count', axisGroup: 'impressions', chartType: 'line', currentColor: '#64748b', compareColor: '#cbd5e1' },
       { key: 'cpm', label: 'CPM', type: 'money2', axisGroup: 'right', chartType: 'line', currentColor: '#b9770e', compareColor: '#e7c27d' },
-      { key: 'cvr', label: 'CVR', type: 'percent', axisGroup: 'right', chartType: 'line', currentColor: '#8e44ad', compareColor: '#cfb0e0' },
-      { key: 'ctr', label: 'CTR', type: 'percent', axisGroup: 'right', chartType: 'line', currentColor: '#c2410c', compareColor: '#fdba74' }
+      { key: 'ctr', label: '点击率', type: 'percent', axisGroup: 'right', chartType: 'line', currentColor: '#c2410c', compareColor: '#fdba74' },
+      { key: 'cvr', label: '转化率', type: 'percent', axisGroup: 'right', chartType: 'line', currentColor: '#8e44ad', compareColor: '#cfb0e0' }
     ];
     const newOldMetricDefinitions = [
       { key: 'gmv', label: '店铺GMV', type: 'money' },
@@ -2173,7 +2183,9 @@
       legendItems: [],
       revealAnimations: {},
       animationFrameId: null,
-      baseCanvasSnapshot: null
+      baseCanvasSnapshot: null,
+      hoverRafId: null,
+      lastPointer: null
     };
     const storeReceiptTargetByMonth = {
       '2026-08': 12500000
@@ -2286,6 +2298,7 @@
       newOldProductSummary: new Map(),
       outerStructureSummary: new Map(),
       outerProductStructureSummary: new Map(),
+      outerTrendMetricMaps: new Map(),
       outerDimensionSummary: new Map(),
       spTtMetrics: new Map(),
       spTtMetricMaps: new Map(),
@@ -2471,6 +2484,7 @@
       if (tabKey === 'store') {
         renderStoreTrendSection();
       } else if (tabKey === 'outer') {
+        renderMaterialTrendSection();
         renderOuterBreakdownTable();
         renderOuterStructureTable();
         renderOuterProductStructureTable();
@@ -5889,10 +5903,10 @@
     }
 
     function computeMaterialTrendMetrics(range) {
-      const rows = getMaterialMonitorRows(range);
+      const rows = Object.values(buildMaterialTrendMetricMap(range));
       const totals = rows.reduce((acc, row) => {
-        acc.spend += (Number(row.spend_usd) || 0) * 6.9;
-        acc.gmv += (Number(row.conversion_value) || 0) * 6.9;
+        acc.spend += Number(row.spend) || 0;
+        acc.gmv += Number(row.gmv) || 0;
         acc.orders += Number(row.orders) || 0;
         acc.clicks += Number(row.clicks) || 0;
         acc.impressions += Number(row.impressions) || 0;
@@ -5907,7 +5921,8 @@
       return {
         spend: totals.spend,
         gmv: totals.gmv,
-        clicks: totals.clicks,
+        orders: totals.orders,
+        impressions: totals.impressions,
         roi: totals.spend ? totals.gmv / totals.spend : 0,
         cpm: totals.impressions ? (totals.spend / totals.impressions) * 1000 : 0,
         cvr: totals.clicks ? totals.orders / totals.clicks : 0,
@@ -5940,14 +5955,20 @@
     }
 
     function buildMaterialTrendMetricMap(range) {
-      return aggregateMaterialRowsByDate(getMaterialMonitorRows(range));
+      const cacheKey = `${getRangeCacheToken(range)}::${getOuterSelectionCacheToken()}`;
+      if (dashboardDataCache.outerTrendMetricMaps.has(cacheKey)) {
+        return dashboardDataCache.outerTrendMetricMaps.get(cacheKey);
+      }
+      const metricMap = aggregateMaterialRowsByDate(getOuterBreakdownRows(range));
+      return setCacheValue(dashboardDataCache.outerTrendMetricMaps, cacheKey, metricMap);
     }
 
     function getMaterialTrendMetricSeriesValue(metricKey, row) {
       if (!row) return null;
       if (metricKey === 'spend') return row.spend;
       if (metricKey === 'gmv') return row.gmv;
-      if (metricKey === 'clicks') return row.clicks;
+      if (metricKey === 'orders') return row.orders;
+      if (metricKey === 'impressions') return row.impressions;
       if (metricKey === 'roi') return row.spend ? row.gmv / row.spend : 0;
       if (metricKey === 'cpm') return row.impressions ? (row.spend / row.impressions) * 1000 : 0;
       if (metricKey === 'cvr') return row.clicks ? row.orders / row.clicks : 0;
@@ -6196,11 +6217,21 @@
       const step = plotW / Math.max(1, trendRows.length - 1);
       const leftMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'left').map(metric => metric.key);
       const rightMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'right').map(metric => metric.key);
+      const orderMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'orders').map(metric => metric.key);
+      const impressionMetricKeys = selectedMetrics.filter(metric => metric.axisGroup === 'impressions').map(metric => metric.key);
       const leftRange = getAxisRange(trendRows, leftMetricKeys, { zeroBased: true });
       const rightRange = getAxisRange(trendRows, rightMetricKeys, { zeroBased: false, minPaddingRatio: 0.18 });
+      const orderRange = getAxisRange(trendRows, orderMetricKeys, { zeroBased: false, minPaddingRatio: 0.18 });
+      const impressionRange = getAxisRange(trendRows, impressionMetricKeys, { zeroBased: false, minPaddingRatio: 0.18 });
+      const axisRanges = {
+        left: leftRange,
+        right: rightRange,
+        orders: orderRange,
+        impressions: impressionRange
+      };
       const getX = index => padding.left + step * index;
       const getY = (value, axisGroup) => {
-        const range = axisGroup === 'right' ? rightRange : leftRange;
+        const range = axisRanges[axisGroup] || leftRange;
         const safeValue = value || 0;
         const denominator = Math.max(0.000001, range.max - range.min);
         return padding.top + plotH - ((safeValue - range.min) / denominator) * plotH;
@@ -6383,6 +6414,7 @@
 
     function hideMaterialTrendTooltip() {
       materialTrendState.hoverIndex = null;
+      materialTrendState.lastPointer = null;
       document.getElementById('materialTrendTooltip').style.display = 'none';
       renderMaterialTrend();
     }
@@ -11620,6 +11652,8 @@
     function handleGlobalDateChange() {
       storeTrendState.hoverIndex = null;
       spTtTrendState.hoverIndex = null;
+      materialTrendState.hoverIndex = null;
+      materialTrendState.lastPointer = null;
       clearDashboardDataCaches();
       invalidateStoreTrendCache();
       invalidateSpTtTrendCache();
@@ -11657,6 +11691,16 @@
         spTtTrendState.hoverRafId = null;
         if (!spTtTrendState.lastPointer) return;
         updateSpTtTrendTooltip(spTtTrendState.lastPointer.clientX, spTtTrendState.lastPointer.clientY);
+      });
+    }
+
+    function queueMaterialTrendHover(clientX, clientY) {
+      materialTrendState.lastPointer = { clientX, clientY };
+      if (materialTrendState.hoverRafId !== null) return;
+      materialTrendState.hoverRafId = scheduleFrame(() => {
+        materialTrendState.hoverRafId = null;
+        if (!materialTrendState.lastPointer) return;
+        updateMaterialTrendTooltip(materialTrendState.lastPointer.clientX, materialTrendState.lastPointer.clientY);
       });
     }
 
@@ -11930,6 +11974,10 @@
       spTtTrendCanvas.addEventListener('mousemove', event => queueSpTtTrendHover(event.clientX, event.clientY), { passive: true });
       spTtTrendCanvas.addEventListener('mouseleave', hideSpTtTrendTooltip, { passive: true });
       spTtTrendCanvas.addEventListener('click', event => handleSpTtTrendCanvasClick(event.clientX, event.clientY), { passive: true });
+      const materialTrendCanvas = document.getElementById('materialTrendChart');
+      materialTrendCanvas.addEventListener('mousemove', event => queueMaterialTrendHover(event.clientX, event.clientY), { passive: true });
+      materialTrendCanvas.addEventListener('mouseleave', hideMaterialTrendTooltip, { passive: true });
+      materialTrendCanvas.addEventListener('click', event => handleMaterialTrendCanvasClick(event.clientX, event.clientY), { passive: true });
     }
 
     bootstrapDashboard();
