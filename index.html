@@ -11450,7 +11450,7 @@
       const weeklyBreakdownTemplate = [
         {
           form: '收割广告',
-          rows: ['图片广告', '视频广告', '合创广告'],
+          rows: ['图片广告', '视频广告', '合创有目录', '合创无目录'],
           subtotalLabel: '收割广告小计'
         },
         {
@@ -11478,7 +11478,7 @@
           )
           .forEach(row => {
             const form = row.ad_form2 || '未分类';
-            const adType = row.ad_type || '未分类';
+            const adType = getOuterBreakdownAdType(row);
             const spend = (Number(row.spend_usd) || 0) * 6.9;
             const gmv = (Number(row.conversion_value) || 0) * 6.9;
             const orders = Number(row.orders) || 0;
