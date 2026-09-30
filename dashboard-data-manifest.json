@@ -2,59 +2,59 @@
   "store_main": {
     "count": 39280,
     "min": "2026-06-01",
-    "max": "2026-09-28"
+    "max": "2026-09-29"
   },
   "store_inner": {
     "count": 14749,
     "min": "2026-06-01",
-    "max": "2026-09-28"
+    "max": "2026-09-29"
   },
   "store_subsidy": {
-    "count": 4134,
-    "min": "2026-01-01",
-    "max": "2026-09-28"
-  },
-  "store_outer": {
-    "count": 124884,
+    "count": 4149,
     "min": "2026-01-01",
     "max": "2026-09-29"
+  },
+  "store_outer": {
+    "count": 125186,
+    "min": "2026-01-01",
+    "max": "2026-09-30"
   },
   "store_outer_parts": [
     "store-trend-data-outer.part1.js",
     "store-trend-data-outer.part2.js"
   ],
   "store_brand": {
-    "count": 32856,
+    "count": 32991,
     "min": "2026-01-01",
-    "max": "2026-09-29"
+    "max": "2026-09-30"
   },
   "product_main": {
-    "count": 32844,
+    "count": 33122,
     "min": "2026-06-01",
-    "max": "2026-09-28"
+    "max": "2026-09-29"
   },
   "product_inner": {
-    "count": 12326,
+    "count": 12416,
     "min": "2026-06-01",
-    "max": "2026-09-28"
+    "max": "2026-09-29"
   },
   "product_outer": {
-    "count": 124884,
+    "count": 125186,
     "min": "2026-01-01",
-    "max": "2026-09-29"
+    "max": "2026-09-30"
   },
   "product_outer_parts": [
     "product-trend-data-outer.part1.js",
     "product-trend-data-outer.part2.js"
   ],
   "product_brand": {
-    "count": 32856,
+    "count": 32991,
     "min": "2026-01-01",
-    "max": "2026-09-29"
+    "max": "2026-09-30"
   },
   "sp_tt": {
-    "count": 9910,
+    "count": 9991,
     "min": "2026-06-01",
-    "max": "2026-09-28"
+    "max": "2026-09-29"
   }
 }
