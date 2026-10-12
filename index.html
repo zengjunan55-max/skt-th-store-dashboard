@@ -1997,6 +1997,7 @@
   <script src="./sp-tt-sales-data.js"></script>
   <script>
     const data = JSON.parse(document.getElementById('embeddedData').textContent);
+    const USD_TO_RMB_RATE = 6.8;
     const storeTrendData = window.storeTrendData || { stores: [], main: [], inner: [], subsidy: [], outer: [], brand: [] };
     const productTrendData = window.productTrendData || { main: [], inner: [], outer: [], brand: [] };
     const spTtSalesData = window.spTtSalesData || { rows: [] };
@@ -2128,8 +2129,8 @@
       const buyers = sumBy(mainRows, 'buyers');
       const units = sumBy(mainRows, 'units');
       const innerSpend = sumBy(innerRows, 'spend_rmb');
-      const outerSpend = sumBy(outerRows, 'spend_usd') * 6.9;
-      const brandSpend = sumBy(brandRows, 'spend_usd') * 6.9;
+      const outerSpend = sumBy(outerRows, 'spend_usd') * USD_TO_RMB_RATE;
+      const brandSpend = sumBy(brandRows, 'spend_usd') * USD_TO_RMB_RATE;
 
       const metrics = {
         gmv: salesThb / 4.8,
@@ -5917,8 +5918,8 @@
       if (metricKey === 'conversion') return row.visitors ? row.buyers / row.visitors : 0;
       if (metricKey === 'orders') return row.units;
       if (metricKey === 'innerSpend') return row.spend_rmb;
-      if (metricKey === 'outerSpend') return row.spend_usd * 6.9;
-      if (metricKey === 'brandSpend') return row.spend_usd * 6.9;
+      if (metricKey === 'outerSpend') return row.spend_usd * USD_TO_RMB_RATE;
+      if (metricKey === 'brandSpend') return row.spend_usd * USD_TO_RMB_RATE;
       return null;
     }
 
@@ -6108,7 +6109,7 @@
     function buildMaterialMonitorSummary(range, dimensionKey) {
       const rows = getMaterialMonitorRows(range);
       const summaryMap = new Map();
-      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
+      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * USD_TO_RMB_RATE), 0);
       const getDimensionValue = row => {
         if (dimensionKey === 'product') return getRowProductLabel(row);
         if (dimensionKey === 'category') return row?.category || '';
@@ -6132,8 +6133,8 @@
         }
         const entry = summaryMap.get(dimensionValue);
         if (isRecognizedFilterValue(row?.material_code)) entry.materialCodes.add(row.material_code);
-        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
-        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
+        entry.spend += (Number(row.spend_usd) || 0) * USD_TO_RMB_RATE;
+        entry.gmv += (Number(row.conversion_value) || 0) * USD_TO_RMB_RATE;
         entry.orders += Number(row.orders) || 0;
         entry.clicks += Number(row.clicks) || 0;
         entry.impressions += Number(row.impressions) || 0;
@@ -6161,7 +6162,7 @@
     function buildMaterialAdTypeSummary(range) {
       const rows = getMaterialMonitorRows(range);
       const adTypeMap = new Map();
-      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
+      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * USD_TO_RMB_RATE), 0);
 
       const ensureAdType = adType => {
         if (!adTypeMap.has(adType)) {
@@ -6183,8 +6184,8 @@
         if (!materialAdTypeDisplayOrder.includes(adType)) return;
         const entry = ensureAdType(adType);
         if (isRecognizedFilterValue(row?.material_code)) entry.materialCodes.add(row.material_code);
-        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
-        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
+        entry.spend += (Number(row.spend_usd) || 0) * USD_TO_RMB_RATE;
+        entry.gmv += (Number(row.conversion_value) || 0) * USD_TO_RMB_RATE;
         entry.orders += Number(row.orders) || 0;
         entry.clicks += Number(row.clicks) || 0;
         entry.impressions += Number(row.impressions) || 0;
@@ -6332,8 +6333,8 @@
           };
         }
         const entry = map[row.date];
-        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
-        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
+        entry.spend += (Number(row.spend_usd) || 0) * USD_TO_RMB_RATE;
+        entry.gmv += (Number(row.conversion_value) || 0) * USD_TO_RMB_RATE;
         entry.orders += Number(row.orders) || 0;
         entry.clicks += Number(row.clicks) || 0;
         entry.impressions += Number(row.impressions) || 0;
@@ -6916,7 +6917,7 @@
 
     function buildOuterBreakdownSummary(range) {
       const rows = getOuterBreakdownRows(range);
-      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
+      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * USD_TO_RMB_RATE), 0);
       const formMap = new Map();
 
       const ensureForm = form => {
@@ -6939,8 +6940,8 @@
           });
         }
         const entry = typeMap.get(adType);
-        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
-        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
+        entry.spend += (Number(row.spend_usd) || 0) * USD_TO_RMB_RATE;
+        entry.gmv += (Number(row.conversion_value) || 0) * USD_TO_RMB_RATE;
         entry.orders += Number(row.orders) || 0;
         entry.impressions += Number(row.impressions) || 0;
         entry.clicks += Number(row.clicks) || 0;
@@ -7087,7 +7088,7 @@
         return dashboardDataCache.outerDimensionSummary.get(cacheKey);
       }
       const rows = getOuterDimensionRows(range);
-      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * 6.9), 0);
+      const totalSpend = rows.reduce((sum, row) => sum + ((Number(row.spend_usd) || 0) * USD_TO_RMB_RATE), 0);
       const dimensionMap = new Map();
 
       rows.forEach(row => {
@@ -7104,8 +7105,8 @@
           });
         }
         const entry = dimensionMap.get(dimensionValue);
-        entry.spend += (Number(row.spend_usd) || 0) * 6.9;
-        entry.gmv += (Number(row.conversion_value) || 0) * 6.9;
+        entry.spend += (Number(row.spend_usd) || 0) * USD_TO_RMB_RATE;
+        entry.gmv += (Number(row.conversion_value) || 0) * USD_TO_RMB_RATE;
         entry.orders += Number(row.orders) || 0;
         entry.impressions += Number(row.impressions) || 0;
         entry.clicks += Number(row.clicks) || 0;
@@ -7436,14 +7437,14 @@
       const summary = Array.from(categoryMap.values()).map(entry => ({
         category: entry.category,
         gmv: entry.salesThb / 4.8,
-        totalSpend: entry.totalSpendUsd * 6.9,
-        imageSpend: entry.imageSpendUsd * 6.9,
+        totalSpend: entry.totalSpendUsd * USD_TO_RMB_RATE,
+        imageSpend: entry.imageSpendUsd * USD_TO_RMB_RATE,
         imageRoi: entry.imageSpendUsd ? entry.imageConversionValue / entry.imageSpendUsd : 0,
-        videoSpend: entry.videoSpendUsd * 6.9,
+        videoSpend: entry.videoSpendUsd * USD_TO_RMB_RATE,
         videoRoi: entry.videoSpendUsd ? entry.videoConversionValue / entry.videoSpendUsd : 0,
-        collabConversionSpend: entry.collabConversionSpendUsd * 6.9,
+        collabConversionSpend: entry.collabConversionSpendUsd * USD_TO_RMB_RATE,
         collabConversionRoi: entry.collabConversionSpendUsd ? entry.collabConversionValue / entry.collabConversionSpendUsd : 0,
-        collabExposureSpend: entry.collabExposureSpendUsd * 6.9,
+        collabExposureSpend: entry.collabExposureSpendUsd * USD_TO_RMB_RATE,
         retargetingShare: entry.totalSpendUsd ? entry.retargetingSpendUsd / entry.totalSpendUsd : 0,
         prospectingShare: entry.totalSpendUsd ? entry.prospectingSpendUsd / entry.totalSpendUsd : 0
       }));
@@ -7535,14 +7536,14 @@
       const summary = Array.from(productMap.values()).map(entry => ({
         product: entry.product,
         gmv: entry.salesThb / 4.8,
-        totalSpend: entry.totalSpendUsd * 6.9,
-        imageSpend: entry.imageSpendUsd * 6.9,
+        totalSpend: entry.totalSpendUsd * USD_TO_RMB_RATE,
+        imageSpend: entry.imageSpendUsd * USD_TO_RMB_RATE,
         imageRoi: entry.imageSpendUsd ? entry.imageConversionValue / entry.imageSpendUsd : 0,
-        videoSpend: entry.videoSpendUsd * 6.9,
+        videoSpend: entry.videoSpendUsd * USD_TO_RMB_RATE,
         videoRoi: entry.videoSpendUsd ? entry.videoConversionValue / entry.videoSpendUsd : 0,
-        collabConversionSpend: entry.collabConversionSpendUsd * 6.9,
+        collabConversionSpend: entry.collabConversionSpendUsd * USD_TO_RMB_RATE,
         collabConversionRoi: entry.collabConversionSpendUsd ? entry.collabConversionValue / entry.collabConversionSpendUsd : 0,
-        collabExposureSpend: entry.collabExposureSpendUsd * 6.9,
+        collabExposureSpend: entry.collabExposureSpendUsd * USD_TO_RMB_RATE,
         retargetingShare: entry.totalSpendUsd ? entry.retargetingSpendUsd / entry.totalSpendUsd : 0,
         prospectingShare: entry.totalSpendUsd ? entry.prospectingSpendUsd / entry.totalSpendUsd : 0
       })).filter(item => item.gmv);
@@ -7614,14 +7615,14 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
-        totalSpend: entry.innerSpend + (entry.outerSpendUsd * 6.9),
-        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * 6.9)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * 6.9)) : 0,
+        totalSpend: entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE),
+        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) : 0,
         innerSpend: entry.innerSpend,
         innerFeeRatio: entry.salesThb ? entry.innerSpend / (entry.salesThb / 4.8) : 0,
         innerRoi: entry.innerAdsSpendThb ? entry.innerGmvThb / entry.innerAdsSpendThb : 0,
         innerCpc: entry.innerClicks ? entry.innerAdsSpendThb / entry.innerClicks : (entry.innerCpcCount ? entry.innerCpcSum / entry.innerCpcCount : 0),
-        outerSpend: entry.outerSpendUsd * 6.9,
-        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
+        outerSpend: entry.outerSpendUsd * USD_TO_RMB_RATE,
+        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * USD_TO_RMB_RATE) / (entry.salesThb / 4.8) : 0,
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
         uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors : 0,
         _salesThb: entry.salesThb,
@@ -7932,14 +7933,14 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
-        totalSpend: entry.innerSpend + (entry.outerSpendUsd * 6.9),
-        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * 6.9)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * 6.9)) : 0,
+        totalSpend: entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE),
+        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) : 0,
         innerSpend: entry.innerSpend,
         innerFeeRatio: entry.salesThb ? entry.innerSpend / (entry.salesThb / 4.8) : 0,
         innerRoi: entry.innerAdsSpendThb ? entry.innerGmvThb / entry.innerAdsSpendThb : 0,
         innerCpc: entry.innerClicks ? entry.innerAdsSpendThb / entry.innerClicks : (entry.innerCpcCount ? entry.innerCpcSum / entry.innerCpcCount : 0),
-        outerSpend: entry.outerSpendUsd * 6.9,
-        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
+        outerSpend: entry.outerSpendUsd * USD_TO_RMB_RATE,
+        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * USD_TO_RMB_RATE) / (entry.salesThb / 4.8) : 0,
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
         uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors : 0,
         _salesThb: entry.salesThb,
@@ -8020,14 +8021,14 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
-        totalSpend: entry.innerSpend + (entry.outerSpendUsd * 6.9),
-        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * 6.9)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * 6.9)) : 0,
+        totalSpend: entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE),
+        totalRoi: (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) : 0,
         innerSpend: entry.innerSpend,
         innerFeeRatio: entry.salesThb ? entry.innerSpend / (entry.salesThb / 4.8) : 0,
         innerRoi: entry.innerAdsSpendThb ? entry.innerGmvThb / entry.innerAdsSpendThb : 0,
         innerCpc: entry.innerClicks ? entry.innerAdsSpendThb / entry.innerClicks : (entry.innerCpcCount ? entry.innerCpcSum / entry.innerCpcCount : 0),
-        outerSpend: entry.outerSpendUsd * 6.9,
-        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * 6.9) / (entry.salesThb / 4.8) : 0,
+        outerSpend: entry.outerSpendUsd * USD_TO_RMB_RATE,
+        outerFeeRatio: entry.salesThb ? (entry.outerSpendUsd * USD_TO_RMB_RATE) / (entry.salesThb / 4.8) : 0,
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
         uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors : 0,
         _salesThb: entry.salesThb,
@@ -8120,7 +8121,7 @@
 
       const summary = Array.from(summaryMap.values()).map(entry => {
         const gmv = entry.salesThb / 4.8;
-        const outerSpend = entry.outerSpendUsd * 6.9;
+        const outerSpend = entry.outerSpendUsd * USD_TO_RMB_RATE;
         return {
           [labelKey]: entry.label,
           category: entry.category,
@@ -8217,7 +8218,7 @@
 
       return Array.from(summaryMap.values()).map(entry => {
         const gmv = entry.salesThb / 4.8;
-        const outerSpend = entry.outerSpendUsd * 6.9;
+        const outerSpend = entry.outerSpendUsd * USD_TO_RMB_RATE;
         return {
           [labelKey]: entry.label,
           category: entry.category,
@@ -8547,13 +8548,13 @@
       outerRows.forEach(row => {
         const entry = ensureEntry(getLabel(row));
         if (!entry) return;
-        entry.outerSpend += (Number(row.spend_usd) || 0) * 6.9;
+        entry.outerSpend += (Number(row.spend_usd) || 0) * USD_TO_RMB_RATE;
       });
 
       brandRows.forEach(row => {
         const entry = ensureEntry(getLabel(row));
         if (!entry) return;
-        entry.brandSpend += (Number(row.spend_usd) || 0) * 6.9;
+        entry.brandSpend += (Number(row.spend_usd) || 0) * USD_TO_RMB_RATE;
       });
 
       const summary = Array.from(summaryMap.values())
@@ -10007,7 +10008,7 @@
       });
 
       const gmv = totals.salesThb / 4.8;
-      const outerSpend = totals.outerSpendUsd * 6.9;
+      const outerSpend = totals.outerSpendUsd * USD_TO_RMB_RATE;
       return {
         [labelKey]: labelValue,
         gmv,
@@ -10897,7 +10898,7 @@
         accumulator.newCustomers += Number(row?._newCustomers ?? row?.newCustomers) || 0;
         accumulator.oldCustomers += Number(row?._oldCustomers ?? row?.oldCustomers) || 0;
         accumulator.innerSpend += Number(row?._innerSpend ?? row?.innerSpend) || 0;
-        accumulator.outerSpendUsd += Number(row?._outerSpendUsd ?? (((Number(row?.outerSpend) || 0) / 6.9) || 0)) || 0;
+        accumulator.outerSpendUsd += Number(row?._outerSpendUsd ?? (((Number(row?.outerSpend) || 0) / USD_TO_RMB_RATE) || 0)) || 0;
         accumulator.outerClicks += Number(row?._outerClicks ?? row?.outerClicks) || 0;
         accumulator.retargetingSpendUsd += Number(row?._retargetingSpendUsd ?? 0) || 0;
         return accumulator;
@@ -10913,7 +10914,7 @@
         retargetingSpendUsd: 0
       });
 
-      const outerSpend = totals.outerSpendUsd * 6.9;
+      const outerSpend = totals.outerSpendUsd * USD_TO_RMB_RATE;
       return {
         [labelKey]: '总计',
         gmv: totals.gmv / 4.8,
@@ -11934,8 +11935,8 @@
           .forEach(row => {
             const form = row.ad_form2 || '未分类';
             const adType = getOuterBreakdownAdType(row);
-            const spend = (Number(row.spend_usd) || 0) * 6.9;
-            const gmv = (Number(row.conversion_value) || 0) * 6.9;
+            const spend = (Number(row.spend_usd) || 0) * USD_TO_RMB_RATE;
+            const gmv = (Number(row.conversion_value) || 0) * USD_TO_RMB_RATE;
             const orders = Number(row.orders) || 0;
             const impressions = Number(row.impressions) || 0;
             const clicks = Number(row.clicks) || 0;
