@@ -2705,6 +2705,7 @@
       impressions: 132,
       cpm: 126,
       clickCost: 126,
+      clicks: 126,
       ctr: 126,
       conversionRate: 126
     };
@@ -2717,6 +2718,7 @@
       roi: 126,
       impressions: 132,
       cpm: 126,
+      clicks: 126,
       ctr: 126,
       conversionRate: 126
     };
@@ -7007,6 +7009,7 @@
         roi,
         impressions: entry.impressions,
         cpm,
+        clicks: entry.clicks,
         ctr,
         conversionRate
       };
@@ -7132,6 +7135,7 @@
         roi: currentEntry?.roi || 0,
         impressions: currentEntry?.impressions || 0,
         cpm: currentEntry?.cpm || 0,
+        clicks: currentEntry?.clicks || 0,
         ctr: currentEntry?.ctr || 0,
         conversionRate: currentEntry?.conversionRate || 0
       };
@@ -7143,6 +7147,7 @@
         roi: compareEntry?.roi || 0,
         impressions: compareEntry?.impressions || 0,
         cpm: compareEntry?.cpm || 0,
+        clicks: compareEntry?.clicks || 0,
         ctr: compareEntry?.ctr || 0,
         conversionRate: compareEntry?.conversionRate || 0
       };
@@ -7154,6 +7159,7 @@
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.roi), formatOuterBreakdownValueDelta(currentMetrics.roi, compareMetrics.roi, value => Number(value || 0).toFixed(2)))}
         ${buildOuterBreakdownMetricCell(metricNumber.format(currentMetrics.impressions), formatDelta(currentMetrics.impressions, compareMetrics.impressions))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.cpm), formatOuterBreakdownValueDelta(currentMetrics.cpm, compareMetrics.cpm, value => Number(value || 0).toFixed(2)))}
+        ${buildOuterBreakdownMetricCell(metricNumber.format(currentMetrics.clicks), formatDelta(currentMetrics.clicks, compareMetrics.clicks))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.ctr), formatOuterBreakdownValueDelta(currentMetrics.ctr, compareMetrics.ctr, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.conversionRate), formatOuterBreakdownValueDelta(currentMetrics.conversionRate, compareMetrics.conversionRate, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
       `;
@@ -7201,6 +7207,7 @@
         { key: 'roi', label: 'ROI', formatter: value => formatOuterBreakdownFixed(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownValueDelta(current, compare, val => Number(val || 0).toFixed(2))).text },
         { key: 'impressions', label: '曝光', formatter: value => metricNumber.format(value) },
         { key: 'cpm', label: 'CPM', formatter: value => formatOuterBreakdownFixed(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownValueDelta(current, compare, val => Number(val || 0).toFixed(2))).text },
+        { key: 'clicks', label: '点击量', formatter: value => metricNumber.format(value) },
         { key: 'ctr', label: '点击率', formatter: value => formatOuterBreakdownPercent(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownValueDelta(current, compare, val => `${(Number(val || 0) * 100).toFixed(1)}%`)).text },
         { key: 'conversionRate', label: '转化率', formatter: value => formatOuterBreakdownPercent(value), deltaFormatter: (current, compare) => formatCategoryDelta(formatOuterBreakdownValueDelta(current, compare, val => `${(Number(val || 0) * 100).toFixed(1)}%`)).text }
       ];
@@ -7263,6 +7270,7 @@
         { key: 'roi', label: 'ROI' },
         { key: 'impressions', label: '曝光' },
         { key: 'cpm', label: 'CPM' },
+        { key: 'clicks', label: '点击量' },
         { key: 'ctr', label: '点击率' },
         { key: 'conversionRate', label: '转化率' }
       ];
@@ -7338,7 +7346,7 @@
       return formatCategoryDelta(formatDelta(currentValue, compareValue));
     }
 
-    function buildOuterBreakdownMetricCells(entry, compareEntry, totalSpend, compareTotalSpend) {
+    function buildOuterBreakdownMetricCells(entry, compareEntry, totalSpend, compareTotalSpend, includeClicks = false) {
       const currentMetrics = getOuterBreakdownMetrics(entry, totalSpend);
       const compareMetrics = getOuterBreakdownMetrics(compareEntry || { spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 }, compareTotalSpend);
       return `
@@ -7349,6 +7357,7 @@
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.roi), formatOuterBreakdownValueDelta(currentMetrics.roi, compareMetrics.roi, value => Number(value || 0).toFixed(2)))}
         ${buildOuterBreakdownMetricCell(metricNumber.format(currentMetrics.impressions), formatDelta(currentMetrics.impressions, compareMetrics.impressions))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownFixed(currentMetrics.cpm), formatOuterBreakdownValueDelta(currentMetrics.cpm, compareMetrics.cpm, value => Number(value || 0).toFixed(2)))}
+        ${includeClicks ? buildOuterBreakdownMetricCell(metricNumber.format(currentMetrics.clicks), formatDelta(currentMetrics.clicks, compareMetrics.clicks)) : ''}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.ctr), formatOuterBreakdownValueDelta(currentMetrics.ctr, compareMetrics.ctr, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
         ${buildOuterBreakdownMetricCell(formatOuterBreakdownPercent(currentMetrics.conversionRate), formatOuterBreakdownValueDelta(currentMetrics.conversionRate, compareMetrics.conversionRate, value => `${(Number(value || 0) * 100).toFixed(1)}%`))}
       `;
@@ -10285,7 +10294,7 @@
       ]));
       if (!groups.length) return;
 
-      const metricHeaders = ['花费', '花费占比', 'GMV', '订单', 'ROI', '曝光', 'CPM', '点击率', '转化率'];
+      const metricHeaders = ['花费', '花费占比', 'GMV', '订单', 'ROI', '曝光', 'CPM', '点击量', '点击率', '转化率'];
       const buildMetricTexts = (entry, compareEntry, totalSpendValue, compareTotalSpendValue) => {
         const currentMetrics = getOuterBreakdownMetrics(entry, totalSpendValue);
         const compareMetrics = getOuterBreakdownMetrics(compareEntry || { spend: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 }, compareTotalSpendValue);
@@ -10298,6 +10307,7 @@
             formatOuterBreakdownFixed(currentMetrics.roi),
             metricNumber.format(currentMetrics.impressions),
             formatOuterBreakdownFixed(currentMetrics.cpm),
+            metricNumber.format(currentMetrics.clicks),
             formatOuterBreakdownPercent(currentMetrics.ctr),
             formatOuterBreakdownPercent(currentMetrics.conversionRate)
           ],
@@ -10309,6 +10319,7 @@
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.roi, compareMetrics.roi, value => Number(value || 0).toFixed(2))).text,
             formatCategoryDelta(formatDelta(currentMetrics.impressions, compareMetrics.impressions)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.cpm, compareMetrics.cpm, value => Number(value || 0).toFixed(2))).text,
+            formatCategoryDelta(formatDelta(currentMetrics.clicks, compareMetrics.clicks)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.ctr, compareMetrics.ctr, value => `${(Number(value || 0) * 100).toFixed(1)}%`)).text,
             formatCategoryDelta(formatOuterBreakdownValueDelta(currentMetrics.conversionRate, compareMetrics.conversionRate, value => `${(Number(value || 0) * 100).toFixed(1)}%`)).text
           ]
@@ -10406,6 +10417,7 @@
         { key: 'roi', label: 'ROI' },
         { key: 'impressions', label: '曝光' },
         { key: 'cpm', label: 'CPM' },
+        { key: 'clicks', label: '点击量' },
         { key: 'ctr', label: '点击率' },
         { key: 'conversionRate', label: '转化率' }
       ];
@@ -10441,7 +10453,8 @@
                       row,
                       compareGroupMap.get(group.form)?.rows.get(row.adType),
                       totalSpend,
-                      compareSummary.totalSpend
+                      compareSummary.totalSpend,
+                      true
                     )}
                   </tr>
                 `).join('') + `
@@ -10451,14 +10464,15 @@
                       group.subtotal,
                       compareGroupMap.get(group.form)?.subtotal,
                       totalSpend,
-                      compareSummary.totalSpend
+                      compareSummary.totalSpend,
+                      true
                     )}
                   </tr>
                 `).join('')}
                 <tr class="total-row">
                   <td class="group-name">总计</td>
                   <td class="total-name">总计</td>
-                  ${buildOuterBreakdownMetricCells(grandTotal, compareSummary.grandTotal, totalSpend, compareSummary.totalSpend)}
+                  ${buildOuterBreakdownMetricCells(grandTotal, compareSummary.grandTotal, totalSpend, compareSummary.totalSpend, true)}
                 </tr>
               </tbody>
             </table>
