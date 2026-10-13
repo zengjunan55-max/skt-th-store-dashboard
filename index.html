@@ -12002,6 +12002,11 @@
       const { groups, totalSpend, grandTotal } = buildSummary(queryRange);
       const compareSummary = buildSummary(compareRange);
       const compareGroupMap = new Map(compareSummary.groups.map(group => [group.form, { rows: new Map(group.rows.map(row => [row.adType, row])), subtotal: group.subtotal }]));
+      const hasData = entry => ['spend', 'gmv', 'orders', 'impressions', 'clicks']
+        .some(key => Number(entry?.[key]) !== 0);
+      const visibleGroups = groups
+        .map(group => ({ ...group, rows: group.rows.filter(hasData) }))
+        .filter(group => group.rows.length);
       const headers = [
         { key: 'form', label: '广告形式' },
         { key: 'adType', label: '广告类型' },
@@ -12012,38 +12017,39 @@
         { key: 'roi', label: 'ROI' },
         { key: 'impressions', label: '曝光' },
         { key: 'cpm', label: 'CPM' },
+        { key: 'clicks', label: '点击量' },
         { key: 'ctr', label: '点击率' },
         { key: 'conversionRate', label: '转化率' }
       ];
-      const tableHtml = `
+      const tableHtml = visibleGroups.length ? `
         <div class="outer-structure-card">
           <div class="table-wrap">
             <table class="outer-structure-table outer-breakdown-table">
               ${buildOuterBreakdownColgroup(headers)}
               <thead><tr>${headers.map(header => `<th><span class="outer-breakdown-header-label">${header.label}</span></th>`).join('')}</tr></thead>
               <tbody>
-                ${groups.map(group => group.rows.map((row, index) => `
+                ${visibleGroups.map(group => group.rows.map((row, index) => `
                   <tr>
                     ${index === 0 ? `<td class="group-name" rowspan="${group.rows.length + 1}">${group.form}</td>` : ''}
                     <td class="category-name">${row.adType}</td>
-                    ${buildOuterBreakdownMetricCells(row, compareGroupMap.get(group.form)?.rows.get(row.adType), totalSpend, compareSummary.totalSpend)}
+                    ${buildOuterBreakdownMetricCells(row, compareGroupMap.get(group.form)?.rows.get(row.adType), totalSpend, compareSummary.totalSpend, true)}
                   </tr>
                 `).join('') + `
                   <tr class="subtotal-row">
                     <td class="subtotal-name">${group.subtotalLabel}</td>
-                    ${buildOuterBreakdownMetricCells(group.subtotal, compareGroupMap.get(group.form)?.subtotal, totalSpend, compareSummary.totalSpend)}
+                    ${buildOuterBreakdownMetricCells(group.subtotal, compareGroupMap.get(group.form)?.subtotal, totalSpend, compareSummary.totalSpend, true)}
                   </tr>
                 `).join('')}
                 <tr class="total-row">
                   <td class="group-name">总计</td>
                   <td class="total-name">总计</td>
-                  ${buildOuterBreakdownMetricCells(grandTotal, compareSummary.grandTotal, totalSpend, compareSummary.totalSpend)}
+                  ${buildOuterBreakdownMetricCells(grandTotal, compareSummary.grandTotal, totalSpend, compareSummary.totalSpend, true)}
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
-      `;
+      ` : '<div class="note">当前筛选条件下暂无广告结构汇总数据。</div>';
       document.getElementById('weeklyOuterBreakdownTable').innerHTML = tableHtml;
     }
 
