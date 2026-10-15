@@ -2188,14 +2188,13 @@
       { key: 'oldCustomers', label: '老客', type: 'count' },
       { key: 'oldCustomerShare', label: '老客占比', type: 'percent' },
       { key: 'innerSpend', label: '站内花费', type: 'money' },
+      { key: 'innerClicks', label: '站内点击', type: 'count' },
       { key: 'outerSpend', label: '站外总花费', type: 'money' },
       { key: 'outerClicks', label: '站外点击', type: 'count' },
       { key: 'clickCost', label: '点击成本', type: 'money2' },
       { key: 'retargetingShare', label: '再营销占比', type: 'percent' }
     ];
-    const weeklyNewOldMetricDefinitions = newOldMetricDefinitions.flatMap(metric => metric.key === 'innerSpend'
-      ? [metric, { key: 'innerClicks', label: '站内点击', type: 'count' }]
-      : [metric]);
+    const weeklyNewOldMetricDefinitions = newOldMetricDefinitions;
     const weeklyNewOldProductTableState = { sortKey: 'gmv', sortDirection: 'desc' };
     const metricDefinitionMap = Object.fromEntries(metricDefinitions.map(metric => [metric.key, metric]));
     const spTtTrendMetricDefinitionMap = Object.fromEntries(spTtTrendMetricDefinitions.map(metric => [metric.key, metric]));
@@ -8098,6 +8097,7 @@
             newCustomers: 0,
             oldCustomers: 0,
             innerSpend: 0,
+            innerClicks: 0,
             outerSpendUsd: 0,
             outerClicks: 0,
             retargetingSpendUsd: 0
@@ -8143,6 +8143,7 @@
         const entry = ensureEntry(label);
         if (!entry) return;
         entry.innerSpend += Number(row.spend_rmb) || 0;
+        entry.innerClicks += Number(row.clicks ?? row.inner_clicks ?? row.innerClicks) || 0;
       });
 
       const summary = Array.from(summaryMap.values()).map(entry => {
@@ -8159,6 +8160,7 @@
           oldCustomers: entry.oldCustomers,
           oldCustomerShare: entry.totalPurchasers ? entry.oldCustomers / entry.totalPurchasers : 0,
           innerSpend: entry.innerSpend,
+          innerClicks: entry.innerClicks,
           outerSpend,
           outerClicks: entry.outerClicks,
           clickCost: outerSpend ? entry.outerClicks / outerSpend : 0,
@@ -8169,6 +8171,7 @@
           _newCustomers: entry.newCustomers,
           _oldCustomers: entry.oldCustomers,
           _innerSpend: entry.innerSpend,
+          _innerClicks: entry.innerClicks,
           _outerSpendUsd: entry.outerSpendUsd,
           _outerClicks: entry.outerClicks,
           _retargetingSpendUsd: entry.retargetingSpendUsd
@@ -10938,6 +10941,7 @@
         accumulator.newCustomers += Number(row?._newCustomers ?? row?.newCustomers) || 0;
         accumulator.oldCustomers += Number(row?._oldCustomers ?? row?.oldCustomers) || 0;
         accumulator.innerSpend += Number(row?._innerSpend ?? row?.innerSpend) || 0;
+        accumulator.innerClicks += Number(row?._innerClicks ?? row?.innerClicks) || 0;
         accumulator.outerSpendUsd += Number(row?._outerSpendUsd ?? (((Number(row?.outerSpend) || 0) / USD_TO_RMB_RATE) || 0)) || 0;
         accumulator.outerClicks += Number(row?._outerClicks ?? row?.outerClicks) || 0;
         accumulator.retargetingSpendUsd += Number(row?._retargetingSpendUsd ?? 0) || 0;
@@ -10949,6 +10953,7 @@
         newCustomers: 0,
         oldCustomers: 0,
         innerSpend: 0,
+        innerClicks: 0,
         outerSpendUsd: 0,
         outerClicks: 0,
         retargetingSpendUsd: 0
@@ -10965,6 +10970,7 @@
         oldCustomers: totals.oldCustomers,
         oldCustomerShare: totals.totalPurchasers ? totals.oldCustomers / totals.totalPurchasers : 0,
         innerSpend: totals.innerSpend,
+        innerClicks: totals.innerClicks,
         outerSpend,
         outerClicks: totals.outerClicks,
         clickCost: outerSpend ? totals.outerClicks / outerSpend : 0,
