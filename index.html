@@ -7980,6 +7980,7 @@
           productMap.set(product, {
             product,
             salesThb: 0,
+            gmvRmb: 0,
             visitors: 0,
             buyers: 0,
             innerSpend: 0,
@@ -8001,6 +8002,7 @@
           const entry = ensureProduct(getRowProductLabel(row));
           if (!entry) return;
           entry.salesThb += Number(row.sales_thb) || 0;
+          entry.gmvRmb += Number(row.gmv_rmb) || 0;
           entry.visitors += Number(row.visitors) || 0;
           entry.buyers += Number(row.buyers) || 0;
         });
@@ -8035,7 +8037,7 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
-        averageOrderValue: entry.buyers ? entry.salesThb / entry.buyers : 0,
+        averageOrderValue: entry.buyers ? entry.gmvRmb / entry.buyers : 0,
         totalSpend: entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE),
         totalRoi: (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) : 0,
         innerSpend: entry.innerSpend,
