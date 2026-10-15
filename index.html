@@ -5989,7 +5989,8 @@
     const weeklyProductMetricDefinitions = [
       ...categoryMetricDefinitions.slice(0, 3),
       { key: 'averageOrderValue', label: '客单价', type: 'money2' },
-      ...categoryMetricDefinitions.slice(3)
+      categoryMetricDefinitions.find(metric => metric.key === 'uvValue'),
+      ...categoryMetricDefinitions.slice(3).filter(metric => metric.key !== 'uvValue')
     ];
     const categoryMetricDefinitionMap = Object.fromEntries(categoryMetricDefinitions.map(metric => [metric.key, metric]));
     const storeShareMetricDefinitions = [
