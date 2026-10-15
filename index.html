@@ -5975,6 +5975,8 @@
       { key: 'gmv', label: '店铺GMV', type: 'money' },
       { key: 'visitors', label: '访客', type: 'count' },
       { key: 'conversion', label: '转化率', type: 'percent' },
+      { key: 'averageOrderValue', label: '客单价', type: 'money2' },
+      { key: 'uvValue', label: 'UV价值', type: 'money2' },
       { key: 'totalSpend', label: '总花费', type: 'money' },
       { key: 'totalRoi', label: '总ROI', type: 'roi' },
       { key: 'innerSpend', label: '站内花费', type: 'money' },
@@ -5983,15 +5985,9 @@
       { key: 'innerCpc', label: '站内CPC', type: 'money2' },
       { key: 'outerSpend', label: '站外花费', type: 'money' },
       { key: 'outerFeeRatio', label: '站外费比', type: 'percent' },
-      { key: 'outerRoi', label: '站外ROI', type: 'roi' },
-      { key: 'uvValue', label: 'UV价值', type: 'money2' }
+      { key: 'outerRoi', label: '站外ROI', type: 'roi' }
     ];
-    const weeklyProductMetricDefinitions = [
-      ...categoryMetricDefinitions.slice(0, 3),
-      { key: 'averageOrderValue', label: '客单价', type: 'money2' },
-      categoryMetricDefinitions.find(metric => metric.key === 'uvValue'),
-      ...categoryMetricDefinitions.slice(3).filter(metric => metric.key !== 'uvValue')
-    ];
+    const weeklyProductMetricDefinitions = categoryMetricDefinitions;
     const categoryMetricDefinitionMap = Object.fromEntries(categoryMetricDefinitions.map(metric => [metric.key, metric]));
     const storeShareMetricDefinitions = [
       { key: 'gmv', label: 'GMV', type: 'money' },
@@ -7581,6 +7577,7 @@
           categoryMap.set(category, {
             category,
             salesThb: 0,
+            gmvRmb: 0,
             visitors: 0,
             buyers: 0,
             innerSpend: 0,
@@ -7602,6 +7599,7 @@
         const entry = ensureCategory(row.category);
         if (!entry) return;
         entry.salesThb += Number(row.sales_thb) || 0;
+        entry.gmvRmb += Number(row.gmv_rmb) || 0;
         entry.visitors += Number(row.visitors) || 0;
         entry.buyers += Number(row.buyers) || 0;
       });
@@ -7634,6 +7632,7 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
+        averageOrderValue: entry.buyers ? entry.gmvRmb / entry.buyers : 0,
         totalSpend: entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE),
         totalRoi: (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) : 0,
         innerSpend: entry.innerSpend,
@@ -7645,6 +7644,7 @@
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
         uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors : 0,
         _salesThb: entry.salesThb,
+        _gmvRmb: entry.gmvRmb,
         _visitors: entry.visitors,
         _buyers: entry.buyers,
         _innerSpend: entry.innerSpend,
@@ -7894,6 +7894,7 @@
           productMap.set(product, {
             product,
             salesThb: 0,
+            gmvRmb: 0,
             visitors: 0,
             buyers: 0,
             innerSpend: 0,
@@ -7916,6 +7917,7 @@
           const entry = ensureProduct(product);
           if (!entry) return;
           entry.salesThb += Number(row.sales_thb) || 0;
+          entry.gmvRmb += Number(row.gmv_rmb) || 0;
           entry.visitors += Number(row.visitors) || 0;
           entry.buyers += Number(row.buyers) || 0;
         });
@@ -7952,6 +7954,7 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
+        averageOrderValue: entry.buyers ? entry.gmvRmb / entry.buyers : 0,
         totalSpend: entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE),
         totalRoi: (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) : 0,
         innerSpend: entry.innerSpend,
@@ -7963,6 +7966,7 @@
         outerRoi: entry.outerSpendUsd ? entry.outerConversionValue / entry.outerSpendUsd : 0,
         uvValue: entry.visitors ? (entry.salesThb / 4.8) / entry.visitors : 0,
         _salesThb: entry.salesThb,
+        _gmvRmb: entry.gmvRmb,
         _visitors: entry.visitors,
         _buyers: entry.buyers,
         _innerSpend: entry.innerSpend,
@@ -10010,6 +10014,7 @@
     function buildStoreAnalysisTotalRow(rows, labelKey, labelValue) {
       const totals = rows.reduce((acc, row) => {
         acc.salesThb += Number(row._salesThb) || 0;
+        acc.gmvRmb += Number(row._gmvRmb) || 0;
         acc.visitors += Number(row._visitors) || 0;
         acc.buyers += Number(row._buyers) || 0;
         acc.innerSpend += Number(row._innerSpend) || 0;
@@ -10023,6 +10028,7 @@
         return acc;
       }, {
         salesThb: 0,
+        gmvRmb: 0,
         visitors: 0,
         buyers: 0,
         innerSpend: 0,
@@ -10042,6 +10048,7 @@
         gmv,
         visitors: totals.visitors,
         conversion: totals.visitors ? totals.buyers / totals.visitors : 0,
+        averageOrderValue: totals.buyers ? totals.gmvRmb / totals.buyers : 0,
         totalSpend: totals.innerSpend + outerSpend,
         totalRoi: (totals.innerSpend + outerSpend) ? gmv / (totals.innerSpend + outerSpend) : 0,
         innerSpend: totals.innerSpend,
