@@ -5982,6 +5982,11 @@
       { key: 'outerRoi', label: '站外ROI', type: 'roi' },
       { key: 'uvValue', label: 'UV价值', type: 'money2' }
     ];
+    const weeklyProductMetricDefinitions = [
+      ...categoryMetricDefinitions.slice(0, 3),
+      { key: 'averageOrderValue', label: '客单价', type: 'money2' },
+      ...categoryMetricDefinitions.slice(3)
+    ];
     const categoryMetricDefinitionMap = Object.fromEntries(categoryMetricDefinitions.map(metric => [metric.key, metric]));
     const storeShareMetricDefinitions = [
       { key: 'gmv', label: 'GMV', type: 'money' },
@@ -8030,6 +8035,7 @@
         gmv: entry.salesThb / 4.8,
         visitors: entry.visitors,
         conversion: entry.visitors ? entry.buyers / entry.visitors : 0,
+        averageOrderValue: entry.buyers ? entry.salesThb / entry.buyers : 0,
         totalSpend: entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE),
         totalRoi: (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) ? (entry.salesThb / 4.8) / (entry.innerSpend + (entry.outerSpendUsd * USD_TO_RMB_RATE)) : 0,
         innerSpend: entry.innerSpend,
@@ -11855,7 +11861,7 @@
         [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])].filter(product => (Number(currentMap[product]?.gmv) || 0) > 0),
         currentMap
       );
-      const metricHeaders = [{ key: 'product', label: '产品' }, ...categoryMetricDefinitions];
+      const metricHeaders = [{ key: 'product', label: '产品' }, ...weeklyProductMetricDefinitions];
       const tableHtml = products.length ? `
         <div class="category-summary-card">
           <div class="table-wrap">
@@ -11885,7 +11891,7 @@
                   return `
                     <tr>
                       <td class="category-name">${product}</td>
-                      ${categoryMetricDefinitions.map(metric => {
+                      ${weeklyProductMetricDefinitions.map(metric => {
                         const value = current[metric.key] || 0;
                         const delta = formatStoreAnalysisMetricDelta(metric.key, current[metric.key] || 0, compare[metric.key] || 0);
                         const tdClass = `num${isStoreAnalysisGroupStart(metric.key) ? ' group-divider' : ''}`;
