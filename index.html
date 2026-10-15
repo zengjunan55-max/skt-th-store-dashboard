@@ -2193,6 +2193,10 @@
       { key: 'clickCost', label: '点击成本', type: 'money2' },
       { key: 'retargetingShare', label: '再营销占比', type: 'percent' }
     ];
+    const weeklyNewOldMetricDefinitions = newOldMetricDefinitions.flatMap(metric => metric.key === 'innerSpend'
+      ? [metric, { key: 'innerClicks', label: '站内点击', type: 'count' }, { key: 'innerCpc', label: '站内CPC', type: 'money2' }]
+      : [metric]);
+    const weeklyNewOldProductTableState = { sortKey: 'gmv', sortDirection: 'desc' };
     const metricDefinitionMap = Object.fromEntries(metricDefinitions.map(metric => [metric.key, metric]));
     const spTtTrendMetricDefinitionMap = Object.fromEntries(spTtTrendMetricDefinitions.map(metric => [metric.key, metric]));
     const materialTrendMetricDefinitionMap = Object.fromEntries(materialTrendMetricDefinitions.map(metric => [metric.key, metric]));
@@ -8183,6 +8187,8 @@
             newCustomers: 0,
             oldCustomers: 0,
             innerSpend: 0,
+            innerClicks: 0,
+            innerCpcWeightedSum: 0,
             outerSpendUsd: 0,
             outerClicks: 0,
             retargetingSpendUsd: 0
@@ -8231,6 +8237,9 @@
         const entry = ensureEntry(label);
         if (!entry) return;
         entry.innerSpend += Number(row.spend_rmb) || 0;
+        const clicks = Number(row.clicks) || 0;
+        entry.innerClicks += clicks;
+        entry.innerCpcWeightedSum += (Number(row.cpc) || 0) * clicks;
       });
 
       return Array.from(summaryMap.values()).map(entry => {
@@ -8247,6 +8256,8 @@
           oldCustomers: entry.oldCustomers,
           oldCustomerShare: entry.totalPurchasers ? entry.oldCustomers / entry.totalPurchasers : 0,
           innerSpend: entry.innerSpend,
+          innerClicks: entry.innerClicks,
+          innerCpc: entry.innerClicks ? entry.innerCpcWeightedSum / entry.innerClicks : 0,
           outerSpend,
           outerClicks: entry.outerClicks,
           clickCost: outerSpend ? entry.outerClicks / outerSpend : 0,
@@ -8273,8 +8284,8 @@
       return Number(currentMap[label]?.[metricKey]) || 0;
     }
 
-    function sortNewOldLabels(labels, currentMap, labelKey) {
-      const { sortKey, sortDirection } = getNewOldSortState(labelKey);
+    function sortNewOldLabels(labels, currentMap, labelKey, state = getNewOldSortState(labelKey)) {
+      const { sortKey, sortDirection } = state;
       const factor = sortDirection === 'asc' ? 1 : -1;
       return [...labels].sort((left, right) => {
         const leftValue = getNewOldSortValue(left, currentMap, sortKey, labelKey);
@@ -8287,15 +8298,14 @@
       });
     }
 
-    function updateNewOldSort(labelKey, sortKey) {
-      const state = getNewOldSortState(labelKey);
+    function updateNewOldSort(labelKey, sortKey, state = getNewOldSortState(labelKey), tabKey = 'new-old') {
       if (state.sortKey === sortKey) {
         state.sortDirection = state.sortDirection === 'desc' ? 'asc' : 'desc';
       } else {
         state.sortKey = sortKey;
         state.sortDirection = sortKey === labelKey ? 'asc' : 'desc';
       }
-      invalidateTab('new-old');
+      invalidateTab(tabKey);
       scheduleActiveTabRender();
     }
 
@@ -10957,6 +10967,8 @@
     function renderNewOldSummaryTable(containerId, title, labelKey, currentRows, compareRows, emptyText, options = {}) {
       const showTotal = options.showTotal !== false;
       const showHead = options.showHead !== false;
+      const metrics = options.metricDefinitions || newOldMetricDefinitions;
+      const sortState = options.sortState || getNewOldSortState(labelKey);
       const currentMap = Object.fromEntries(currentRows.map(row => [row[labelKey], row]));
       const compareMap = Object.fromEntries(compareRows.map(row => [row[labelKey], row]));
       const totalCurrentRow = buildNewOldTotalRow(currentRows, labelKey);
@@ -10965,9 +10977,10 @@
         [...new Set([...Object.keys(currentMap), ...Object.keys(compareMap)])]
           .filter(label => (Number(currentMap[label]?.gmv) || 0) > 0 || (Number(compareMap[label]?.gmv) || 0) > 0),
         currentMap,
-        labelKey
+        labelKey,
+        sortState
       );
-      const metricHeaders = [{ key: labelKey, label: labelKey === 'category' ? '品类' : '产品' }, ...newOldMetricDefinitions];
+      const metricHeaders = [{ key: labelKey, label: labelKey === 'category' ? '品类' : '产品' }, ...metrics];
       const tableHtml = labels.length ? `
         <div class="category-summary-card">
           ${showHead ? `
@@ -10984,7 +10997,7 @@
               <thead>
                 <tr>
                   ${metricHeaders.map(header => {
-                    const state = getNewOldSortState(labelKey);
+                    const state = sortState;
                     const isActive = state.sortKey === header.key;
                     const arrow = isActive ? (state.sortDirection === 'desc' ? '↓' : '↑') : '↕';
                     return `
@@ -11005,7 +11018,7 @@
                   return `
                     <tr>
                       <td class="category-name">${label}</td>
-                      ${newOldMetricDefinitions.map(metric => {
+                      ${metrics.map(metric => {
                         const value = current[metric.key] || 0;
                         const delta = formatNewOldAnalysisMetricDelta(metric.key, value, compare[metric.key] || 0);
                         return `
@@ -11023,7 +11036,7 @@
                 <tfoot>
                   <tr>
                     <td class="category-name">总计</td>
-                    ${newOldMetricDefinitions.map(metric => {
+                    ${metrics.map(metric => {
                       const value = Number(totalCurrentRow?.[metric.key]) || 0;
                       const compareValue = Number(totalCompareRow?.[metric.key]) || 0;
                       const delta = formatNewOldAnalysisMetricDelta(metric.key, value, compareValue);
@@ -11044,7 +11057,7 @@
       document.getElementById(containerId).innerHTML = tableHtml;
       document.getElementById(containerId).querySelectorAll('[data-new-old-sort]').forEach(button => {
         button.addEventListener('click', () => {
-          updateNewOldSort(button.dataset.newOldLabelKey || labelKey, button.dataset.newOldSort || labelKey);
+          updateNewOldSort(button.dataset.newOldLabelKey || labelKey, button.dataset.newOldSort || labelKey, sortState, options.tabKey || 'new-old');
         });
       });
     }
@@ -12072,7 +12085,7 @@
         buildWeeklyNewOldSummary(queryRange, productTrendData.main || [], 'product', 'product'),
         buildWeeklyNewOldSummary(compareRange, productTrendData.main || [], 'product', 'product'),
         '当前筛选条件下暂无新老客产品分析数据。',
-        { showTotal: false, showHead: false }
+        { showTotal: false, showHead: false, metricDefinitions: weeklyNewOldMetricDefinitions, sortState: weeklyNewOldProductTableState, tabKey: 'weekly' }
       );
       renderWeeklyOuterBreakdownTable();
       renderWeeklyFilterSummary();
