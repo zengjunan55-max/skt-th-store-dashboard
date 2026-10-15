@@ -2194,7 +2194,7 @@
       { key: 'retargetingShare', label: '再营销占比', type: 'percent' }
     ];
     const weeklyNewOldMetricDefinitions = newOldMetricDefinitions.flatMap(metric => metric.key === 'innerSpend'
-      ? [metric, { key: 'innerClicks', label: '站内点击', type: 'count' }, { key: 'innerCpc', label: '站内CPC', type: 'money2' }]
+      ? [metric, { key: 'innerClicks', label: '站内点击', type: 'count' }]
       : [metric]);
     const weeklyNewOldProductTableState = { sortKey: 'gmv', sortDirection: 'desc' };
     const metricDefinitionMap = Object.fromEntries(metricDefinitions.map(metric => [metric.key, metric]));
